@@ -618,6 +618,279 @@
     </div>
 
     <script>
+
+         // 监听深色模式变化
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+        
+        // Google Drive 整合代码
+        // 注意：通常把API密钥和Client ID暴露在前端不是最佳实践，但本示例仅作演示用途
+        const CLIENT_ID = '75969942287-mg5gs4h7r44ihc3bo8t3kst9t8t3madj.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyDQqNP9cGGYvUGNNxZFhsChYoHjdBWoAPk';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+        
+        // 加载 Google Drive API
+        function loadGoogleDriveAPI() {
+            gapi.load('client:auth2', initClient);
+        }
+        
+        function initClient() {
+            gapi.client.init({
+                apiKey: API_KEY,
+                clientId: CLIENT_ID,
+                scope: SCOPES
+            }).then(() => {
+                // 监听登入状态变更
+                gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+                updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+            }).catch(error => {
+                updateSyncStatus('Drive API初始化失败: ' + error.message, 'error');
+            });
+        }
+        
+        function updateSigninStatus(isSignedIn) {
+            if (isSignedIn) {
+                // 用户已登入，可以进行同步
+                synchronizeData();
+            }
+        }
+        
+        function synchronizeData() {
+            updateSyncStatus('开始同步数据...', '');
+            // 检查是否有已存在的数据文件
+            listFiles().then(files => {
+                if (files.length > 0) {
+                    // 下载最新文件
+                    updateSyncStatus('找到现有数据，正在下载...', '');
+                    downloadFile(files[0].id).then(content => {
+                        importData(content); // 导入数据
+                        updateSyncStatus('数据已从Drive下载并导入', 'success');
+                    }).catch(error => {
+                        updateSyncStatus('下载数据失败: ' + error.message, 'error');
+                    });
+                } else {
+                    updateSyncStatus('未找到现有数据', '');
+                }
+                
+                // 上传当前数据
+                uploadData();
+            }).catch(error => {
+                updateSyncStatus('列出文件失败: ' + error.message, 'error');
+            });
+        }
+        
+        function uploadData() {
+            updateSyncStatus('正在准备上传数据...', '');
+            const dataStr = exportData(); // 获取当前数据
+            uploadFile("finance_data.json", dataStr).then(() => {
+                updateSyncStatus('数据已成功上传到Drive', 'success');
+            }).catch(error => {
+                updateSyncStatus('上传数据失败: ' + error.message, 'error');
+            });
+        }
+        
+        // 列出appdata目录中的文件
+        function listFiles() {
+            return gapi.client.drive.files.list({
+                spaces: 'appDataFolder',
+                fields: 'files(id, name, modifiedTime)',
+                orderBy: 'modifiedTime desc'
+            }).then(response => {
+                return response.result.files;
+            });
+        }
+        
+        // 下载文件内容
+        function downloadFile(fileId) {
+            return gapi.client.drive.files.get({
+                fileId: fileId,
+                alt: 'media'
+            }).then(response => {
+                return response.body;
+            });
+        }
+        
+        // 上传文件到appdata目录
+        function uploadFile(fileName, content) {
+            return new Promise((resolve, reject) => {
+                // 先检查是否已有同名文件
+                gapi.client.drive.files.list({
+                    spaces: 'appDataFolder',
+                    q: `name='${fileName}'`,
+                    fields: 'files(id)'
+                }).then(response => {
+                    const files = response.result.files;
+                    if (files && files.length > 0) {
+                        // 更新现有文件
+                        const fileId = files[0].id;
+                        updateFile(fileId, content).then(resolve).catch(reject);
+                    } else {
+                        // 创建新文件
+                        createFile(fileName, content).then(resolve).catch(reject);
+                    }
+                }).catch(reject);
+            });
+        }
+        
+        // 创建新文件
+        function createFile(fileName, content) {
+            const metadata = {
+                name: fileName,
+                parents: ['appDataFolder']
+            };
+            
+            const blob = new Blob([content], {type: 'application/json'});
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+            form.append('file', blob);
+            
+            return fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: new Headers({
+                    'Authorization': 'Bearer ' + gapi.auth.getToken().access_token
+                }),
+                body: form
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('上传失败: ' + response.statusText);
+                }
+                return response.json();
+            });
+        }
+        
+        // 更新现有文件
+        function updateFile(fileId, content) {
+            const blob = new Blob([content], {type: 'application/json'});
+            
+            return fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+                method: 'PATCH',
+                headers: new Headers({
+                    'Authorization': 'Bearer ' + gapi.auth.getToken().access_token,
+                    'Content-Type': 'application/json'
+                }),
+                body: blob
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('更新失败: ' + response.statusText);
+                }
+                return response.json();
+            });
+        }
+        
+        // 导出当前数据 - 这是示例函数，您需要根据实际情况实现
+        function exportData() {
+            // 在实际应用中，这里应该返回您想要保存的数据
+            const demoData = {
+                lastUpdated: new Date().toISOString(),
+                items: [
+                    { id: 1, name: '示例数据项1' },
+                    { id: 2, name: '示例数据项2' }
+                ]
+            };
+            return JSON.stringify(demoData);
+        }
+        
+        // 导入数据 - 这是示例函数，您需要根据实际情况实现
+        function importData(dataStr) {
+            try {
+                const data = JSON.parse(dataStr);
+                console.log('导入的数据:', data);
+                // 在实际应用中，您应该将这些数据应用到您的应用状态中
+            } catch (e) {
+                console.error('数据解析错误', e);
+            }
+        }
+        
+        function updateSyncStatus(message, type) {
+            const statusEl = document.getElementById('syncStatus');
+            statusEl.textContent = message;
+            statusEl.style.display = 'block';
+            
+            // 清除所有类型
+            statusEl.classList.remove('success', 'error');
+            
+            // 添加适当的类型
+            if (type) {
+                statusEl.classList.add(type);
+            }
+        }
+        
+        // 处理Google登录响应
+        function handleCredentialResponse(response) {
+            // 解码JWT令牌
+            const responsePayload = parseJwt(response.credential);
+            
+            // 显示用户信息
+            document.getElementById('userName').textContent = responsePayload.name;
+            document.getElementById('userEmail').textContent = responsePayload.email;
+            document.getElementById('userAvatar').src = responsePayload.picture;
+            document.getElementById('userInfo').style.display = 'block';
+            
+            // 存储令牌（在实际应用中，您可能会将其发送到服务器）
+            localStorage.setItem('googleToken', response.credential);
+            
+            console.log("登录成功:", responsePayload);
+            
+            // 加载Google Drive API
+            loadGoogleDriveAPI();
+        }
+        
+        // 解析JWT令牌
+        function parseJwt(token) {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            
+            return JSON.parse(jsonPayload);
+        }
+        
+        // 检查是否已登录
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('googleToken');
+            if (token) {
+                try {
+                    const userData = parseJwt(token);
+                    // 验证令牌是否过期
+                    if (userData.exp * 1000 > Date.now()) {
+                        document.getElementById('userName').textContent = userData.name;
+                        document.getElementById('userEmail').textContent = userData.email;
+                        document.getElementById('userAvatar').src = userData.picture;
+                        document.getElementById('userInfo').style.display = 'block';
+                        
+                        // 加载Google Drive API
+                        loadGoogleDriveAPI();
+                    } else {
+                        // 令牌已过期，删除它
+                        localStorage.removeItem('googleToken');
+                    }
+                } catch (e) {
+                    console.error("令牌解析错误", e);
+                    localStorage.removeItem('googleToken');
+                }
+            }
+        });
+        
+        // 退出登录
+        document.getElementById('signOutBtn').addEventListener('click', function() {
+            localStorage.removeItem('googleToken');
+            document.getElementById('userInfo').style.display = 'none';
+            // 重新加载页面以清除Google登录状态
+            window.location.reload();
+        });
+
+
+        
         // Global variables to store data
         let accounts = [];
         let categories = {
