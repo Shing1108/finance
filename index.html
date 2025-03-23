@@ -1492,29 +1492,146 @@
                     throw new Error('Google API 客戶端庫無法載入 (gapi.client 未定義)');
                 }
                 
-                // 使用 Promise 包裝初始化過程，添加超時
-                const initPromise = gapi.client.init({
-                    apiKey: GOOGLE_API_CONFIG.apiKey,
-                    clientId: GOOGLE_API_CONFIG.clientId,
-                    discoveryDocs: GOOGLE_API_CONFIG.discoveryDocs,
-                    scope: GOOGLE_API_CONFIG.scopes
+                // 檢查參數格式
+                console.log('檢查 API 參數格式...');
+                if (!/^[A-Za-z0-9_-]+$/.test(GOOGLE_API_CONFIG.apiKey)) {
+                    console.error('API Key 格式不正確');
+                    throw new Error('API Key 格式不正確，應為字母、數字、下劃線或連字符');
+                }
+                
+                if (!GOOGLE_API_CONFIG.clientId.includes('.apps.googleusercontent.com')) {
+                    console.error('Client ID 格式不正確');
+                    throw new Error('Client ID 格式不正確，應以 .apps.googleusercontent.com 結尾');
+                }
+                
+                // 檢查 discoveryDocs 和 scopes
+                if (!GOOGLE_API_CONFIG.discoveryDocs || !Array.isArray(GOOGLE_API_CONFIG.discoveryDocs) || GOOGLE_API_CONFIG.discoveryDocs.length === 0) {
+                    console.error('discoveryDocs 配置不正確');
+                    throw new Error('discoveryDocs 必須是非空陣列');
+                }
+                
+                if (!GOOGLE_API_CONFIG.scopes) {
+                    console.error('scopes 配置不正確');
+                    throw new Error('scopes 必須指定授權範圍');
+                }
+                
+                // 分步驟初始化，先確認網絡連接
+                console.log('檢查網絡連接...');
+                const connectivityCheck = fetch('https://www.googleapis.com/discovery/v1/apis?preferred=true&fields=kind', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
                 });
                 
-                // 添加超時處理
-                const timeoutPromise = new Promise((resolve, reject) => {
-                    setTimeout(() => reject(new Error('初始化超時 (30秒)')), 30000);
+                // 添加網絡檢查超時
+                const networkTimeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('網絡連接檢查超時')), 10000);
                 });
                 
-                // 使用 Promise.race 處理超時情況
-                Promise.race([initPromise, timeoutPromise])
-                    .then(() => {
-                        console.log('Google API 初始化成功');
-                        
-                        // 檢查 auth2 是否成功初始化
-                        if (!gapi.auth2 || !gapi.auth2.getAuthInstance) {
-                            console.error('gapi.auth2 未正確初始化');
-                            throw new Error('Google 認證服務初始化失敗');
+                // 檢查網絡連接
+                Promise.race([connectivityCheck, networkTimeoutPromise])
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Google API 服務連接失敗: ${response.status} ${response.statusText}`);
                         }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (!data || data.kind !== 'discovery#directoryList') {
+                            throw new Error('Google API 服務回應格式不正確，可能是跨域問題');
+                        }
+                        
+                        console.log('網絡連接正常，繼續初始化...');
+                        
+                        // 使用 Promise 包裝初始化過程，添加超時
+                        const initPromise = new Promise((resolve, reject) => {
+                            // 監聽初始化過程中的錯誤
+                            const originalError = window.onerror;
+                            window.onerror = function(message, source, lineno, colno, error) {
+                                console.error('初始化過程中捕獲到錯誤:', {
+                                    message, source, lineno, colno, error
+                                });
+                                
+                                if (originalError) originalError(message, source, lineno, colno, error);
+                                
+                                // 檢查是否與 gapi 相關
+                                if (source && (source.includes('gapi') || source.includes('google'))) {
+                                    reject(new Error(`初始化過程中發生錯誤: ${message}`));
+                                    return true;
+                                }
+                                return false;
+                            };
+                            
+                            console.log('開始調用 gapi.client.init，參數:', {
+                                apiKey: GOOGLE_API_CONFIG.apiKey ? '已設定 (隱藏實際值)' : '未設定',
+                                clientId: GOOGLE_API_CONFIG.clientId ? '已設定 (隱藏實際值)' : '未設定',
+                                discoveryDocs: GOOGLE_API_CONFIG.discoveryDocs,
+                                scope: GOOGLE_API_CONFIG.scopes
+                            });
+                            
+                            // 使用分步驟初始化
+                            try {
+                                const initProcess = gapi.client.init({
+                                    apiKey: GOOGLE_API_CONFIG.apiKey,
+                                    clientId: GOOGLE_API_CONFIG.clientId,
+                                    discoveryDocs: GOOGLE_API_CONFIG.discoveryDocs,
+                                    scope: GOOGLE_API_CONFIG.scopes
+                                });
+                                
+                                // 監聽 Promise 狀態
+                                initProcess
+                                    .then(() => {
+                                        console.log('gapi.client.init 成功完成');
+                                        
+                                        // 恢復原始錯誤處理
+                                        window.onerror = originalError;
+                                        
+                                        // 檢查 auth2 是否存在
+                                        if (!gapi.auth2) {
+                                            console.error('gapi.auth2 未定義');
+                                            throw new Error('Google 認證服務未正確載入');
+                                        }
+                                        
+                                        // 檢查 getAuthInstance 方法是否存在
+                                        if (!gapi.auth2.getAuthInstance) {
+                                            console.error('gapi.auth2.getAuthInstance 方法未定義');
+                                            throw new Error('Google 認證實例無法獲取');
+                                        }
+                                        
+                                        // 檢查是否可以獲取 authInstance
+                                        const authInstance = gapi.auth2.getAuthInstance();
+                                        if (!authInstance) {
+                                            console.error('授權實例創建失敗');
+                                            throw new Error('Google 認證服務初始化失敗');
+                                        }
+                                        
+                                        resolve(authInstance);
+                                    })
+                                    .catch(error => {
+                                        console.error('gapi.client.init promise rejected:', error);
+                                        // 恢復原始錯誤處理
+                                        window.onerror = originalError;
+                                        reject(error);
+                                    });
+                            } catch (error) {
+                                console.error('gapi.client.init 同步錯誤:', error);
+                                // 恢復原始錯誤處理
+                                window.onerror = originalError;
+                                reject(error);
+                            }
+                        });
+                        
+                        // 添加超時處理
+                        const timeoutPromise = new Promise((_, reject) => {
+                            setTimeout(() => reject(new Error('初始化超時 (30秒)')), 30000);
+                        });
+                        
+                        // 使用 Promise.race 處理超時情況
+                        return Promise.race([initPromise, timeoutPromise]);
+                    })
+                    .then(authInstance => {
+                        console.log('Google API 初始化成功，認證實例已創建');
                         
                         // 清除超時檢查
                         if (window.gapiInitTimeout) {
@@ -1530,43 +1647,96 @@
                         // 更新狀態
                         updateGoogleSigninStatus('success', 'Google API 已準備就緒，請登入');
                         
-                        // Listen for sign-in state changes
-                        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSignInStatus);
+                        // 監聽登入狀態變化
+                        authInstance.isSignedIn.listen(updateSignInStatus);
                         
-                        // Handle initial sign-in state
-                        updateSignInStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+                        // 處理初始登入狀態
+                        updateSignInStatus(authInstance.isSignedIn.get());
                         
-                        // Check for auto-sync
+                        // 檢查自動同步
                         checkAutoSync();
                     })
                     .catch(error => {
                         // 詳細記錄錯誤
                         console.error('Google API 初始化錯誤詳情:', error);
-                        console.error('錯誤名稱:', error.name);
+                        console.error('錯誤類型:', error.name);
                         console.error('錯誤訊息:', error.message);
                         console.error('錯誤堆疊:', error.stack);
+                        
+                        // 使用 XMLHttpRequest 檢查 API Key
+                        if (GOOGLE_API_CONFIG.apiKey) {
+                            const xhr = new XMLHttpRequest();
+                            xhr.open('GET', `https://www.googleapis.com/drive/v3/about?fields=user&key=${GOOGLE_API_CONFIG.apiKey}`, true);
+                            xhr.onreadystatechange = function() {
+                                if (xhr.readyState === 4) {
+                                    try {
+                                        const response = JSON.parse(xhr.responseText);
+                                        console.log('API Key 檢查結果:', response);
+                                        
+                                        if (response.error) {
+                                            console.error('API Key 檢查失敗:', response.error.message);
+                                            
+                                            // 更新錯誤信息
+                                            let errorUpdate = '';
+                                            if (response.error.status === 'INVALID_ARGUMENT') {
+                                                errorUpdate = 'API Key 無效或格式不正確';
+                                            } else if (response.error.status === 'API_KEY_INVALID') {
+                                                errorUpdate = 'API Key 無效';
+                                            } else if (response.error.status === 'PERMISSION_DENIED') {
+                                                errorUpdate = 'API Key 權限不足，請確認已啟用 Google Drive API';
+                                            }
+                                            
+                                            if (errorUpdate) {
+                                                updateGoogleSigninStatus('error', `Google API 初始化失敗: ${errorUpdate}`);
+                                                notify('❌', '登入失敗', `Google API 初始化失敗: ${errorUpdate}`);
+                                            }
+                                        }
+                                    } catch (parseError) {
+                                        console.error('解析 API Key 檢查結果失敗:', parseError);
+                                    }
+                                }
+                            };
+                            xhr.send();
+                        }
                         
                         // 診斷常見問題
                         let errorMessage = '初始化失敗';
                         let troubleshootingTips = '';
                         
-                        if (error.message && error.message.includes('Network Error')) {
-                            errorMessage = '網絡連接錯誤';
-                            troubleshootingTips = '請檢查您的網絡連接並重試';
-                        } else if (error.message && error.message.includes('timeout')) {
-                            errorMessage = '連接超時';
-                            troubleshootingTips = '伺服器回應時間過長，請稍後重試';
-                        } else if (error.message && error.message.includes('idpiframe_initialization_failed')) {
-                            errorMessage = '第三方 Cookie 被阻止';
-                            troubleshootingTips = '請在瀏覽器設置中允許第三方 Cookie';
-                        } else if (error.message && error.message.includes('Missing required parameter')) {
-                            errorMessage = 'API 參數錯誤';
-                            troubleshootingTips = 'API Key 或 Client ID 可能不正確';
-                        } else if (error.message && error.message.includes('Invalid')) {
-                            errorMessage = 'API 配置無效';
-                            troubleshootingTips = '請確認 API Key 和 Client ID 正確無誤';
-                        } else if (error.message) {
-                            errorMessage = error.message;
+                        if (error.message) {
+                            if (error.message.includes('Network Error') || error.message.includes('Failed to fetch')) {
+                                errorMessage = '網絡連接錯誤';
+                                troubleshootingTips = '請檢查您的網絡連接並重試';
+                            } else if (error.message.includes('timeout') || error.message.includes('timed out')) {
+                                errorMessage = '連接超時';
+                                troubleshootingTips = '伺服器回應時間過長，請稍後重試';
+                            } else if (error.message.includes('idpiframe_initialization_failed')) {
+                                errorMessage = '第三方 Cookie 被阻止';
+                                troubleshootingTips = '請在瀏覽器設置中允許第三方 Cookie';
+                            } else if (error.message.includes('Missing required parameter') || error.message.includes('parameter')) {
+                                errorMessage = 'API 參數錯誤';
+                                troubleshootingTips = 'API Key 或 Client ID 可能不正確';
+                            } else if (error.message.includes('Invalid')) {
+                                errorMessage = 'API 配置無效';
+                                troubleshootingTips = '請確認 API Key 和 Client ID 正確無誤';
+                            } else if (error.message.includes('Not a valid origin')) {
+                                errorMessage = '來源網址不在允許列表中';
+                                troubleshootingTips = '請在 Google Cloud Console 添加當前網址到授權來源';
+                            } else if (error.message.includes('blocked by CORS policy')) {
+                                errorMessage = '跨域請求被阻止';
+                                troubleshootingTips = '請檢查您的 API 配置是否允許跨域請求';
+                            } else if (error.message.includes('has been blocked by an extension')) {
+                                errorMessage = '瀏覽器擴展干擾';
+                                troubleshootingTips = '請嘗試禁用瀏覽器擴展或使用無痕模式';
+                            } else if (error.message.includes('API has not been used')) {
+                                errorMessage = 'API 尚未啟用';
+                                troubleshootingTips = '請在 Google Cloud Console 啟用 Google Drive API';
+                            } else if (error.message.includes('OAuth')) {
+                                errorMessage = 'OAuth 配置錯誤';
+                                troubleshootingTips = '請檢查 OAuth 同意畫面設置是否正確';
+                            } else {
+                                errorMessage = error.message;
+                            }
                         }
                         
                         // 完整錯誤訊息
