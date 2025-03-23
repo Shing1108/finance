@@ -1362,9 +1362,13 @@
                 console.error('Google API (gapi) 未載入');
                 updateGoogleSigninStatus('error', 'Google API 未載入，請重新整理頁面');
                 document.getElementById('googleSignInBtn').disabled = false;
-                document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"></svg> 重試 Google 登入';
+                document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 重試 Google 登入';
                 return;
             }
+            
+            // 將 API Key 和 Client ID 輸出到控制台以便診斷問題
+            console.log('API Key 設定:', GOOGLE_API_CONFIG.apiKey ? '已設定' : '未設定', GOOGLE_API_CONFIG.apiKey === 'YOUR_API_KEY' ? '(使用預設值)' : '(已自定義)');
+            console.log('Client ID 設定:', GOOGLE_API_CONFIG.clientId ? '已設定' : '未設定', GOOGLE_API_CONFIG.clientId === 'YOUR_CLIENT_ID' ? '(使用預設值)' : '(已自定義)');
             
             // 設置超時檢查，避免無限等待
             window.gapiInitTimeout = setTimeout(() => {
@@ -1374,16 +1378,90 @@
                     document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
                     updateGoogleSigninStatus('error', 'Google API 初始化逾時，請點擊按鈕重試');
                 }
-            }, 10000); // 10秒後檢查
+            }, 15000); // 15秒後檢查，增加超時時間
             
-            // Load Google API Client
+            // Load Google API Client with more detailed error reporting
             try {
-                gapi.load('client:auth2', initGoogleClient);
+                console.log('開始載入 Google API Client...');
+                
+                // 嘗試使用 Promise 包裝 gapi.load 調用
+                new Promise((resolve, reject) => {
+                    // 添加錯誤處理
+                    const originalErrorHandler = window.onerror;
+                    
+                    // 設置臨時錯誤捕獲函數
+                    window.onerror = (message, source, lineno, colno, error) => {
+                        console.error('Google API 載入過程中發生錯誤:', {
+                            message, source, lineno, colno, error
+                        });
+                        // 調用原來的錯誤處理函數
+                        if (originalErrorHandler) originalErrorHandler(message, source, lineno, colno, error);
+                        reject(error || new Error(message));
+                        return true;
+                    };
+                    
+                    // 嘗試載入 API
+                    gapi.load('client:auth2', {
+                        callback: () => {
+                            console.log('gapi.load 回調函數已觸發');
+                            // 恢復原始錯誤處理器
+                            window.onerror = originalErrorHandler;
+                            resolve();
+                        },
+                        onerror: (error) => {
+                            console.error('gapi.load 發生錯誤:', error);
+                            // 恢復原始錯誤處理器
+                            window.onerror = originalErrorHandler;
+                            reject(error || new Error('Google API 載入失敗'));
+                        },
+                        timeout: 10000, // 10秒超時
+                        ontimeout: () => {
+                            console.error('gapi.load 載入超時');
+                            // 恢復原始錯誤處理器
+                            window.onerror = originalErrorHandler;
+                            reject(new Error('Google API 載入超時'));
+                        }
+                    });
+                })
+                .then(() => {
+                    console.log('Google API Client 庫載入成功，正在初始化...');
+                    initGoogleClient();
+                })
+                .catch(error => {
+                    console.error('Google API 載入失敗 (詳細錯誤):', error);
+                    
+                    // 顯示更具體的錯誤訊息
+                    let errorMessage = '載入 Google API 時發生錯誤';
+                    
+                    if (error.message) {
+                        if (error.message.includes('Network Error') || error.message.includes('Failed to fetch')) {
+                            errorMessage = 'Google API 網絡連接錯誤，請檢查網絡連接';
+                        } else if (error.message.includes('timeout')) {
+                            errorMessage = 'Google API 載入超時，請稍後再試';
+                        } else if (error.message.includes('script error')) {
+                            errorMessage = 'Google API 腳本錯誤，可能是由於瀏覽器拓展干擾或安全設置';
+                        } else {
+                            errorMessage = `Google API 錯誤: ${error.message}`;
+                        }
+                    }
+                    
+                    updateGoogleSigninStatus('error', errorMessage);
+                    document.getElementById('googleSignInBtn').disabled = false;
+                    document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 重試 Google 登入';
+                    
+                    if (window.gapiInitTimeout) {
+                        clearTimeout(window.gapiInitTimeout);
+                    }
+                });
             } catch (error) {
-                console.error('載入 Google API Client 時出錯:', error);
-                updateGoogleSigninStatus('error', '載入 Google API 時發生錯誤，請檢查網絡連接');
+                console.error('載入 Google API Client 時發生嚴重錯誤:', error);
+                updateGoogleSigninStatus('error', '載入 Google API 時發生錯誤: ' + (error.message || '未知錯誤'));
                 document.getElementById('googleSignInBtn').disabled = false;
                 document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
+                
+                if (window.gapiInitTimeout) {
+                    clearTimeout(window.gapiInitTimeout);
+                }
             }
         }
         
@@ -1405,47 +1483,129 @@
             // 開始初始化 Google Client
             updateGoogleSigninStatus('pending', '正在初始化 Google API...');
             
-            gapi.client.init({
-                apiKey: GOOGLE_API_CONFIG.apiKey,
-                clientId: GOOGLE_API_CONFIG.clientId,
-                discoveryDocs: GOOGLE_API_CONFIG.discoveryDocs,
-                scope: GOOGLE_API_CONFIG.scopes
-            }).then(() => {
-                // 清除超時檢查
-                if (window.gapiInitTimeout) {
-                    clearTimeout(window.gapiInitTimeout);
+            try {
+                console.log('開始初始化 Google API Client');
+                
+                // 檢查 gapi.client 是否存在
+                if (!gapi.client) {
+                    console.error('gapi.client 未定義');
+                    throw new Error('Google API 客戶端庫無法載入 (gapi.client 未定義)');
                 }
                 
-                googleApiInitialized = true;
+                // 使用 Promise 包裝初始化過程，添加超時
+                const initPromise = gapi.client.init({
+                    apiKey: GOOGLE_API_CONFIG.apiKey,
+                    clientId: GOOGLE_API_CONFIG.clientId,
+                    discoveryDocs: GOOGLE_API_CONFIG.discoveryDocs,
+                    scope: GOOGLE_API_CONFIG.scopes
+                });
                 
-                // 恢復按鈕狀態
-                document.getElementById('googleSignInBtn').disabled = false;
-                document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
+                // 添加超時處理
+                const timeoutPromise = new Promise((resolve, reject) => {
+                    setTimeout(() => reject(new Error('初始化超時 (30秒)')), 30000);
+                });
                 
-                // 更新狀態
-                updateGoogleSigninStatus('success', 'Google API 已準備就緒，請登入');
+                // 使用 Promise.race 處理超時情況
+                Promise.race([initPromise, timeoutPromise])
+                    .then(() => {
+                        console.log('Google API 初始化成功');
+                        
+                        // 檢查 auth2 是否成功初始化
+                        if (!gapi.auth2 || !gapi.auth2.getAuthInstance) {
+                            console.error('gapi.auth2 未正確初始化');
+                            throw new Error('Google 認證服務初始化失敗');
+                        }
+                        
+                        // 清除超時檢查
+                        if (window.gapiInitTimeout) {
+                            clearTimeout(window.gapiInitTimeout);
+                        }
+                        
+                        googleApiInitialized = true;
+                        
+                        // 恢復按鈕狀態
+                        document.getElementById('googleSignInBtn').disabled = false;
+                        document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
+                        
+                        // 更新狀態
+                        updateGoogleSigninStatus('success', 'Google API 已準備就緒，請登入');
+                        
+                        // Listen for sign-in state changes
+                        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSignInStatus);
+                        
+                        // Handle initial sign-in state
+                        updateSignInStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+                        
+                        // Check for auto-sync
+                        checkAutoSync();
+                    })
+                    .catch(error => {
+                        // 詳細記錄錯誤
+                        console.error('Google API 初始化錯誤詳情:', error);
+                        console.error('錯誤名稱:', error.name);
+                        console.error('錯誤訊息:', error.message);
+                        console.error('錯誤堆疊:', error.stack);
+                        
+                        // 診斷常見問題
+                        let errorMessage = '初始化失敗';
+                        let troubleshootingTips = '';
+                        
+                        if (error.message && error.message.includes('Network Error')) {
+                            errorMessage = '網絡連接錯誤';
+                            troubleshootingTips = '請檢查您的網絡連接並重試';
+                        } else if (error.message && error.message.includes('timeout')) {
+                            errorMessage = '連接超時';
+                            troubleshootingTips = '伺服器回應時間過長，請稍後重試';
+                        } else if (error.message && error.message.includes('idpiframe_initialization_failed')) {
+                            errorMessage = '第三方 Cookie 被阻止';
+                            troubleshootingTips = '請在瀏覽器設置中允許第三方 Cookie';
+                        } else if (error.message && error.message.includes('Missing required parameter')) {
+                            errorMessage = 'API 參數錯誤';
+                            troubleshootingTips = 'API Key 或 Client ID 可能不正確';
+                        } else if (error.message && error.message.includes('Invalid')) {
+                            errorMessage = 'API 配置無效';
+                            troubleshootingTips = '請確認 API Key 和 Client ID 正確無誤';
+                        } else if (error.message) {
+                            errorMessage = error.message;
+                        }
+                        
+                        // 完整錯誤訊息
+                        let fullErrorMessage = `Google API 初始化失敗: ${errorMessage}`;
+                        if (troubleshootingTips) {
+                            fullErrorMessage += ` - ${troubleshootingTips}`;
+                        }
+                        
+                        updateGoogleSigninStatus('error', fullErrorMessage);
+                        
+                        // 恢復按鈕狀態
+                        document.getElementById('googleSignInBtn').disabled = false;
+                        document.getElementById('googleSignInBtn').innerHTML = `
+                            <svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                            </svg> 重試登入`;
+                        
+                        // 清除超時檢查
+                        if (window.gapiInitTimeout) {
+                            clearTimeout(window.gapiInitTimeout);
+                        }
+                        
+                        // 顯示更詳細的錯誤通知
+                        notify('❌', '登入失敗', fullErrorMessage);
+                    });
+            } catch (error) {
+                console.error('嚴重錯誤:', error);
+                updateGoogleSigninStatus('error', `Google API 初始化異常: ${error.message || '未知錯誤'}`);
                 
-                // Listen for sign-in state changes
-                gapi.auth2.getAuthInstance().isSignedIn.listen(updateSignInStatus);
-                
-                // Handle initial sign-in state
-                updateSignInStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-                
-                // Check for auto-sync
-                checkAutoSync();
-            }).catch(error => {
-                console.error('Google API initialization error:', error);
-                updateGoogleSigninStatus('error', `Google API 初始化失敗: ${error.message || '未知錯誤'}`);
-                
-                // 恢復按鈕狀態
                 document.getElementById('googleSignInBtn').disabled = false;
                 document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 重試登入';
                 
-                // 清除超時檢查
                 if (window.gapiInitTimeout) {
                     clearTimeout(window.gapiInitTimeout);
                 }
-            });
+            }
         }
         
         // Update sign-in status
