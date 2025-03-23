@@ -303,6 +303,36 @@
         .dark .sync-status.pending {
             background-color: rgba(245, 158, 11, 0.2);
         }
+
+        /* 新增類別管理樣式 */
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            background-color: #f8f9fa;
+            transition: background-color 0.2s;
+        }
+        .category-item:hover {
+            background-color: #e9ecef;
+        }
+        .dark .category-item {
+            background-color: #333;
+        }
+        .dark .category-item:hover {
+            background-color: #444;
+        }
+        .category-delete-btn {
+            color: #ef4444;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .category-delete-btn:hover {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -375,6 +405,11 @@
                     </button>
                 </li>
                 <li class="mr-2">
+                    <button data-tab="categories" class="tab-btn inline-block py-2 px-4 border-b-2 font-medium text-gray-500 hover:text-gray-700 border-transparent">
+                        <span class="mr-1">🏷️</span>類別管理
+                    </button>
+                </li>
+                <li class="mr-2">
                     <button data-tab="stats" class="tab-btn inline-block py-2 px-4 border-b-2 font-medium text-gray-500 hover:text-gray-700 border-transparent">
                         <span class="mr-1">📈</span>統計分析
                     </button>
@@ -435,7 +470,7 @@
                                 <span class="font-medium"><span id="currencySymbol4">$</span><span id="budgetAmount"></span></span>
                             </div>
                             <div class="mb-2 flex justify-between">
-                                <span class="text-gray-600">已使用:</span>
+                                <span class="text-gray-600">淨支出:</span>
                                 <span class="font-medium"><span id="currencySymbol5">$</span><span id="budgetUsed"></span></span>
                             </div>
                             <div class="mb-2 flex justify-between">
@@ -680,6 +715,43 @@
                 </div>
             </div>
 
+            <!-- Categories Management - 新增頁面 -->
+            <div id="categories" class="tab-content slide-enter">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 收入類別 -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h2 class="text-xl font-bold mb-4"><span class="mr-2">💹</span>收入類別</h2>
+                        
+                        <div class="mb-4 flex gap-2">
+                            <input type="text" id="newIncomeCategoryName" placeholder="新增收入類別" class="flex-1 p-2 border border-gray-300 rounded-md text-base">
+                            <button id="addIncomeCategoryBtn" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition">
+                                <i class="fas fa-plus"></i> 新增
+                            </button>
+                        </div>
+                        
+                        <div id="incomeCategoriesList" class="mt-4">
+                            <!-- 收入類別將在這裡顯示 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 支出類別 -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h2 class="text-xl font-bold mb-4"><span class="mr-2">💸</span>支出類別</h2>
+                        
+                        <div class="mb-4 flex gap-2">
+                            <input type="text" id="newExpenseCategoryName" placeholder="新增支出類別" class="flex-1 p-2 border border-gray-300 rounded-md text-base">
+                            <button id="addExpenseCategoryBtn" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition">
+                                <i class="fas fa-plus"></i> 新增
+                            </button>
+                        </div>
+                        
+                        <div id="expenseCategoriesList" class="mt-4">
+                            <!-- 支出類別將在這裡顯示 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Statistics -->
             <div id="stats" class="tab-content slide-enter">
                 <div class="mb-6">
@@ -710,6 +782,12 @@
                                     <!-- All categories will be inserted here -->
                                 </select>
                             </div>
+                        </div>
+
+                        <!-- 新增備註搜尋欄位 -->
+                        <div class="mt-4">
+                            <label class="block text-gray-700 mb-2">備註關鍵字</label>
+                            <input type="text" id="searchNote" placeholder="搜尋備註關鍵字" class="w-full p-2 border border-gray-300 rounded-md text-base">
                         </div>
                         
                         <div class="mt-4 flex justify-end">
@@ -862,9 +940,14 @@
                     <select id="newAccountCurrency" class="w-full p-2 border border-gray-300 rounded-md text-base">
                         <option value="TWD" selected>新台幣 (TWD)</option>
                         <option value="USD">美元 (USD)</option>
+                        <option value="EUR">歐元 (EUR)</option>
                         <option value="JPY">日元 (JPY)</option>
                         <option value="CNY">人民幣 (CNY)</option>
                         <option value="HKD">港幣 (HKD)</option>
+                        <option value="GBP">英鎊 (GBP)</option>
+                        <option value="AUD">澳元 (AUD)</option>
+                        <option value="CAD">加拿大元 (CAD)</option>
+                        <option value="SGD">新加坡元 (SGD)</option>
                     </select>
                 </div>
                 <div class="mb-6">
@@ -1014,11 +1097,16 @@
                         <div>
                             <label class="block text-gray-700 mb-2">選擇默認貨幣</label>
                             <select id="currencySelect" class="w-full p-2 border border-gray-300 rounded-md text-base">
-                             <option value="TWD">新台幣 (TWD)</option>
-                             <option value="USD">美元 (USD)</option>
-                             <option value="JPY">日元 (JPY)</option>
-                             <option value="CNY">人民幣 (CNY)</option>
-                             <option value="HKD">港幣 (HKD)</option>
+                                <option value="TWD">新台幣 (TWD)</option>
+                                <option value="USD">美元 (USD)</option>
+                                <option value="EUR">歐元 (EUR)</option>
+                                <option value="JPY">日元 (JPY)</option>
+                                <option value="CNY">人民幣 (CNY)</option>
+                                <option value="HKD">港幣 (HKD)</option>
+                                <option value="GBP">英鎊 (GBP)</option>
+                                <option value="AUD">澳元 (AUD)</option>
+                                <option value="CAD">加拿大元 (CAD)</option>
+                                <option value="SGD">新加坡元 (SGD)</option>
                             </select>
                         </div>
                         <div>
@@ -1340,234 +1428,177 @@
             setupAutoSync();
         }
         
-        // Initialize Google API
+        // Initialize Google API - 全新版本
         function initGoogleApi() {
-            // 更新 Google 登入按鈕狀態，顯示正在加載
-            document.getElementById('googleSignInBtn').disabled = true;
-            document.getElementById('googleSignInBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 載入 Google API...';
+            console.log('開始初始化 Google API...');
+            
+            // 重置按鈕狀態和顯示加載中
+            const googleSignInBtn = document.getElementById('googleSignInBtn');
+            googleSignInBtn.disabled = true;
+            googleSignInBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 載入中...';
             updateGoogleSigninStatus('pending', 'Google API 正在初始化...');
             
-            // 確保 gapi 已經載入
-            if (typeof gapi === 'undefined') {
-                console.error('Google API (gapi) 未載入');
-                updateGoogleSigninStatus('error', 'Google API 未載入，請重新整理頁面');
-                document.getElementById('googleSignInBtn').disabled = false;
-                document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 重試 Google 登入';
-                return;
+            // 清除之前的超時計時器
+            if (window.gapiInitTimeout) {
+                clearTimeout(window.gapiInitTimeout);
             }
             
-            // 將 API Key 和 Client ID 輸出到控制台以便診斷問題
-            console.log('API Key 設定:', GOOGLE_API_CONFIG.apiKey ? '已設定' : '未設定', GOOGLE_API_CONFIG.apiKey === 'YOUR_API_KEY' ? '(使用預設值)' : '(已自定義)');
-            console.log('Client ID 設定:', GOOGLE_API_CONFIG.clientId ? '已設定' : '未設定', GOOGLE_API_CONFIG.clientId === 'YOUR_CLIENT_ID' ? '(使用預設值)' : '(已自定義)');
+            // 最大重試次數和當前重試次數
+            const MAX_RETRIES = 2;
+            let currentRetry = 0;
             
-            // 設置超時檢查，避免無限等待
-            window.gapiInitTimeout = setTimeout(() => {
-                if (!googleApiInitialized) {
-                    console.warn('Google API 初始化逾時，重置狀態');
-                    document.getElementById('googleSignInBtn').disabled = false;
-                    document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
-                    updateGoogleSigninStatus('error', 'Google API 初始化逾時，請點擊按鈕重試');
-                }
-            }, 15000); // 15秒後檢查，增加超時時間
-            
-            // Load Google API Client with more detailed error reporting
-            try {
-                console.log('開始載入 Google API Client...');
-                
-                // 嘗試使用 Promise 包裝 gapi.load 調用
-                new Promise((resolve, reject) => {
-                    // 添加錯誤處理
-                    const originalErrorHandler = window.onerror;
-                    
-                    // 設置臨時錯誤捕獲函數
-                    window.onerror = (message, source, lineno, colno, error) => {
-                        console.error('Google API 載入過程中發生錯誤:', {
-                            message, source, lineno, colno, error
-                        });
-                        // 調用原來的錯誤處理函數
-                        if (originalErrorHandler) originalErrorHandler(message, source, lineno, colno, error);
-                        reject(error || new Error(message));
-                        return true;
-                    };
-                    
-                    // 嘗試載入 API
-                    gapi.load('client:auth2', {
-                        callback: () => {
-                            console.log('gapi.load 回調函數已觸發');
-                            // 恢復原始錯誤處理器
-                            window.onerror = originalErrorHandler;
-                            resolve();
-                        },
-                        onerror: (error) => {
-                            console.error('gapi.load 發生錯誤:', error);
-                            // 恢復原始錯誤處理器
-                            window.onerror = originalErrorHandler;
-                            reject(error || new Error('Google API 載入失敗'));
-                        },
-                        timeout: 10000, // 10秒超時
-                        ontimeout: () => {
-                            console.error('gapi.load 載入超時');
-                            // 恢復原始錯誤處理器
-                            window.onerror = originalErrorHandler;
-                            reject(new Error('Google API 載入超時'));
-                        }
-                    });
-                })
-                .then(() => {
-                    console.log('Google API Client 庫載入成功，正在初始化...');
-                    initGoogleClient();
-                })
-                .catch(error => {
-                    console.error('Google API 載入失敗 (詳細錯誤):', error);
-                    
-                    // 顯示更具體的錯誤訊息
-                    let errorMessage = '載入 Google API 時發生錯誤';
-                    
-                    if (error.message) {
-                        if (error.message.includes('Network Error') || error.message.includes('Failed to fetch')) {
-                            errorMessage = 'Google API 網絡連接錯誤，請檢查網絡連接';
-                        } else if (error.message.includes('timeout')) {
-                            errorMessage = 'Google API 載入超時，請稍後再試';
-                        } else if (error.message.includes('script error')) {
-                            errorMessage = 'Google API 腳本錯誤，可能是由於瀏覽器拓展干擾或安全設置';
-                        } else {
-                            errorMessage = `Google API 錯誤: ${error.message}`;
-                        }
-                    }
-                    
-                    updateGoogleSigninStatus('error', errorMessage);
-                    document.getElementById('googleSignInBtn').disabled = false;
-                    document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 重試 Google 登入';
-                    
-                    if (window.gapiInitTimeout) {
-                        clearTimeout(window.gapiInitTimeout);
-                    }
-                });
-            } catch (error) {
-                console.error('載入 Google API Client 時發生嚴重錯誤:', error);
-                updateGoogleSigninStatus('error', '載入 Google API 時發生錯誤: ' + (error.message || '未知錯誤'));
-                document.getElementById('googleSignInBtn').disabled = false;
-                document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
-                
-                if (window.gapiInitTimeout) {
-                    clearTimeout(window.gapiInitTimeout);
-                }
-            }
-        }
-        
-        // Initialize Google API Client - 簡化版
-        function initGoogleClient() {
-            // 檢查是否所有必要的配置都存在
+            // 檢查配置是否有效
             if (!GOOGLE_API_CONFIG.apiKey || GOOGLE_API_CONFIG.apiKey === 'YOUR_API_KEY' || 
                 !GOOGLE_API_CONFIG.clientId || GOOGLE_API_CONFIG.clientId === 'YOUR_CLIENT_ID') {
                 console.error('Google API 配置缺少 API Key 或 Client ID');
-                updateGoogleSigninStatus('error', 'Google API 配置錯誤: 請填入正確的 API Key 和 Client ID');
-                document.getElementById('googleSignInBtn').disabled = false;
-                document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 設定 API Key 和 Client ID';
-                if (window.gapiInitTimeout) {
-                    clearTimeout(window.gapiInitTimeout);
-                }
+                updateGoogleSigninStatus('error', 'Google API 配置錯誤: 需要有效的 API Key 和 Client ID');
+                googleSignInBtn.disabled = false;
+                googleSignInBtn.innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 設定 API Key';
                 return;
             }
             
-            // 開始初始化 Google Client
-            updateGoogleSigninStatus('pending', '正在初始化 Google API...');
-            document.getElementById('googleSignInBtn').disabled = true;
-            document.getElementById('googleSignInBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 載入中...';
+            // 檢查 gapi 是否已載入
+            if (typeof gapi === 'undefined') {
+                console.error('Google API (gapi) 未載入');
+                updateGoogleSigninStatus('error', 'Google API 未載入，請檢查網絡連接並重新整理頁面');
+                googleSignInBtn.disabled = false;
+                googleSignInBtn.innerHTML = '<i class="fas fa-sync mr-2"></i> 重試載入';
+                return;
+            }
             
-            // 使用簡化的初始化方法
-            try {
-                console.log('開始初始化 Google API Client');
+            // 嘗試初始化的函數
+            function attemptInitialization() {
+                console.log(`嘗試 Google API 初始化... (嘗試 ${currentRetry + 1}/${MAX_RETRIES + 1})`);
                 
-                // 檢查 gapi 是否正確載入
-                if (typeof gapi === 'undefined' || !gapi.client) {
-                    console.error('gapi 或 gapi.client 未定義');
-                    throw new Error('Google API 客戶端庫無法載入 (gapi.client 未定義)');
+                // 設置超時定時器
+                const timeoutId = setTimeout(() => {
+                    console.warn(`Google API 初始化超時 (嘗試 ${currentRetry + 1})`);
+                    if (currentRetry < MAX_RETRIES) {
+                        currentRetry++;
+                        attemptInitialization();
+                    } else {
+                        updateGoogleSigninStatus('error', 'Google API 初始化超時，請檢查網絡連接並稍後重試');
+                        googleSignInBtn.disabled = false;
+                        googleSignInBtn.innerHTML = '<i class="fas fa-sync mr-2"></i> 重試載入';
+                    }
+                }, 10000);  // 10秒超時
+                
+                try {
+                    // 使用簡單直接的方法載入 client 庫
+                    gapi.load('client:auth2', () => {
+                        console.log('gapi.client:auth2 已載入，初始化中...');
+                        
+                        // 初始化客戶端
+                        gapi.client.init({
+                            apiKey: GOOGLE_API_CONFIG.apiKey,
+                            clientId: GOOGLE_API_CONFIG.clientId,
+                            scope: GOOGLE_API_CONFIG.scopes || 'https://www.googleapis.com/auth/drive.file'
+                        })
+                        .then(() => {
+                            clearTimeout(timeoutId);
+                            console.log('Google API 初始化成功');
+                            
+                            // 標記為已初始化
+                            googleApiInitialized = true;
+                            
+                            // 更新 UI 和狀態
+                            googleSignInBtn.disabled = false;
+                            googleSignInBtn.innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
+                            updateGoogleSigninStatus('success', 'Google API 已準備就緒，請登入');
+                            
+                            try {
+                                // 設置認證狀態監聽
+                                const authInstance = gapi.auth2.getAuthInstance();
+                                if (authInstance) {
+                                    authInstance.isSignedIn.listen(updateSignInStatus);
+                                    updateSignInStatus(authInstance.isSignedIn.get());
+                                }
+                                
+                                // 檢查自動同步
+                                checkAutoSync();
+                            } catch (err) {
+                                console.warn('設置認證監聽器時發生非嚴重錯誤:', err);
+                                // 這裡不將整個初始化標記為失敗，因為主要功能已經初始化成功
+                            }
+                        })
+                        .catch(error => {
+                            clearTimeout(timeoutId);
+                            console.error('Google API 初始化錯誤:', error);
+                            
+                            if (currentRetry < MAX_RETRIES) {
+                                // 重試
+                                currentRetry++;
+                                console.log(`初始化失敗，正在重試 (${currentRetry}/${MAX_RETRIES})...`);
+                                setTimeout(() => attemptInitialization(), 1000); // 延遲 1 秒後重試
+                            } else {
+                                // 所有重試都失敗
+                                processInitError(error);
+                            }
+                        });
+                    }, error => {
+                        clearTimeout(timeoutId);
+                        console.error('無法載入 gapi.client:auth2:', error);
+                        
+                        if (currentRetry < MAX_RETRIES) {
+                            // 重試
+                            currentRetry++;
+                            console.log(`載入失敗，正在重試 (${currentRetry}/${MAX_RETRIES})...`);
+                            setTimeout(() => attemptInitialization(), 1000); // 延遲 1 秒後重試
+                        } else {
+                            // 所有重試都失敗
+                            updateGoogleSigninStatus('error', '無法載入 Google API 客戶端庫，請稍後重試');
+                            googleSignInBtn.disabled = false;
+                            googleSignInBtn.innerHTML = '<i class="fas fa-sync mr-2"></i> 重試載入';
+                        }
+                    });
+                } catch (error) {
+                    clearTimeout(timeoutId);
+                    console.error('初始化過程中發生嚴重錯誤:', error);
+                    
+                    if (currentRetry < MAX_RETRIES) {
+                        // 重試
+                        currentRetry++;
+                        console.log(`發生錯誤，正在重試 (${currentRetry}/${MAX_RETRIES})...`);
+                        setTimeout(() => attemptInitialization(), 1000); // 延遲 1 秒後重試
+                    } else {
+                        // 所有重試都失敗
+                        processInitError(error);
+                    }
+                }
+            }
+            
+            // 處理初始化錯誤
+            function processInitError(error) {
+                let errorMessage = '初始化失敗';
+                
+                if (error) {
+                    if (error.message) {
+                        if (error.message.includes('idpiframe_initialization_failed')) {
+                            errorMessage = '第三方 Cookie 被阻止，請在瀏覽器設置中允許';
+                        } else if (error.message.includes('Missing required parameter')) {
+                            errorMessage = 'API 參數錯誤，請確認 API Key 和 Client ID';
+                        } else if (error.message.includes('Not a valid origin')) {
+                            errorMessage = '網站來源未授權，請在 Google Cloud Console 添加';
+                        } else if (error.message.includes('disable_third_party_cookies')) {
+                            errorMessage = '瀏覽器禁止第三方 Cookie，請在設置中允許';
+                        } else if (error.message.includes('network') || error.message.includes('Failed to fetch')) {
+                            errorMessage = '網絡連接錯誤，請檢查網絡';
+                        } else if (error.message.includes('The API key or OAuth client is restricted')) {
+                            errorMessage = 'API Key 使用受限，請確認域名限制設置';
+                        }
+                    }
                 }
                 
-                // 使用較短的超時
-                const timeout = setTimeout(() => {
-                    console.error('Google API 初始化超時 (20秒)');
-                    updateGoogleSigninStatus('error', 'Google API 初始化超時，請檢查網絡連接或重新整理頁面');
-                    
-                    document.getElementById('googleSignInBtn').disabled = false;
-                    document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 重試登入';
-                }, 20000);
+                updateGoogleSigninStatus('error', `Google API 初始化失敗: ${errorMessage}`);
+                googleSignInBtn.disabled = false;
+                googleSignInBtn.innerHTML = '<i class="fas fa-sync mr-2"></i> 重試載入';
                 
-                // 完全簡化的初始化方法
-                gapi.client.init({
-                    apiKey: GOOGLE_API_CONFIG.apiKey,
-                    clientId: GOOGLE_API_CONFIG.clientId,
-                    scope: GOOGLE_API_CONFIG.scopes
-                }).then(() => {
-                    clearTimeout(timeout);
-                    console.log('Google API 初始化成功');
-                    
-                    // 確認 auth2 是否載入成功
-                    if (!gapi.auth2) {
-                        throw new Error('gapi.auth2 未載入');
-                    }
-                    
-                    const authInstance = gapi.auth2.getAuthInstance();
-                    if (!authInstance) {
-                        throw new Error('無法獲取授權實例');
-                    }
-                    
-                    // 成功初始化
-                    googleApiInitialized = true;
-                    
-                    // 恢復按鈕狀態
-                    document.getElementById('googleSignInBtn').disabled = false;
-                    document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
-                    
-                    // 更新狀態
-                    updateGoogleSigninStatus('success', 'Google API 已準備就緒，請登入');
-                    
-                    // 監聽登入狀態變化
-                    authInstance.isSignedIn.listen(updateSignInStatus);
-                    
-                    // 處理初始登入狀態
-                    updateSignInStatus(authInstance.isSignedIn.get());
-                    
-                    // 檢查自動同步
-                    checkAutoSync();
-                }).catch(error => {
-                    clearTimeout(timeout);
-                    console.error('Google API 初始化錯誤:', error);
-                    
-                    // 取得更簡單的錯誤信息
-                    let errorMessage = error.message || '未知錯誤';
-                    let simpleError = '初始化失敗';
-                    
-                    // 常見錯誤處理
-                    if (errorMessage.includes('idpiframe_initialization_failed')) {
-                        simpleError = '第三方 Cookie 被阻止，請在瀏覽器設置中允許';
-                    } else if (errorMessage.includes('Missing required parameter')) {
-                        simpleError = 'API 參數錯誤，請確認 API Key 和 Client ID';
-                    } else if (errorMessage.includes('Not a valid origin')) {
-                        simpleError = '網站來源未授權，請在 Google Cloud Console 添加';
-                    } else if (errorMessage.includes('disable_third_party_cookies')) {
-                        simpleError = '瀏覽器禁止第三方 Cookie，請在瀏覽器設置中允許';
-                    } else if (errorMessage.includes('network') || errorMessage.includes('Failed to fetch')) {
-                        simpleError = '網絡連接錯誤，請檢查網絡';
-                    }
-                    
-                    updateGoogleSigninStatus('error', `Google API 初始化失敗: ${simpleError}`);
-                    
-                    // 恢復按鈕狀態
-                    document.getElementById('googleSignInBtn').disabled = false;
-                    document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 重試登入';
-                    
-                    // 顯示更詳細的錯誤通知
-                    notify('❌', '登入失敗', `Google API 初始化失敗: ${simpleError}`);
-                });
-            } catch (error) {
-                console.error('嚴重錯誤:', error);
-                updateGoogleSigninStatus('error', `Google API 初始化異常: ${error.message || '未知錯誤'}`);
-                
-                document.getElementById('googleSignInBtn').disabled = false;
-                document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 重試登入';
+                // 顯示更詳細的錯誤通知，但保持簡潔
+                notify('❌', '初始化失敗', `Google API 初始化失敗: ${errorMessage}`);
             }
+            
+            // 開始第一次嘗試初始化
+            attemptInitialization();
         }
         
         // Update sign-in status
@@ -2085,7 +2116,7 @@
             
             categories = {
                 income: ['薪資', '獎金', '投資收益', '禮金', '其他收入'],
-                expense: ['食品', '交通', '住房', '娛樂', '服裝', '醫療', '教育', '其他支出']
+                expense: ['飲食', '娛樂', '車資', '日用', '儲錢', '電信', '家用', '應急', '大陸', '還款']
             };
             
             transactions = [];
@@ -2130,7 +2161,7 @@
             }
             
             if (!categories.expense || categories.expense.length === 0) {
-                categories.expense = ['飲食', '娛樂', '交通', '日用', '應急', '大陸', '還款'];
+                categories.expense = ['飲食', '娛樂', '車資', '日用', '儲錢', '電信', '家用', '應急', '大陸', '還款'];
             }
             
             saveData('categories');
@@ -2400,6 +2431,9 @@
             
             // Update budget thresholds
             updateBudgetThresholds();
+            
+            // Update categories management
+            updateCategoriesManagement();
             
             // Update daily summary timing select
             document.getElementById('dailySummaryTiming').value = appSettings.dailySummaryTiming;
@@ -2863,6 +2897,66 @@
                 option.textContent = category;
                 searchCategory.appendChild(option);
             });
+        }
+        
+        // Update categories management tab
+        function updateCategoriesManagement() {
+            const incomeCategoriesList = document.getElementById('incomeCategoriesList');
+            const expenseCategoriesList = document.getElementById('expenseCategoriesList');
+            
+            // Clear previous content
+            incomeCategoriesList.innerHTML = '';
+            expenseCategoriesList.innerHTML = '';
+            
+            // Add income categories
+            if (categories.income.length === 0) {
+                incomeCategoriesList.innerHTML = '<div class="text-center text-gray-500 py-4">尚無收入類別</div>';
+            } else {
+                categories.income.forEach(category => {
+                    const item = document.createElement('div');
+                    item.className = 'category-item';
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = category;
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'category-delete-btn';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                    deleteBtn.addEventListener('click', () => {
+                        deleteCategory('income', category);
+                    });
+                    
+                    item.appendChild(nameSpan);
+                    item.appendChild(deleteBtn);
+                    
+                    incomeCategoriesList.appendChild(item);
+                });
+            }
+            
+            // Add expense categories
+            if (categories.expense.length === 0) {
+                expenseCategoriesList.innerHTML = '<div class="text-center text-gray-500 py-4">尚無支出類別</div>';
+            } else {
+                categories.expense.forEach(category => {
+                    const item = document.createElement('div');
+                    item.className = 'category-item';
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = category;
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'category-delete-btn';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                    deleteBtn.addEventListener('click', () => {
+                        deleteCategory('expense', category);
+                    });
+                    
+                    item.appendChild(nameSpan);
+                    item.appendChild(deleteBtn);
+                    
+                    expenseCategoriesList.appendChild(item);
+                });
+            }
         }
         
         // Update budget status on dashboard
@@ -3689,11 +3783,13 @@
                 const endDateInput = document.getElementById('searchEndDate');
                 const typeSelect = document.getElementById('searchType');
                 const categorySelect = document.getElementById('searchCategory');
+                const noteInput = document.getElementById('searchNote'); // 新增：備註搜尋欄位
                 
                 const startDate = startDateInput.value;
                 const endDate = endDateInput.value;
                 const type = typeSelect.value;
                 const category = categorySelect.value;
+                const noteKeyword = noteInput.value.trim().toLowerCase(); // 新增：備註關鍵字
                 
                 // Filter transactions
                 let filtered = [...transactions];
@@ -3719,6 +3815,13 @@
                 // Filter by category
                 if (category) {
                     filtered = filtered.filter(t => t.category === category);
+                }
+                
+                // 新增：篩選備註內容
+                if (noteKeyword) {
+                    filtered = filtered.filter(t => 
+                        t.note && t.note.toLowerCase().includes(noteKeyword)
+                    );
                 }
                 
                 // Sort by date (newest first)
@@ -3898,22 +4001,22 @@
             
             // Google Sign-in button
             document.getElementById('googleSignInBtn').addEventListener('click', function() {
-    // 檢查 API 是否已初始化
-    if (!googleApiInitialized) {
-        // 如果顯示的是重試按鈕，則嘗試重新初始化
-        if (this.innerHTML.includes('重試')) {
-            notify('🔄', '正在重新初始化', 'Google API 正在重新初始化...');
-            initGoogleApi(); // 重新初始化
-            return;
-        }
-        notify('❌', 'Google API 尚未初始化', '請稍後再試，或點擊重試按鈕');
-        this.innerHTML = '<i class="fas fa-sync mr-2"></i> 重試 Google 登入';
-        return;
-    }
-    
-    // API 已初始化，可以登入
-    signInToGoogle();
-});
+                // 檢查 API 是否已初始化
+                if (!googleApiInitialized) {
+                    // 如果顯示的是重試按鈕，則嘗試重新初始化
+                    if (this.innerHTML.includes('重試')) {
+                        notify('🔄', '正在重新初始化', 'Google API 正在重新初始化...');
+                        initGoogleApi(); // 重新初始化
+                        return;
+                    }
+                    notify('❌', 'Google API 尚未初始化', '請稍後再試，或點擊重試按鈕');
+                    this.innerHTML = '<i class="fas fa-sync mr-2"></i> 重試 Google 登入';
+                    return;
+                }
+                
+                // API 已初始化，可以登入
+                signInToGoogle();
+            });
             
             // Google Sign-out button
             document.getElementById('googleSignOutBtn').addEventListener('click', signOutFromGoogle);
@@ -4142,6 +4245,27 @@
             // Add category confirm button
             document.getElementById('addCategoryConfirmBtn').addEventListener('click', addCategory);
             
+            // 新增類別頁面的事件監聽器
+            document.getElementById('addIncomeCategoryBtn').addEventListener('click', () => {
+                const categoryName = document.getElementById('newIncomeCategoryName').value.trim();
+                if (categoryName) {
+                    addCategoryByType('income', categoryName);
+                    document.getElementById('newIncomeCategoryName').value = '';
+                } else {
+                    notify('❌', '請輸入類別名稱', '類別名稱不能為空');
+                }
+            });
+            
+            document.getElementById('addExpenseCategoryBtn').addEventListener('click', () => {
+                const categoryName = document.getElementById('newExpenseCategoryName').value.trim();
+                if (categoryName) {
+                    addCategoryByType('expense', categoryName);
+                    document.getElementById('newExpenseCategoryName').value = '';
+                } else {
+                    notify('❌', '請輸入類別名稱', '類別名稱不能為空');
+                }
+            });
+            
             // Transfer money button
             document.getElementById('transferBtn').addEventListener('click', transferMoney);
             
@@ -4178,6 +4302,58 @@
             }, 200));
         }
         
+        // Add a category by type (from the categories tab)
+        function addCategoryByType(type, name) {
+            // 檢查類別是否已存在
+            if (categories[type].includes(name)) {
+                notify('❌', '類別已存在', `「${name}」類別已經存在。`);
+                return;
+            }
+            
+            // 新增類別
+            categories[type].push(name);
+            saveData('categories');
+            
+            // 更新 UI
+            updateCategoriesManagement();
+            updateTransactionCategories();
+            updateStatisticsCategories();
+            updateCategoryBudgetDropdown();
+            
+            notify('✅', '類別已新增', `已成功新增「${name}」類別。`);
+        }
+        
+        // Delete a category
+        function deleteCategory(type, name) {
+            // 檢查是否有使用該類別的交易
+            const hasCategoryTransactions = transactions.some(t => t.category === name);
+            
+            if (hasCategoryTransactions) {
+                notify('❌', '無法刪除類別', `「${name}」類別有相關交易記錄，無法刪除。`);
+                return;
+            }
+            
+            // 檢查是否有該類別的預算
+            const hasCategoryBudget = categoryBudgets.some(b => b.category === name);
+            
+            if (hasCategoryBudget) {
+                notify('❌', '無法刪除類別', `「${name}」類別有相關預算設定，請先刪除預算設定。`);
+                return;
+            }
+            
+            // 移除類別
+            categories[type] = categories[type].filter(c => c !== name);
+            saveData('categories');
+            
+            // 更新 UI
+            updateCategoriesManagement();
+            updateTransactionCategories();
+            updateStatisticsCategories();
+            updateCategoryBudgetDropdown();
+            
+            notify('🗑️', '類別已刪除', `已成功刪除「${name}」類別。`);
+        }
+        
         // Load more search results (for virtualization)
         function loadMoreResults() {
             if (paginationState.currentPage >= paginationState.totalPages) return;
@@ -4194,11 +4370,13 @@
                 const endDateInput = document.getElementById('searchEndDate');
                 const typeSelect = document.getElementById('searchType');
                 const categorySelect = document.getElementById('searchCategory');
+                const noteInput = document.getElementById('searchNote'); // 新增：備註搜尋欄位
                 
                 const startDate = startDateInput.value;
                 const endDate = endDateInput.value;
                 const type = typeSelect.value;
                 const category = categorySelect.value;
+                const noteKeyword = noteInput.value.trim().toLowerCase(); // 新增：備註關鍵字
                 
                 let filtered = [...transactions];
                 
@@ -4219,6 +4397,13 @@
                 
                 if (category) {
                     filtered = filtered.filter(t => t.category === category);
+                }
+                
+                // 新增：篩選備註內容
+                if (noteKeyword) {
+                    filtered = filtered.filter(t => 
+                        t.note && t.note.toLowerCase().includes(noteKeyword)
+                    );
                 }
                 
                 filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -4550,6 +4735,7 @@
             updateTransactionCategories();
             updateStatisticsCategories();
             updateCategoryBudgetDropdown();
+            updateCategoriesManagement();
             
             // If adding a category while in transaction form, select it
             if (transactionType === selectedCategoryType) {
@@ -4985,13 +5171,25 @@
             }
         }
         
+        // Get budget used for the current period (now includes income as reduction)
         function getBudgetUsed() {
             if (!budget.lastReset) return 0;
             
             const lastReset = new Date(budget.lastReset);
-            return transactions
+            
+            // Calculate expenses
+            const expenses = transactions
                 .filter(t => t.type === 'expense' && new Date(t.date) >= lastReset)
                 .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+            
+            // Calculate income
+            const income = transactions
+                .filter(t => t.type === 'income' && new Date(t.date) >= lastReset)
+                .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+            
+            // Return expenses minus income (net spending)
+            // If negative (more income than expense), return 0
+            return Math.max(0, expenses - income);
         }
         
         function getBudgetRemaining() {
