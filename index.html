@@ -1352,19 +1352,78 @@
         
         // Initialize Google API
         function initGoogleApi() {
+            // 更新 Google 登入按鈕狀態，顯示正在加載
+            document.getElementById('googleSignInBtn').disabled = true;
+            document.getElementById('googleSignInBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 載入 Google API...';
+            updateGoogleSigninStatus('pending', 'Google API 正在初始化...');
+            
+            // 確保 gapi 已經載入
+            if (typeof gapi === 'undefined') {
+                console.error('Google API (gapi) 未載入');
+                updateGoogleSigninStatus('error', 'Google API 未載入，請重新整理頁面');
+                document.getElementById('googleSignInBtn').disabled = false;
+                document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"></svg> 重試 Google 登入';
+                return;
+            }
+            
+            // 設置超時檢查，避免無限等待
+            window.gapiInitTimeout = setTimeout(() => {
+                if (!googleApiInitialized) {
+                    console.warn('Google API 初始化逾時，重置狀態');
+                    document.getElementById('googleSignInBtn').disabled = false;
+                    document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
+                    updateGoogleSigninStatus('error', 'Google API 初始化逾時，請點擊按鈕重試');
+                }
+            }, 10000); // 10秒後檢查
+            
             // Load Google API Client
-            gapi.load('client:auth2', initGoogleClient);
+            try {
+                gapi.load('client:auth2', initGoogleClient);
+            } catch (error) {
+                console.error('載入 Google API Client 時出錯:', error);
+                updateGoogleSigninStatus('error', '載入 Google API 時發生錯誤，請檢查網絡連接');
+                document.getElementById('googleSignInBtn').disabled = false;
+                document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
+            }
         }
         
         // Initialize Google API Client
         function initGoogleClient() {
+            // 檢查是否所有必要的配置都存在
+            if (!GOOGLE_API_CONFIG.apiKey || GOOGLE_API_CONFIG.apiKey === 'YOUR_API_KEY' || 
+                !GOOGLE_API_CONFIG.clientId || GOOGLE_API_CONFIG.clientId === 'YOUR_CLIENT_ID') {
+                console.error('Google API 配置缺少 API Key 或 Client ID');
+                updateGoogleSigninStatus('error', 'Google API 配置錯誤: 缺少 API Key 或 Client ID');
+                document.getElementById('googleSignInBtn').disabled = false;
+                document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
+                if (window.gapiInitTimeout) {
+                    clearTimeout(window.gapiInitTimeout);
+                }
+                return;
+            }
+            
+            // 開始初始化 Google Client
+            updateGoogleSigninStatus('pending', '正在初始化 Google API...');
+            
             gapi.client.init({
                 apiKey: GOOGLE_API_CONFIG.apiKey,
                 clientId: GOOGLE_API_CONFIG.clientId,
                 discoveryDocs: GOOGLE_API_CONFIG.discoveryDocs,
                 scope: GOOGLE_API_CONFIG.scopes
             }).then(() => {
+                // 清除超時檢查
+                if (window.gapiInitTimeout) {
+                    clearTimeout(window.gapiInitTimeout);
+                }
+                
                 googleApiInitialized = true;
+                
+                // 恢復按鈕狀態
+                document.getElementById('googleSignInBtn').disabled = false;
+                document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
+                
+                // 更新狀態
+                updateGoogleSigninStatus('success', 'Google API 已準備就緒，請登入');
                 
                 // Listen for sign-in state changes
                 gapi.auth2.getAuthInstance().isSignedIn.listen(updateSignInStatus);
@@ -1376,7 +1435,16 @@
                 checkAutoSync();
             }).catch(error => {
                 console.error('Google API initialization error:', error);
-                updateGoogleSigninStatus('error', 'Google API 初始化失敗');
+                updateGoogleSigninStatus('error', `Google API 初始化失敗: ${error.message || '未知錯誤'}`);
+                
+                // 恢復按鈕狀態
+                document.getElementById('googleSignInBtn').disabled = false;
+                document.getElementById('googleSignInBtn').innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 重試登入';
+                
+                // 清除超時檢查
+                if (window.gapiInitTimeout) {
+                    clearTimeout(window.gapiInitTimeout);
+                }
             });
         }
         
