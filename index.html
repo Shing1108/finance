@@ -684,14 +684,6 @@
                                 <option value="disabled">不顯示</option>
                             </select>
                         </div>
-                        
-                        <div class="md:col-span-2">
-                            <div class="flex items-center">
-                                <input type="checkbox" id="includeIncomeInBudget" class="mr-2">
-                                <label for="includeIncomeInBudget" class="text-gray-700">在預算計算中使用收入抵扣支出</label>
-                            </div>
-                            <p class="text-sm text-gray-500 mt-1">啟用此選項後，收入將從支出中扣除，計算淨支出作為預算使用情況</p>
-                        </div>
                     </div>
                     
                     <div class="mt-6 flex justify-end">
@@ -714,14 +706,6 @@
                         <button id="addCategoryBudgetBtn" class="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition">
                             添加
                         </button>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <div class="flex items-center">
-                            <input type="checkbox" id="includeCategoryIncomeInBudget" class="mr-2">
-                            <label for="includeCategoryIncomeInBudget" class="text-gray-700">在類別預算中包含收入抵扣</label>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-1">啟用此選項後，同類別的收入將從支出中扣除，計算淨支出作為類別預算使用情況</p>
                     </div>
                     
                     <div id="categoryBudgetItems" class="divide-y divide-gray-200">
@@ -1283,8 +1267,7 @@
             cycle: 'monthly',
             resetDay: 1,
             thresholds: [80],
-            lastReset: null,
-            includeIncome: true // 預設啟用收入抵扣
+            lastReset: null
         };
         let categoryBudgets = [];
         let newDayStatus = {
@@ -1300,7 +1283,6 @@
             dailySummaryTiming: 'immediate',
             enableVirtualization: true,
             pageSize: 100,
-            includeCategoryIncome: true, // 預設啟用類別收入抵扣
             // Google Drive 同步設定
             googleSync: {
                 enabled: false,
@@ -1444,31 +1426,6 @@
             
             // Setup auto-sync options
             setupAutoSync();
-            
-            // Initialize budget income settings
-            initBudgetIncomeSettings();
-        }
-        
-        // Initialize budget income settings
-        function initBudgetIncomeSettings() {
-            const includeIncomeInBudget = document.getElementById('includeIncomeInBudget');
-            const includeCategoryIncomeInBudget = document.getElementById('includeCategoryIncomeInBudget');
-            
-            includeIncomeInBudget.checked = budget.includeIncome !== false;
-            includeCategoryIncomeInBudget.checked = appSettings.includeCategoryIncome !== false;
-            
-            // Add event listeners
-            includeIncomeInBudget.addEventListener('change', function() {
-                budget.includeIncome = this.checked;
-                saveData('budget');
-                updateBudgetStatus();
-            });
-            
-            includeCategoryIncomeInBudget.addEventListener('change', function() {
-                appSettings.includeCategoryIncome = this.checked;
-                saveData('appSettings');
-                updateCategoryBudgetsOnDashboard();
-            });
         }
         
         // Initialize Google API - 全新版本
@@ -2079,18 +2036,6 @@
                 saveData('budget');
             }
             
-            // Ensure budget.includeIncome exists (default to true if not set)
-            if (budget.includeIncome === undefined) {
-                budget.includeIncome = true;
-                saveData('budget');
-            }
-            
-            // Ensure appSettings.includeCategoryIncome exists (default to true if not set)
-            if (appSettings.includeCategoryIncome === undefined) {
-                appSettings.includeCategoryIncome = true;
-                saveData('appSettings');
-            }
-            
             // Ensure proper structures for receipt images
             transactions.forEach(transaction => {
                 if (transaction.receipt && typeof transaction.receipt === 'string') {
@@ -2181,8 +2126,7 @@
                 cycle: 'monthly',
                 resetDay: 1,
                 thresholds: [80],
-                lastReset: null,
-                includeIncome: true
+                lastReset: null
             };
             
             categoryBudgets = [];
@@ -2201,7 +2145,6 @@
                 dailySummaryTiming: 'immediate',
                 enableVirtualization: true,
                 pageSize: 100,
-                includeCategoryIncome: true,
                 googleSync: {
                     enabled: false,
                     frequency: 'daily',
@@ -2290,16 +2233,6 @@
                         };
                     }
                 });
-                
-                // Ensure budget.includeIncome exists
-                if (budget.includeIncome === undefined) {
-                    budget.includeIncome = true;
-                }
-                
-                // Ensure appSettings.includeCategoryIncome exists
-                if (appSettings.includeCategoryIncome === undefined) {
-                    appSettings.includeCategoryIncome = true;
-                }
                 
                 // Save all data
                 saveData();
@@ -2507,10 +2440,6 @@
             
             // Update settings modal
             updateSettingsModal();
-            
-            // Update budget income settings
-            document.getElementById('includeIncomeInBudget').checked = budget.includeIncome !== false;
-            document.getElementById('includeCategoryIncomeInBudget').checked = appSettings.includeCategoryIncome !== false;
         }
         
         // Update dashboard with current data
@@ -2832,16 +2761,6 @@
                 option.textContent = category;
                 categoryForBudget.appendChild(option);
             });
-            
-            // If we're including income in budget calculations, also add income categories for budget tracking
-            if (appSettings.includeCategoryIncome) {
-                categories.income.forEach(category => {
-                    const option = document.createElement('option');
-                    option.value = category;
-                    option.textContent = category + ' (收入)';
-                    categoryForBudget.appendChild(option);
-                });
-            }
         }
         
         // Update category budget items
@@ -2866,14 +2785,7 @@
                 
                 const categoryName = document.createElement('div');
                 categoryName.className = 'font-medium';
-                
-                // Check if this is an income category
-                const isIncome = categories.income.includes(catBudget.category);
-                if (isIncome) {
-                    categoryName.textContent = catBudget.category + ' (收入)';
-                } else {
-                    categoryName.textContent = catBudget.category;
-                }
+                categoryName.textContent = catBudget.category;
                 
                 const budgetAmount = document.createElement('div');
                 budgetAmount.className = 'text-gray-600';
@@ -2921,18 +2833,9 @@
             // Add each category budget
             categoryBudgets.forEach(catBudget => {
                 // Calculate spent amount for this category this month
-                let spent = transactions
+                const spent = transactions
                     .filter(t => t.type === 'expense' && t.category === catBudget.category && new Date(t.date) >= monthStart)
                     .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-                
-                // If income is included in budget calculations, subtract income from the same category
-                if (appSettings.includeCategoryIncome) {
-                    const income = transactions
-                        .filter(t => t.type === 'income' && t.category === catBudget.category && new Date(t.date) >= monthStart)
-                        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-                    
-                    spent = Math.max(0, spent - income);
-                }
                 
                 const percentage = catBudget.amount > 0 ? Math.min(100, (spent / catBudget.amount) * 100) : 0;
                 
@@ -2944,14 +2847,7 @@
                 
                 const categoryName = document.createElement('div');
                 categoryName.className = 'text-sm font-medium';
-                
-                // Check if this is an income category
-                const isIncome = categories.income.includes(catBudget.category);
-                if (isIncome) {
-                    categoryName.textContent = catBudget.category + ' (收入)';
-                } else {
-                    categoryName.textContent = catBudget.category;
-                }
+                categoryName.textContent = catBudget.category;
                 
                 const amountText = document.createElement('div');
                 amountText.className = 'text-sm';
@@ -4404,20 +4300,6 @@
                     }
                 }
             }, 200));
-            
-            // Budget income setting listeners
-            document.getElementById('includeIncomeInBudget').addEventListener('change', function() {
-                budget.includeIncome = this.checked;
-                saveData('budget');
-                updateBudgetStatus();
-            });
-            
-            document.getElementById('includeCategoryIncomeInBudget').addEventListener('change', function() {
-                appSettings.includeCategoryIncome = this.checked;
-                saveData('appSettings');
-                updateCategoryBudgetDropdown();
-                updateCategoryBudgetsOnDashboard();
-            });
         }
         
         // Add a category by type (from the categories tab)
@@ -5060,12 +4942,10 @@
             const amountInput = document.getElementById('budgetAmountInput');
             const cycleSelect = document.getElementById('budgetCycle');
             const resetDaySelect = document.getElementById('budgetResetDay');
-            const includeIncomeInput = document.getElementById('includeIncomeInBudget');
             
             const amount = parseFloat(amountInput.value);
             const cycle = cycleSelect.value;
             const resetDay = resetDaySelect.value;
-            const includeIncome = includeIncomeInput.checked;
             
             if (isNaN(amount) || amount <= 0) {
                 notify('❌', '預算設定失敗', '請輸入有效的預算金額。');
@@ -5088,7 +4968,6 @@
             budget.cycle = cycle;
             budget.resetDay = resetDay;
             budget.thresholds = thresholds;
-            budget.includeIncome = includeIncome;
             
             // Get daily summary timing
             appSettings.dailySummaryTiming = document.getElementById('dailySummaryTiming').value;
@@ -5258,5 +5137,151 @@
         function getTodayTransactions() {
             const today = getTodayFormatted();
             return transactions.filter(t => t.date === today)
-                .sort((a, b) => new Date
-                      
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+        }
+        
+        function getTodayIncome() {
+            return getTodayTransactions()
+                .filter(t => t.type === 'income')
+                .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        }
+        
+        function getTodayExpense() {
+            return getTodayTransactions()
+                .filter(t => t.type === 'expense')
+                .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        }
+        
+        function getRecentTransactions(count) {
+            return [...transactions]
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .slice(0, count);
+        }
+        
+        function getBudgetCycleText() {
+            switch (budget.cycle) {
+                case 'daily':
+                    return '每日';
+                case 'weekly':
+                    return `每週 (${budget.resetDay} 重設)`;
+                case 'monthly':
+                    return `每月 (${budget.resetDay}日 重設)`;
+                default:
+                    return '未設定';
+            }
+        }
+        
+        // Get budget used for the current period (now includes income as reduction)
+        function getBudgetUsed() {
+            if (!budget.lastReset) return 0;
+            
+            const lastReset = new Date(budget.lastReset);
+            
+            // Calculate expenses
+            const expenses = transactions
+                .filter(t => t.type === 'expense' && new Date(t.date) >= lastReset)
+                .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+            
+            // Calculate income
+            const income = transactions
+                .filter(t => t.type === 'income' && new Date(t.date) >= lastReset)
+                .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+            
+            // Return expenses minus income (net spending)
+            // If negative (more income than expense), return 0
+            return Math.max(0, expenses - income);
+        }
+        
+        function getBudgetRemaining() {
+            return budget.amount - getBudgetUsed();
+        }
+        
+        function getBudgetPercentage() {
+            if (!budget.amount) return 0;
+            return Math.round((getBudgetUsed() / budget.amount) * 100);
+        }
+        
+        function getBudgetDaysInPeriod() {
+            if (!budget.lastReset) return 30; // Default to 30 days
+            
+            const lastReset = new Date(budget.lastReset);
+            const now = new Date();
+            
+            switch (budget.cycle) {
+                case 'daily':
+                    return 1;
+                case 'weekly':
+                    return 7;
+                case 'monthly':
+                    // Get number of days in the month
+                    const nextMonthDay = new Date(lastReset.getFullYear(), lastReset.getMonth() + 1, budget.resetDay);
+                    const diffTime = nextMonthDay - lastReset;
+                    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                default:
+                    return 30;
+            }
+        }
+        
+        function getBudgetDaysRemaining() {
+            if (!budget.lastReset) return 0;
+            
+            const lastReset = new Date(budget.lastReset);
+            const now = new Date();
+            const resetDay = parseInt(budget.resetDay);
+            
+            let nextReset;
+            
+            switch (budget.cycle) {
+                case 'daily':
+                    // Next reset is tomorrow
+                    nextReset = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+                    break;
+                case 'weekly':
+                    // Find next occurrence of the reset day
+                    const dayIndex = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'].indexOf(budget.resetDay);
+                    const daysUntilNextDay = (dayIndex + 7 - now.getDay()) % 7;
+                    nextReset = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilNextDay);
+                    
+                    // If it's the reset day, but we already reset today, add 7 days
+                    if (daysUntilNextDay === 0 && lastReset.toDateString() === now.toDateString()) {
+                        nextReset.setDate(nextReset.getDate() + 7);
+                    }
+                    break;
+                case 'monthly':
+                    // Calculate next reset date
+                    let nextMonth = now.getMonth();
+                    let nextYear = now.getFullYear();
+                    
+                    // If current day is past reset day, move to next month
+                    if (now.getDate() > resetDay) {
+                        nextMonth++;
+                    }
+                    
+                    // Handle year change
+                    if (nextMonth > 11) {
+                        nextMonth = 0;
+                        nextYear++;
+                    }
+                    
+                    // Create next reset date
+                    nextReset = new Date(nextYear, nextMonth, resetDay);
+                    
+                    // Handle months with fewer days
+                    if (nextReset.getDate() !== resetDay) {
+                        // If the month doesn't have the reset day, use the last day of the month
+                        nextReset = new Date(nextYear, nextMonth + 1, 0);
+                    }
+                    break;
+                default:
+                    return 0;
+            }
+            
+            // Calculate days remaining
+            const diffTime = nextReset - now;
+            const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            return Math.max(0, daysRemaining);
+        }
+    </script>
+</body>
+</html>
