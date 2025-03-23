@@ -862,14 +862,9 @@
                     <select id="newAccountCurrency" class="w-full p-2 border border-gray-300 rounded-md text-base">
                         <option value="TWD" selected>新台幣 (TWD)</option>
                         <option value="USD">美元 (USD)</option>
-                        <option value="EUR">歐元 (EUR)</option>
                         <option value="JPY">日元 (JPY)</option>
                         <option value="CNY">人民幣 (CNY)</option>
                         <option value="HKD">港幣 (HKD)</option>
-                        <option value="GBP">英鎊 (GBP)</option>
-                        <option value="AUD">澳元 (AUD)</option>
-                        <option value="CAD">加拿大元 (CAD)</option>
-                        <option value="SGD">新加坡元 (SGD)</option>
                     </select>
                 </div>
                 <div class="mb-6">
@@ -1019,16 +1014,11 @@
                         <div>
                             <label class="block text-gray-700 mb-2">選擇默認貨幣</label>
                             <select id="currencySelect" class="w-full p-2 border border-gray-300 rounded-md text-base">
-                                <option value="TWD">新台幣 (TWD)</option>
-                                <option value="USD">美元 (USD)</option>
-                                <option value="EUR">歐元 (EUR)</option>
-                                <option value="JPY">日元 (JPY)</option>
-                                <option value="CNY">人民幣 (CNY)</option>
-                                <option value="HKD">港幣 (HKD)</option>
-                                <option value="GBP">英鎊 (GBP)</option>
-                                <option value="AUD">澳元 (AUD)</option>
-                                <option value="CAD">加拿大元 (CAD)</option>
-                                <option value="SGD">新加坡元 (SGD)</option>
+                             <option value="TWD">新台幣 (TWD)</option>
+                             <option value="USD">美元 (USD)</option>
+                             <option value="JPY">日元 (JPY)</option>
+                             <option value="CNY">人民幣 (CNY)</option>
+                             <option value="HKD">港幣 (HKD)</option>
                             </select>
                         </div>
                         <div>
@@ -2140,7 +2130,7 @@
             }
             
             if (!categories.expense || categories.expense.length === 0) {
-                categories.expense = ['食品', '交通', '住房', '娛樂', '服裝', '醫療', '教育', '其他支出'];
+                categories.expense = ['飲食', '娛樂', '交通', '日用', '應急', '大陸', '還款'];
             }
             
             saveData('categories');
