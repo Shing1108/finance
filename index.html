@@ -1419,64 +1419,62 @@ function updateTotalBudgetDisplay() {
         });
         
         // Initialize the app
-        function initApp() {
-            // Load data from localStorage if available
-            loadData();
-            
-            
-            
-            // Set default transaction date
-            document.getElementById('transactionDate').value = getTodayFormatted();
-            document.getElementById('summaryDate').value = getTodayFormatted();
-            
-            // Set default search dates (1 month range)
-            const today = new Date();
-            const monthAgo = new Date();
-            monthAgo.setMonth(today.getMonth() - 1);
-            
-            document.getElementById('searchStartDate').value = formatDateForInput(monthAgo);
-            document.getElementById('searchEndDate').value = formatDateForInput(today);
-            
-            // Update currency display
-            updateCurrencyDisplay();
-            
-            // Initialize UI elements
-            updateUI();
-            
-            // Setup budget reset day options
-            updateBudgetResetDayOptions();
-            
-            // Initialize account icons
-            initAccountIcons();
-            
-            // Initialize receipt upload listener
-            initReceiptUpload();
-            
-            // Apply virtualization settings
-            applyVirtualizationSettings();
-            
-            // Search transactions with default values
-            searchTransactions();
-            
-            // Generate financial advice
-            generateFinancialAdvice();
-            
-            // Check for budget reset
-            checkBudgetReset();
-            
-            // Check new day status
-            checkNewDayStatus();
-            
-            // Check if sync reminder should be shown
-            checkSyncReminder();
-            
-            // 确保总预算是类别预算的总和
-updateTotalBudgetDisplay();
-            
-            // Setup auto-sync options
-            setupAutoSync();
-        }
-        
+        // Initialize the app
+function initApp() {
+    // Load data from localStorage if available
+    loadData();
+    
+    // Set default transaction date
+    document.getElementById('transactionDate').value = getTodayFormatted();
+    document.getElementById('summaryDate').value = getTodayFormatted();
+    
+    // Set default search dates (1 month range)
+    const today = new Date();
+    const monthAgo = new Date();
+    monthAgo.setMonth(today.getMonth() - 1);
+    
+    document.getElementById('searchStartDate').value = formatDateForInput(monthAgo);
+    document.getElementById('searchEndDate').value = formatDateForInput(today);
+    
+    // Update currency display
+    updateCurrencyDisplay();
+    
+    // Initialize UI elements
+    updateUI();
+    
+    // Setup budget reset day options
+    updateBudgetResetDayOptions();
+    
+    // Initialize account icons
+    initAccountIcons();
+    
+    // Initialize receipt upload listener
+    initReceiptUpload();
+    
+    // Apply virtualization settings
+    applyVirtualizationSettings();
+    
+    // Search transactions with default values
+    searchTransactions();
+    
+    // Generate financial advice
+    generateFinancialAdvice();
+    
+    // Check for budget reset
+    checkBudgetReset();
+    
+    // Check new day status
+    checkNewDayStatus();
+    
+    // Check if sync reminder should be shown
+    checkSyncReminder();
+    
+    // 确保总预算是类别预算的总和
+    updateTotalBudgetDisplay();
+    
+    // Setup auto-sync options
+    setupAutoSync();
+}
         // Initialize Google API - 全新版本
         function initGoogleApi() {
             console.log('開始初始化 Google API...');
@@ -4474,45 +4472,46 @@ document.getElementById('saveSettingsBtn').addEventListener('click', () => {
             });
             
             // Add category budget button
-            document.getElementById('addCategoryBudgetBtn').addEventListener('click', () => {
-                const categorySelect = document.getElementById('categoryForBudget');
-                const amountInput = document.getElementById('categoryBudgetAmount');
-                
-                const category = categorySelect.value;
-                const amount = parseFloat(amountInput.value);
-                
-                if (!category) {
-                    notify('❌', '請選擇類別', '請選擇要設定預算的類別');
-                    return;
-                }
-                
-                if (isNaN(amount) || amount <= 0) {
-                    notify('❌', '無效金額', '請輸入有效的預算金額');
-                    return;
-                }
-                
-                // Check if category budget already exists
-                const existingIndex = categoryBudgets.findIndex(b => b.category === category);
-                if (existingIndex !== -1) {
-                    // Update existing
-                    categoryBudgets[existingIndex].amount = amount;
-                    notify('✅', '已更新', `${category} 的預算已更新為 ${appSettings.currencySymbol}${formatNumber(amount)}`);
-                } else {
-                    // Add new
-                    categoryBudgets.push({ category, amount });
-                    notify('✅', '已添加', `已為 ${category} 設定預算 ${appSettings.currencySymbol}${formatNumber(amount)}`);
-                }
-                
-                saveData('categoryBudgets');
-                updateCategoryBudgetItems();
-                updateCategoryBudgetsOnDashboard();
-                // 更新总预算显示
-                updateTotalBudgetDisplay();
-                
-                // Reset inputs
-                categorySelect.value = '';
-                amountInput.value = '';
-            });
+            // Add category budget button
+document.getElementById('addCategoryBudgetBtn').addEventListener('click', () => {
+    const categorySelect = document.getElementById('categoryForBudget');
+    const amountInput = document.getElementById('categoryBudgetAmount');
+    
+    const category = categorySelect.value;
+    const amount = parseFloat(amountInput.value);
+    
+    if (!category) {
+        notify('❌', '請選擇類別', '請選擇要設定預算的類別');
+        return;
+    }
+    
+    if (isNaN(amount) || amount <= 0) {
+        notify('❌', '無效金額', '請輸入有效的預算金額');
+        return;
+    }
+    
+    // Check if category budget already exists
+    const existingIndex = categoryBudgets.findIndex(b => b.category === category);
+    if (existingIndex !== -1) {
+        // Update existing
+        categoryBudgets[existingIndex].amount = amount;
+        notify('✅', '已更新', `${category} 的預算已更新為 ${appSettings.currencySymbol}${formatNumber(amount)}`);
+    } else {
+        // Add new
+        categoryBudgets.push({ category, amount });
+        notify('✅', '已添加', `已為 ${category} 設定預算 ${appSettings.currencySymbol}${formatNumber(amount)}`);
+    }
+    
+    saveData('categoryBudgets');
+    updateCategoryBudgetItems();
+    updateCategoryBudgetsOnDashboard();
+    // 更新总预算显示
+    updateTotalBudgetDisplay();
+    
+    // Reset inputs
+    categorySelect.value = '';
+    amountInput.value = '';
+});
             
             // Save daily summary timing
             document.getElementById('dailySummaryTiming').addEventListener('change', function() {
@@ -4817,15 +4816,16 @@ document.getElementById('saveSettingsBtn').addEventListener('click', () => {
                 actionCell.className = 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium';
                 
                 const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'text-red-600 hover:text-red-900';
-                deleteBtn.textContent = '刪除';
-                deleteBtn.addEventListener('click', () => deleteTransaction(transaction.id));
-                
-                actionCell.appendChild(deleteBtn);
-                row.appendChild(actionCell);
-                
-                resultsList.appendChild(row);
-            });
+deleteBtn.className = 'text-red-500 hover:text-red-700 ml-4';
+deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+deleteBtn.addEventListener('click', () => {
+    categoryBudgets = categoryBudgets.filter(b => b.category !== catBudget.category);
+    saveData('categoryBudgets');
+    updateCategoryBudgetItems();
+    updateCategoryBudgetsOnDashboard();
+    
+    updateTotalBudgetDisplay();
+});
             
             // Update results count
             const currentDisplayedCount = paginationState.currentPage * paginationState.pageSize;
@@ -5596,21 +5596,7 @@ function getTotalBalance() {
             return Math.max(0, daysRemaining);
         }
         
-        // 计算所有类别预算的总和
-function calculateTotalBudget() {
-    return categoryBudgets.reduce((total, budget) => total + budget.amount, 0);
-}
-
-// 更新总预算显示
-function updateTotalBudgetDisplay() {
-    const totalAmount = calculateTotalBudget();
-    document.getElementById('totalBudgetAmount').textContent = formatNumber(totalAmount);
-    // 同时更新预算对象
-    budget.amount = totalAmount;
-    saveData('budget');
-    // 更新预算状态显示
-    updateBudgetStatus();
-}
+    
         
     </script>
 </body>
