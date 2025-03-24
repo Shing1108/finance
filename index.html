@@ -1315,7 +1315,7 @@
             }
             
         };
-        // 在全局变量区域添加（约1950行左右，在appSettings后面）
+     // 匯率相關變量
 let exchangeRates = {}; // 存储汇率数据
 let baseCurrency = 'TWD'; // 基准货币，默认为台币
 let lastRateUpdate = null; // 上次更新汇率的时间
@@ -1387,6 +1387,22 @@ let lastRateUpdate = null; // 上次更新汇率的时间
             };
         }
         
+        // 计算所有类别预算的总和
+function calculateTotalBudget() {
+    return categoryBudgets.reduce((total, budget) => total + budget.amount, 0);
+}
+
+// 更新总预算显示
+function updateTotalBudgetDisplay() {
+    const totalAmount = calculateTotalBudget();
+    document.getElementById('totalBudgetAmount').textContent = formatNumber(totalAmount);
+    // 同时更新预算对象
+    budget.amount = totalAmount;
+    saveData('budget');
+    // 更新预算状态显示
+    updateBudgetStatus();
+}
+        
         // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize the app
@@ -1406,6 +1422,8 @@ let lastRateUpdate = null; // 上次更新汇率的时间
         function initApp() {
             // Load data from localStorage if available
             loadData();
+            
+            
             
             // Set default transaction date
             document.getElementById('transactionDate').value = getTodayFormatted();
@@ -4488,7 +4506,7 @@ document.getElementById('saveSettingsBtn').addEventListener('click', () => {
                 updateCategoryBudgetItems();
                 updateCategoryBudgetsOnDashboard();
                 // 更新总预算显示
-updateTotalBudgetDisplay();
+                updateTotalBudgetDisplay();
                 
                 // Reset inputs
                 categorySelect.value = '';
