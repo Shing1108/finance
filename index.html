@@ -1096,6 +1096,7 @@
         <!-- Settings Modal -->
         <div id="settingsModal" class="modal">
             <div class="modal-content">
+                <span class="close">&times;</span>
                 <!-- 匯率設定 -->
 <div class="mb-4">
     <h4 class="font-medium mb-2">匯率設定</h4>
@@ -1151,7 +1152,6 @@
         </div>
     </div>
 </div>
-                <span class="close">&times;</span>
                 <h3 class="text-xl font-bold mb-4">系統設定</h3>
                 
                 <div class="mb-4">
@@ -4915,16 +4915,7 @@ updateTotalBudgetDisplay();
             
             notify('✅', '類別已新增', '新類別已成功新增。');
         }
-        
-        // 找到此函數
-function transferMoney() {
-    const fromSelect = document.getElementById('transferFrom');
-    const toSelect = document.getElementById('transferTo');
-    const amountInput = document.getElementById('transferAmount');
-    
-    // 現有代碼...
-}
-
+       
 // 替換為
 function transferMoney() {
     const fromSelect = document.getElementById('transferFrom');
@@ -5148,7 +5139,7 @@ function transferMoney() {
             notify('✅', '交易已記錄', `${transactionType === 'income' ? '收入' : '支出'}交易已成功記錄: ${currencySymbol}${formatNumber(amount)}`);
         }
         
-        /// 修改为:
+
 function saveBudget() {
     // 不再从输入框获取预算金额，而是自动计算
     const cycleSelect = document.getElementById('budgetCycle');
@@ -5338,12 +5329,6 @@ function saveBudget() {
             return formatDateForInput(date);
         }
         
-        // 找到此函數
-function getTotalBalance() {
-    return accounts.reduce((sum, account) => sum + account.balance, 0);
-}
-
-// 替換為
 function getTotalBalance() {
     // 獲取基準貨幣
     const baseCurrency = appSettings.currency;
