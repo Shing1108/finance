@@ -9,6 +9,8 @@
     <!-- Google API 客戶端庫 -->
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client"></script>
+    <!-- 引入Day.js用於日期處理 -->
+    <script src="https://unpkg.com/dayjs@1.11.7/dayjs.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -1094,6 +1096,61 @@
         <!-- Settings Modal -->
         <div id="settingsModal" class="modal">
             <div class="modal-content">
+                <!-- 匯率設定 -->
+<div class="mb-4">
+    <h4 class="font-medium mb-2">匯率設定</h4>
+    <div class="mb-3">
+        <label class="block text-gray-700 mb-2">基準貨幣</label>
+        <select id="baseCurrencySelect" class="w-full p-2 border border-gray-300 rounded-md text-base">
+            <option value="TWD">新台幣 (TWD)</option>
+            <option value="USD">美元 (USD)</option>
+            <option value="EUR">歐元 (EUR)</option>
+            <option value="JPY">日元 (JPY)</option>
+            <option value="CNY">人民幣 (CNY)</option>
+            <option value="HKD">港幣 (HKD)</option>
+            <option value="GBP">英鎊 (GBP)</option>
+            <option value="AUD">澳元 (AUD)</option>
+            <option value="CAD">加拿大元 (CAD)</option>
+            <option value="SGD">新加坡元 (SGD)</option>
+        </select>
+    </div>
+    
+    <div class="flex items-center mb-2">
+        <input type="checkbox" id="enableAutoRateUpdate" class="mr-2">
+        <label for="enableAutoRateUpdate" class="text-gray-700">自動更新匯率</label>
+    </div>
+    
+    <div class="flex justify-between mt-3">
+        <span id="exchangeRateStatus" class="text-sm text-primary"></span>
+        <button id="updateRatesBtn" class="bg-primary text-white px-3 py-1 rounded-md hover:bg-primary-dark transition text-sm">
+            <i class="fas fa-sync-alt mr-1"></i> 立即更新匯率
+        </button>
+    </div>
+    
+    <div class="mt-3">
+        <div class="flex justify-between items-center mb-2">
+            <span class="text-sm">上次更新: <span id="lastUpdatedTime">未更新</span></span>
+            <button id="viewRatesBtn" class="text-primary hover:text-primary-dark text-sm">
+                查看匯率表 <i class="fas fa-chevron-down ml-1"></i>
+            </button>
+        </div>
+        
+        <div id="ratesTableContainer" class="mt-2 overflow-auto max-h-40 hidden">
+            <table class="min-w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="px-4 py-2 text-left">貨幣</th>
+                        <th class="px-4 py-2 text-right">匯率 (對基準)</th>
+                        <th class="px-4 py-2 text-right">基準匯率</th>
+                    </tr>
+                </thead>
+                <tbody id="exchangeRatesTable">
+                    <!-- 匯率數據將在這裡填充 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
                 <span class="close">&times;</span>
                 <h3 class="text-xl font-bold mb-4">系統設定</h3>
                 
@@ -1289,12 +1346,19 @@
             dailySummaryTiming: 'immediate',
             enableVirtualization: true,
             pageSize: 100,
+            
             // Google Drive 同步設定
             googleSync: {
                 enabled: false,
                 frequency: 'daily', // daily, weekly, monthly
                 lastSync: null,
                 fileId: null
+            },
+            exchangeRates: {
+                base: 'TWD',  // 基準貨幣
+                rates: {},    // 匯率數據
+                lastUpdated: null,  // 上次更新時間
+                autoUpdate: true    // 自動更新開關
             }
         };
         let dataModified = false; // Track if data has been modified since last sync
@@ -1435,6 +1499,10 @@ updateTotalBudgetDisplay();
             
             // Setup auto-sync options
             setupAutoSync();
+            
+            // 檢查匯率數據
+checkExchangeRatesUpdate();
+            
         }
         
         // Initialize Google API - 全新版本
@@ -2685,6 +2753,15 @@ updateTotalBudgetDisplay();
                 accountCard.appendChild(iconDiv);
                 accountCard.appendChild(nameDiv);
                 accountCard.appendChild(balanceDiv);
+
+// 如果賬戶貨幣不是預設貨幣，顯示轉換後的金額
+if (account.currency !== appSettings.currency) {
+    const convertedBalance = convertCurrency(account.balance, account.currency, appSettings.currency);
+    const convertedDiv = document.createElement('div');
+    convertedDiv.className = 'text-sm text-gray-500 mt-1';
+    convertedDiv.textContent = `≈ ${appSettings.currencySymbol}${formatNumber(convertedBalance)} ${appSettings.currency}`;
+    accountCard.appendChild(convertedDiv);
+}
                 
                 accountsGrid.appendChild(accountCard);
             });
@@ -3167,6 +3244,12 @@ updateTotalBudgetDisplay();
                 budgetResetDay.selectedIndex = 0;
                 budget.resetDay = budgetResetDay.value;
             }
+            // 更新匯率設定
+document.getElementById('baseCurrencySelect').value = appSettings.exchangeRates.base || appSettings.currency;
+document.getElementById('enableAutoRateUpdate').checked = appSettings.exchangeRates.autoUpdate !== false;
+document.getElementById('lastUpdatedTime').textContent = appSettings.exchangeRates.lastUpdated ? 
+    new Date(appSettings.exchangeRates.lastUpdated).toLocaleString() : '未更新';
+            
         }
         
         // Initialize account icons
@@ -4034,6 +4117,37 @@ budgetCard.appendChild(budgetNote);
                 updateSettingsModal();
                 openModal('settingsModal');
             });
+            // 匯率相關按鈕
+document.getElementById('updateRatesBtn').addEventListener('click', fetchExchangeRates);
+
+// 查看匯率表按鈕
+document.getElementById('viewRatesBtn').addEventListener('click', function() {
+    const container = document.getElementById('ratesTableContainer');
+    container.classList.toggle('hidden');
+    
+    // 更新按鈕文字和圖標
+    if (container.classList.contains('hidden')) {
+        this.innerHTML = '查看匯率表 <i class="fas fa-chevron-down ml-1"></i>';
+    } else {
+        this.innerHTML = '隱藏匯率表 <i class="fas fa-chevron-up ml-1"></i>';
+        updateExchangeRateDisplay();
+    }
+});
+
+// 基準貨幣更改時
+document.getElementById('baseCurrencySelect').addEventListener('change', function() {
+    appSettings.exchangeRates.base = this.value;
+    saveData('appSettings');
+    
+    // 提示需要更新匯率
+    notify('ℹ️', '基準貨幣已更改', '請更新匯率以使用新的基準貨幣。');
+});
+
+// 自動更新匯率選項
+document.getElementById('enableAutoRateUpdate').addEventListener('change', function() {
+    appSettings.exchangeRates.autoUpdate = this.checked;
+    saveData('appSettings');
+});
             
             // Import/Export button
             document.getElementById('importExportBtn').addEventListener('click', () => {
@@ -4802,84 +4916,129 @@ updateTotalBudgetDisplay();
             notify('✅', '類別已新增', '新類別已成功新增。');
         }
         
-        // Transfer money between accounts
-        function transferMoney() {
-            const fromSelect = document.getElementById('transferFrom');
-            const toSelect = document.getElementById('transferTo');
-            const amountInput = document.getElementById('transferAmount');
-            
-            const fromId = fromSelect.value;
-            const toId = toSelect.value;
-            const amount = parseFloat(amountInput.value);
-            
-            if (!fromId || !toId || isNaN(amount) || amount <= 0 || fromId === toId) {
-                notify('❌', '轉賬失敗', '請填寫有效的轉賬資料。');
-                return;
+        // 找到此函數
+function transferMoney() {
+    const fromSelect = document.getElementById('transferFrom');
+    const toSelect = document.getElementById('transferTo');
+    const amountInput = document.getElementById('transferAmount');
+    
+    // 現有代碼...
+}
+
+// 替換為
+function transferMoney() {
+    const fromSelect = document.getElementById('transferFrom');
+    const toSelect = document.getElementById('transferTo');
+    const amountInput = document.getElementById('transferAmount');
+    
+    const fromId = fromSelect.value;
+    const toId = toSelect.value;
+    const amount = parseFloat(amountInput.value);
+    
+    if (!fromId || !toId || isNaN(amount) || amount <= 0 || fromId === toId) {
+        notify('❌', '轉賬失敗', '請填寫有效的轉賬資料。');
+        return;
+    }
+    
+    // 找到賬戶
+    const fromAccountIndex = accounts.findIndex(a => a.id === fromId);
+    const toAccountIndex = accounts.findIndex(a => a.id === toId);
+    
+    if (fromAccountIndex === -1 || toAccountIndex === -1) {
+        notify('❌', '轉賬失敗', '找不到指定的戶口。');
+        return;
+    }
+    
+    // 檢查來源賬戶餘額是否足夠
+    if (accounts[fromAccountIndex].balance < amount) {
+        notify('❌', '轉賬失敗', '餘額不足。');
+        return;
+    }
+    
+    // 獲取貨幣信息
+    const fromCurrency = accounts[fromAccountIndex].currency;
+    const toCurrency = accounts[toAccountIndex].currency;
+    
+    // 記錄原始金額用於顯示
+    const originalAmount = amount;
+    let convertedAmount = amount;
+    
+    // 如果貨幣不同，執行匯率轉換
+    if (fromCurrency !== toCurrency) {
+        convertedAmount = convertCurrency(amount, fromCurrency, toCurrency);
+        
+        // 如果無法轉換（可能是缺少匯率數據）
+        if (convertedAmount === amount && fromCurrency !== toCurrency) {
+            if (confirm(`無法獲取 ${fromCurrency} 到 ${toCurrency} 的匯率數據。是否仍要以 1:1 匯率進行轉賬？`)) {
+                // 用戶同意按 1:1 匯率轉換
+                convertedAmount = amount;
+            } else {
+                return; // 用戶取消轉賬
             }
-            
-            // Find accounts
-            const fromAccountIndex = accounts.findIndex(a => a.id === fromId);
-            const toAccountIndex = accounts.findIndex(a => a.id === toId);
-            
-            if (fromAccountIndex === -1 || toAccountIndex === -1) {
-                notify('❌', '轉賬失敗', '找不到指定的戶口。');
-                return;
-            }
-            
-            // Check if from account has enough balance
-            if (accounts[fromAccountIndex].balance < amount) {
-                notify('❌', '轉賬失敗', '餘額不足。');
-                return;
-            }
-            
-            // Check if currencies are different (for future currency conversion implementation)
-            const fromCurrency = accounts[fromAccountIndex].currency;
-            const toCurrency = accounts[toAccountIndex].currency;
-            
-            if (fromCurrency !== toCurrency) {
-                // In future, could implement currency conversion here
-                notify('⚠️', '不同貨幣轉賬', `從 ${fromCurrency} 轉至 ${toCurrency}，無匯率轉換`);
-            }
-            
-            // Update balances
-            accounts[fromAccountIndex].balance -= amount;
-            accounts[toAccountIndex].balance += amount;
-            
-            // Record transaction
-            const now = new Date();
-            const fromAccountName = accounts[fromAccountIndex].name;
-            const toAccountName = accounts[toAccountIndex].name;
-            
-            transactions.push({
-                id: generateId(),
-                type: 'transfer',
-                account: fromId,
-                toAccount: toId,
-                amount: amount,
-                date: getTransactionDate(now),
-                note: `從「${fromAccountName}」轉賬到「${toAccountName}」`,
-                category: '戶口轉賬'
-            });
-            
-            saveData('accounts');
-            saveData('transactions');
-            
-            // Reset form
-            fromSelect.value = '';
-            toSelect.value = '';
-            amountInput.value = '';
-            
-            updateAccountsTab();
-            updateDashboard();
-            searchTransactions();
-            
-            // Get currency symbol for "from" account
-            const currencySymbol = fromCurrency ? 
-                (currencySymbols[fromCurrency] || appSettings.currencySymbol) : 
-                appSettings.currencySymbol;
-            
-            notify('✅', '轉賬成功', `已成功將 ${currencySymbol}${amount} 從「${fromAccountName}」轉賬到「${toAccountName}」。`);
         }
+    }
+    
+    // 更新賬戶餘額
+    accounts[fromAccountIndex].balance -= amount;
+    accounts[toAccountIndex].balance += convertedAmount;
+    
+    // 記錄交易
+    const now = new Date();
+    const fromAccountName = accounts[fromAccountIndex].name;
+    const toAccountName = accounts[toAccountIndex].name;
+    
+    // 交易備註，包括匯率信息
+    let note = `從「${fromAccountName}」轉賬到「${toAccountName}」`;
+    if (fromCurrency !== toCurrency) {
+        note += ` (${fromCurrency} ${originalAmount} → ${toCurrency} ${convertedAmount.toFixed(2)})`;
+    }
+    
+    transactions.push({
+        id: generateId(),
+        type: 'transfer',
+        account: fromId,
+        toAccount: toId,
+        amount: amount,
+        convertedAmount: convertedAmount,
+        date: getTransactionDate(now),
+        note: note,
+        category: '戶口轉賬',
+        fromCurrency: fromCurrency,
+        toCurrency: toCurrency
+    });
+    
+    saveData('accounts');
+    saveData('transactions');
+    
+    // 重置表單
+    fromSelect.value = '';
+    toSelect.value = '';
+    amountInput.value = '';
+    
+    updateAccountsTab();
+    updateDashboard();
+    searchTransactions();
+    
+    // 獲取來源貨幣符號
+    const fromCurrencySymbol = fromCurrency ? 
+        (currencySymbols[fromCurrency] || appSettings.currencySymbol) : 
+        appSettings.currencySymbol;
+    
+    // 獲取目標貨幣符號
+    const toCurrencySymbol = toCurrency ? 
+        (currencySymbols[toCurrency] || appSettings.currencySymbol) : 
+        appSettings.currencySymbol;
+    
+    // 通知信息
+    let message = `已成功將 ${fromCurrencySymbol}${formatNumber(amount)} 從「${fromAccountName}」轉賬到「${toAccountName}」`;
+    
+    // 如果貨幣不同，添加轉換信息
+    if (fromCurrency !== toCurrency) {
+        message += `\n轉換後金額: ${toCurrencySymbol}${formatNumber(convertedAmount)}`;
+    }
+    
+    notify('✅', '轉賬成功', message);
+}
         
         // Add a transaction
         function addTransaction() {
@@ -5179,15 +5338,27 @@ function saveBudget() {
             return formatDateForInput(date);
         }
         
-        function getTotalBalance() {
-            return accounts.reduce((sum, account) => sum + account.balance, 0);
-        }
-        
-        function getTodayTransactions() {
-            const today = getTodayFormatted();
-            return transactions.filter(t => t.date === today)
-                .sort((a, b) => new Date(b.date) - new Date(a.date));
-        }
+        // 找到此函數
+function getTotalBalance() {
+    return accounts.reduce((sum, account) => sum + account.balance, 0);
+}
+
+// 替換為
+function getTotalBalance() {
+    // 獲取基準貨幣
+    const baseCurrency = appSettings.currency;
+    
+    // 計算所有賬戶的總餘額，並轉換為基準貨幣
+    return accounts.reduce((sum, account) => {
+        // 轉換貨幣
+        const convertedBalance = convertCurrency(
+            account.balance, 
+            account.currency || baseCurrency, 
+            baseCurrency
+        );
+        return sum + convertedBalance;
+    }, 0);
+}
         
         function getTodayIncome() {
             return getTodayTransactions()
@@ -5348,7 +5519,175 @@ function updateTotalBudgetDisplay() {
     // 更新预算状态显示
     updateBudgetStatus();
 }
+// 使用 Poe API 獲取最新匯率數據
+async function fetchExchangeRates() {
+    try {
+        // 設置加載狀態
+        document.getElementById('exchangeRateStatus').textContent = '正在更新匯率...';
         
+        // 使用 Claude 取得匯率信息
+        const baseCurrency = appSettings.exchangeRates.base || 'TWD';
+        const result = await window.Poe.sendUserMessage(
+            `@Claude-3.7-Sonnet 請提供以${baseCurrency}為基準的主要貨幣匯率。請只返回JSON格式數據，包含以下貨幣的匯率: TWD, USD, EUR, JPY, CNY, HKD, GBP, AUD, CAD, SGD。格式範例: {"base":"TWD","date":"2023-09-01","rates":{"USD":0.03,"EUR":0.028,"JPY":4.5}} 請只回傳純JSON，不要包含任何其他文字。`,
+            { stream: false, openChat: false, handler: "exchangeRateHandler" }
+        );
+        
+        return true;
+    } catch (error) {
+        console.error('匯率更新失敗:', error);
+        document.getElementById('exchangeRateStatus').textContent = '匯率更新失敗';
+        return false;
+    }
+}
+
+// 註冊匯率處理函數
+window.Poe.registerHandler("exchangeRateHandler", (result) => {
+    try {
+        if (result.status === "complete" && result.responses.length > 0) {
+            const response = result.responses[0].content;
+            
+            // 提取JSON部分
+            const jsonMatch = response.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const ratesData = JSON.parse(jsonMatch[0]);
+                
+                if (ratesData.rates) {
+                    // 更新匯率數據
+                    appSettings.exchangeRates.rates = ratesData.rates;
+                    appSettings.exchangeRates.lastUpdated = new Date().toISOString();
+                    saveData('appSettings');
+                    
+                    // 更新UI
+                    updateExchangeRateDisplay();
+                    document.getElementById('exchangeRateStatus').textContent = '匯率已更新';
+                    
+                    // 更新總資產和預算顯示
+                    updateDashboard();
+                    updateBudgetStatus();
+                    
+                    setTimeout(() => {
+                        document.getElementById('exchangeRateStatus').textContent = '';
+                    }, 3000);
+                    
+                    return;
+                }
+            }
+            
+            // 如果無法解析JSON
+            document.getElementById('exchangeRateStatus').textContent = '匯率格式錯誤';
+        } else if (result.status === "error") {
+            document.getElementById('exchangeRateStatus').textContent = '匯率更新失敗';
+        }
+    } catch (error) {
+        console.error('處理匯率數據錯誤:', error);
+        document.getElementById('exchangeRateStatus').textContent = '處理匯率數據錯誤';
+    }
+});
+
+// 貨幣轉換函數
+function convertCurrency(amount, fromCurrency, toCurrency) {
+    // 如果貨幣相同，直接返回
+    if (fromCurrency === toCurrency) return amount;
+    
+    // 如果沒有匯率數據
+    if (!appSettings.exchangeRates.rates || Object.keys(appSettings.exchangeRates.rates).length === 0) {
+        return amount; // 無法轉換，返回原始金額
+    }
+    
+    try {
+        const rates = appSettings.exchangeRates.rates;
+        const baseCurrency = appSettings.exchangeRates.base;
+        
+        // 先轉換到基準貨幣
+        let valueInBase;
+        if (fromCurrency === baseCurrency) {
+            valueInBase = amount;
+        } else {
+            // 從來源貨幣到基準貨幣的轉換
+            const fromRate = rates[fromCurrency];
+            if (!fromRate) return amount; // 沒有匯率數據時返回原始金額
+            valueInBase = amount / fromRate;
+        }
+        
+        // 再從基準貨幣轉換到目標貨幣
+        if (toCurrency === baseCurrency) {
+            return valueInBase;
+        } else {
+            // 從基準貨幣到目標貨幣的轉換
+            const toRate = rates[toCurrency];
+            if (!toRate) return amount; // 沒有匯率數據時返回原始金額
+            return valueInBase * toRate;
+        }
+    } catch (error) {
+        console.error('貨幣轉換錯誤:', error);
+        return amount; // 出錯時返回原始金額
+    }
+}
+
+// 格式化轉換後的金額顯示
+function formatConvertedAmount(amount, fromCurrency, toCurrency) {
+    const convertedAmount = convertCurrency(amount, fromCurrency, toCurrency);
+    return `${currencySymbols[toCurrency] || appSettings.currencySymbol}${formatNumber(convertedAmount)} ${toCurrency}`;
+}
+
+// 更新匯率顯示
+function updateExchangeRateDisplay() {
+    const ratesTable = document.getElementById('exchangeRatesTable');
+    if (!ratesTable) return;
+    
+    const rates = appSettings.exchangeRates.rates;
+    const baseCurrency = appSettings.exchangeRates.base;
+    const lastUpdated = appSettings.exchangeRates.lastUpdated ? 
+        new Date(appSettings.exchangeRates.lastUpdated).toLocaleString() : '未更新';
+    
+    document.getElementById('lastUpdatedTime').textContent = lastUpdated;
+    
+    // 清空表格
+    ratesTable.innerHTML = '';
+    
+    // 如果沒有匯率數據
+    if (!rates || Object.keys(rates).length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td colspan="3" class="px-4 py-2 text-center text-gray-500">無匯率數據</td>`;
+        ratesTable.appendChild(row);
+        return;
+    }
+    
+    // 添加匯率數據
+    for (const currency in rates) {
+        const rate = rates[currency];
+        const row = document.createElement('tr');
+        
+        // 計算反向匯率 (基準貨幣到其他貨幣)
+        const reverseRate = 1 / rate;
+        
+        row.innerHTML = `
+            <td class="px-4 py-2 border-b">
+                <div class="flex items-center">
+                    <span class="mr-2">${currencySymbols[currency] || '$'}</span>
+                    <span>${currency}</span>
+                </div>
+            </td>
+            <td class="px-4 py-2 border-b text-right">${formatNumber(rate)}</td>
+            <td class="px-4 py-2 border-b text-right">${formatNumber(reverseRate)}</td>
+        `;
+        
+        ratesTable.appendChild(row);
+    }
+}
+
+// 自動檢查匯率是否需要更新
+function checkExchangeRatesUpdate() {
+    if (!appSettings.exchangeRates.autoUpdate) return;
+    
+    const lastUpdated = appSettings.exchangeRates.lastUpdated ? 
+        new Date(appSettings.exchangeRates.lastUpdated) : null;
+    
+    // 如果從未更新過或超過24小時
+    if (!lastUpdated || (new Date() - lastUpdated) > 24 * 60 * 60 * 1000) {
+        fetchExchangeRates();
+    }
+}   
     </script>
 </body>
 </html>
