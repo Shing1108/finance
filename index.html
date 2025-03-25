@@ -3242,7 +3242,7 @@ updateTotalBudgetDisplay();
         
         // Update settings modal
 // Update settings modal
-functionfunction updateSettingsModal() {
+function updateSettingsModal() {
     document.getElementById('currencySelect').value = appSettings.currency;
     document.getElementById('currencySymbolInput').value = appSettings.currencySymbol;
     document.getElementById('enableSyncReminders').checked = appSettings.syncRemindersEnabled;
@@ -4325,7 +4325,7 @@ function convertFromBaseCurrency(amount, toCurrency) {
             });
             
             document.getElementById('saveSettingsBtn').addEventListener('click', () => {
-    const currency = document.getElementById('currencySelect').value;
+    const currency = document.getElementById('currencySelect')?.value || document.getElementById('baseCurrencySelect')?.value || appSettings.currency;
     const inputSymbol = document.getElementById('currencySymbolInput').value;
     const currencySymbol = inputSymbol || currencySymbols[currency] || '$';
     
@@ -5600,9 +5600,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (saveBtn) {
     saveBtn.addEventListener('click', function() {
       try {
-        const currency = document.getElementById('currencySelect')?.value || 
-                         document.getElementById('baseCurrencySelect')?.value || 
-                         appSettings.currency;
+        const currency = document.getElementById('currencySelect')?.value || document.getElementById('baseCurrencySelect')?.value || appSettings.currency;
         
         const inputSymbol = document.getElementById('currencySymbolInput')?.value || '';
         const currencySymbol = inputSymbol || currencySymbols[currency] || '$';
