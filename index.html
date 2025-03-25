@@ -1093,45 +1093,6 @@
         
         <!-- Settings Modal -->
         <div id="settingsModal" class="modal">
-            <div class="mb-4">
-    <h4 class="font-medium mb-2">匯率設定</h4>
-    <div class="mb-3">
-        <label class="block text-gray-700 mb-2">基準貨幣</label>
-        <select id="baseCurrencySelect" class="w-full p-2 border border-gray-300 rounded-md text-base">
-            <option value="TWD">新台幣 (TWD)</option>
-            <option value="USD">美元 (USD)</option>
-            <option value="EUR">歐元 (EUR)</option>
-            <option value="JPY">日元 (JPY)</option>
-            <option value="CNY">人民幣 (CNY)</option>
-            <option value="HKD">港幣 (HKD)</option>
-            <option value="GBP">英鎊 (GBP)</option>
-            <option value="AUD">澳元 (AUD)</option>
-            <option value="CAD">加拿大元 (CAD)</option>
-            <option value="SGD">新加坡元 (SGD)</option>
-        </select>
-    </div>
-    
-    <div class="flex items-center mb-3">
-        <span class="text-gray-600">上次更新: </span>
-        <span id="lastRateUpdateText" class="ml-2">未更新</span>
-    </div>
-    
-    <button id="updateRatesBtn" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition">
-        <i class="fas fa-sync-alt mr-1"></i> 更新匯率
-    </button>
-    
-    <div class="mt-3">
-        <div class="flex justify-between items-center mb-2">
-            <h5 class="font-medium">當前匯率</h5>
-            <button id="toggleRatesBtn" class="text-primary text-sm">
-                <i class="fas fa-eye"></i> 顯示/隱藏
-            </button>
-        </div>
-        <div id="exchangeRatesList" class="bg-gray-50 p-3 rounded-md text-sm hidden">
-            <!-- 汇率数据将在这里显示 -->
-        </div>
-    </div>
-</div>
             <div class="modal-content">
                 <span class="close">&times;</span>
                 <h3 class="text-xl font-bold mb-4">系統設定</h3>
@@ -1328,7 +1289,6 @@
             dailySummaryTiming: 'immediate',
             enableVirtualization: true,
             pageSize: 100,
-            
             // Google Drive 同步設定
             googleSync: {
                 enabled: false,
@@ -1336,10 +1296,6 @@
                 lastSync: null,
                 fileId: null
             }
-            // 在全局变量区域添加（约1950行左右，在appSettings后面）
-let exchangeRates = {}; // 存储汇率数据
-let baseCurrency = 'TWD'; // 基准货币，默认为台币
-let lastRateUpdate = null; // 上次更新汇率的时间
         };
         let dataModified = false; // Track if data has been modified since last sync
         let paginationState = {
@@ -2100,51 +2056,6 @@ updateTotalBudgetDisplay();
                 }
             });
             saveData('transactions');
-            
-                // 加载汇率数据
-    if (hasLocalStorage) {
-        try {
-            const storedRates = localStorage.getItem('finance_exchange_rates');
-            const storedRateUpdate = localStorage.getItem('finance_rate_update');
-            
-            if (storedRates) {
-                exchangeRates = JSON.parse(storedRates);
-                lastRateUpdate = storedRateUpdate;
-            } else {
-                // 设置默认汇率
-                setDefaultExchangeRates();
-            }
-        } catch (error) {
-            console.error('Error loading exchange rates:', error);
-            setDefaultExchangeRates();
-        }
-    } else {
-        setDefaultExchangeRates();
-    }
-    
-    // 设置基准货币（使用应用设置中的默认货币）
-    baseCurrency = appSettings.currency;
-    
-    // 检查是否需要更新汇率（超过24小时）
-    checkExchangeRatesUpdate();
-}
-
-// 检查是否需要更新汇率
-function checkExchangeRatesUpdate() {
-    if (!lastRateUpdate) {
-        // 从未更新过，立即更新
-        fetchExchangeRates();
-        return;
-    }
-    
-    const now = new Date();
-    const lastUpdate = new Date(lastRateUpdate);
-    const hoursDiff = (now - lastUpdate) / (1000 * 60 * 60);
-    
-    // 如果超过24小时，更新汇率
-    if (hoursDiff >= 24) {
-        fetchExchangeRates();
-    }
         }
         
         // Save data to localStorage
@@ -2545,16 +2456,6 @@ updateTotalBudgetDisplay();
         
         // Update dashboard with current data
         function updateDashboard() {
-            
-            // 更新总余额，显示基准货币符号
-    const currencySymbol = currencySymbols[baseCurrency] || appSettings.currencySymbol;
-    document.getElementById('totalBalance').textContent = formatNumber(getTotalBalance());
-    document.getElementById('selectedCurrency').textContent = baseCurrency;
-    
-    // 显示今日收入/支出（已经按账户货币显示，无需修改）
-    document.getElementById('todayIncome').textContent = formatNumber(getTodayIncome());
-    document.getElementById('todayExpense').textContent = formatNumber(getTodayExpense());
-            
             // Update total balance
             document.getElementById('totalBalance').textContent = formatNumber(getTotalBalance());
             
@@ -3266,54 +3167,6 @@ updateTotalBudgetDisplay();
                 budgetResetDay.selectedIndex = 0;
                 budget.resetDay = budgetResetDay.value;
             }
-            document.getElementById('baseCurrencySelect').value = baseCurrency;
-    
-    // 显示上次更新时间
-    const lastUpdateEl = document.getElementById('lastRateUpdateText');
-    if (lastRateUpdate) {
-        const updateDate = new Date(lastRateUpdate);
-        lastUpdateEl.textContent = updateDate.toLocaleString();
-    } else {
-        lastUpdateEl.textContent = '未更新';
-    }
-    
-    // 更新汇率列表显示
-    updateExchangeRatesList();
-}
-
-// 更新汇率列表显示
-function updateExchangeRatesList() {
-    const ratesList = document.getElementById('exchangeRatesList');
-    ratesList.innerHTML = '';
-    
-    if (Object.keys(exchangeRates).length === 0) {
-        ratesList.innerHTML = '<div class="text-gray-500">無匯率數據</div>';
-        return;
-    }
-    
-    // 创建汇率列表
-    const table = document.createElement('table');
-    table.className = 'w-full';
-    
-    const header = document.createElement('tr');
-    header.innerHTML = `
-        <th class="text-left pb-2">貨幣</th>
-        <th class="text-right pb-2">匯率 (相對於 ${baseCurrency})</th>
-    `;
-    table.appendChild(header);
-    
-    Object.entries(exchangeRates).forEach(([currency, rate]) => {
-        if (currency === baseCurrency) return; // 跳过基准货币
-        
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td class="py-1">${currency}</td>
-            <td class="text-right">${formatNumber(rate)}</td>
-        `;
-        table.appendChild(row);
-    });
-    
-    ratesList.appendChild(table);
         }
         
         // Initialize account icons
@@ -3962,91 +3815,6 @@ budgetCard.appendChild(budgetNote);
             // Show the container
             dailySummaryContainer.style.display = 'block';
         }
-        // 获取最新汇率（添加在API相关函数附近，约3800行左右）
-async function fetchExchangeRates() {
-    try {
-        // 显示加载状态
-        notify('🔄', '更新匯率', '正在從網絡獲取最新匯率...');
-        
-        // 使用开放的汇率API - 可能需要替换为您有权限的API
-        const response = await fetch(`https://open.er-api.com/v6/latest/${baseCurrency}`);
-        const data = await response.json();
-        
-        if (data && data.rates) {
-            exchangeRates = data.rates;
-            lastRateUpdate = new Date().toISOString();
-            
-            // 保存到本地存储
-            if (hasLocalStorage) {
-                localStorage.setItem('finance_exchange_rates', JSON.stringify(exchangeRates));
-                localStorage.setItem('finance_rate_update', lastRateUpdate);
-            }
-            
-            notify('✅', '匯率已更新', '已成功獲取最新匯率資料');
-            return true;
-        } else {
-            throw new Error('無法獲取匯率數據');
-        }
-    } catch (error) {
-        console.error('Error fetching exchange rates:', error);
-        notify('❌', '匯率更新失敗', '無法獲取最新匯率，使用現有匯率或默認值');
-        
-        // 如果没有汇率数据，设置一些默认值
-        if (Object.keys(exchangeRates).length === 0) {
-            setDefaultExchangeRates();
-        }
-        return false;
-    }
-}
-
-// 设置默认汇率（作为备用）
-function setDefaultExchangeRates() {
-    // 设置一些常用货币的默认汇率（相对于TWD）
-    exchangeRates = {
-        'TWD': 1,
-        'USD': 0.032,  // 约31 TWD = 1 USD
-        'EUR': 0.029,  // 约34 TWD = 1 EUR
-        'JPY': 4.44,   // 约0.23 TWD = 1 JPY
-        'CNY': 0.22,   // 约4.5 TWD = 1 CNY
-        'HKD': 0.25,   // 约4 TWD = 1 HKD
-        'GBP': 0.025,  // 约40 TWD = 1 GBP
-        'AUD': 0.043,  // 约23 TWD = 1 AUD
-        'CAD': 0.044,  // 约23 TWD = 1 CAD
-        'SGD': 0.042   // 约24 TWD = 1 SGD
-    };
-}
-
-// 将货币转换为基准货币
-function convertToBaseCurrency(amount, fromCurrency) {
-    if (!fromCurrency || fromCurrency === baseCurrency) {
-        return amount;
-    }
-    
-    // 检查是否有汇率数据
-    if (!exchangeRates[fromCurrency]) {
-        console.warn(`找不到 ${fromCurrency} 的匯率，使用 1:1 匯率`);
-        return amount;
-    }
-    
-    // 将金额转换为基准货币
-    return amount / exchangeRates[fromCurrency];
-}
-
-// 将基准货币转换为目标货币
-function convertFromBaseCurrency(amount, toCurrency) {
-    if (!toCurrency || toCurrency === baseCurrency) {
-        return amount;
-    }
-    
-    // 检查是否有汇率数据
-    if (!exchangeRates[toCurrency]) {
-        console.warn(`找不到 ${toCurrency} 的匯率，使用 1:1 匯率`);
-        return amount;
-    }
-    
-    // 将基准货币金额转换为目标货币
-    return amount * exchangeRates[toCurrency];
-}
         
         // Search transactions with pagination and virtualization
         function searchTransactions() {
@@ -4354,49 +4122,35 @@ function convertFromBaseCurrency(amount, toCurrency) {
                 }
             });
             
-            // 在保存设置按钮的处理函数中（约4305行左右）
-document.getElementById('saveSettingsBtn').addEventListener('click', () => {
-    const currency = document.getElementById('currencySelect').value;
-    const currencySymbol = document.getElementById('currencySymbolInput').value || currencySymbols[currency] || '$';
-    const syncRemindersEnabled = document.getElementById('enableSyncReminders').checked;
-    const theme = document.getElementById('themeSelect').value;
-    const enableVirtualization = document.getElementById('enableVirtualization').checked;
-    const pageSize = parseInt(document.getElementById('pageSize').value);
-    
-    // 修改应用设置
-    appSettings.currency = currency;
-    appSettings.currencySymbol = currencySymbol;
-    appSettings.syncRemindersEnabled = syncRemindersEnabled;
-    appSettings.theme = theme;
-    appSettings.enableVirtualization = enableVirtualization;
-    appSettings.pageSize = pageSize;
-    
-    // 更新基准货币（如果发生变化）
-    if (baseCurrency !== document.getElementById('baseCurrencySelect').value) {
-        baseCurrency = document.getElementById('baseCurrencySelect').value;
-        // 更新汇率
-        fetchExchangeRates();
-    }
-    
-    saveData('appSettings');
-    
-    // 保存汇率数据
-    if (hasLocalStorage) {
-        localStorage.setItem('finance_exchange_rates', JSON.stringify(exchangeRates));
-        localStorage.setItem('finance_rate_update', lastRateUpdate);
-    }
-    
-    updateCurrencyDisplay();
-    applyTheme();
-    applyVirtualizationSettings();
-    updateUI();
-    
-    closeModal('settingsModal');
-    notify('✅', '設定已保存', '您的設定已成功更新');
-    
-    // 刷新搜索结果
-    searchTransactions();
-});
+            // Save settings button
+            document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+                const currency = document.getElementById('currencySelect').value;
+                const currencySymbol = document.getElementById('currencySymbolInput').value || currencySymbols[currency] || '$';
+                const syncRemindersEnabled = document.getElementById('enableSyncReminders').checked;
+                const theme = document.getElementById('themeSelect').value;
+                const enableVirtualization = document.getElementById('enableVirtualization').checked;
+                const pageSize = parseInt(document.getElementById('pageSize').value);
+                
+                appSettings.currency = currency;
+                appSettings.currencySymbol = currencySymbol;
+                appSettings.syncRemindersEnabled = syncRemindersEnabled;
+                appSettings.theme = theme;
+                appSettings.enableVirtualization = enableVirtualization;
+                appSettings.pageSize = pageSize;
+                
+                saveData('appSettings');
+                
+                updateCurrencyDisplay();
+                applyTheme();
+                applyVirtualizationSettings();
+                updateUI();
+                
+                closeModal('settingsModal');
+                notify('✅', '設定已保存', '您的設定已成功更新');
+                
+                // Refresh search results with new settings
+                searchTransactions();
+            });
             
             // Reset app button
             document.getElementById('resetAppBtn').addEventListener('click', () => {
@@ -4591,21 +4345,6 @@ updateTotalBudgetDisplay();
                     }
                 }
             }, 200));
-            
-            document.getElementById('updateRatesBtn').addEventListener('click', fetchExchangeRates);
-    
-    // 显示/隐藏汇率按钮
-    document.getElementById('toggleRatesBtn').addEventListener('click', function() {
-        const ratesList = document.getElementById('exchangeRatesList');
-        ratesList.classList.toggle('hidden');
-    });
-    
-    // 基准货币更改
-    document.getElementById('baseCurrencySelect').addEventListener('change', function() {
-        baseCurrency = this.value;
-        // 更新汇率数据
-        fetchExchangeRates();
-    });
         }
         
         // Add a category by type (from the categories tab)
@@ -5440,14 +5179,9 @@ function saveBudget() {
             return formatDateForInput(date);
         }
         
-        // 修改getTotalBalance函数（约5898行左右）
-function getTotalBalance() {
-    // 转换每个账户的余额为基准货币，然后求和
-    return accounts.reduce((sum, account) => {
-        const convertedBalance = convertToBaseCurrency(account.balance, account.currency);
-        return sum + convertedBalance;
-    }, 0);
-}
+        function getTotalBalance() {
+            return accounts.reduce((sum, account) => sum + account.balance, 0);
+        }
         
         function getTodayTransactions() {
             const today = getTodayFormatted();
