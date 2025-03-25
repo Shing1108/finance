@@ -469,19 +469,10 @@
                                 <span class="text-gray-600">總預算:</span>
                                 <span class="font-medium"><span id="currencySymbol4">$</span><span id="budgetAmount"></span></span>
                             </div>
-                            <!-- 在預算狀態顯示中添加這些元素 -->
-<div class="mb-2 flex justify-between">
-    <span class="text-gray-600">總支出:</span>
-    <span class="font-medium text-red-600"><span id="currencySymbol6">$</span><span id="budgetExpenses"></span></span>
-</div>
-<div class="mb-2 flex justify-between">
-    <span class="text-gray-600">總收入:</span>
-    <span class="font-medium text-green-600"><span id="currencySymbol7">$</span><span id="budgetIncome"></span></span>
-</div>
-<div class="mb-2 flex justify-between font-medium">
-    <span class="text-gray-600">淨支出 (支出 - 收入):</span>
-    <span><span id="currencySymbol5">$</span><span id="budgetUsed"></span></span>
-</div>
+                            <div class="mb-2 flex justify-between">
+                                <span class="text-gray-600">淨支出:</span>
+                                <span class="font-medium"><span id="currencySymbol5">$</span><span id="budgetUsed"></span></span>
+                            </div>
                             <div class="mb-2 flex justify-between">
                                 <span class="text-gray-600">剩餘預算:</span>
                                 <span id="budgetRemaining" class="font-medium"></span>
@@ -646,23 +637,10 @@
                     <h2 class="text-xl font-bold mb-4"><span class="mr-2">⚙️</span>總預算設定</h2>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-           
-<div>
-    <label class="block text-gray-700 mb-2">預算金額 (類別預算總和)</label>
-    <div class="flex items-center">
-        <div id="totalBudgetDisplay" class="p-2 bg-gray-100 border border-gray-300 rounded-md text-base w-full">
-            <span id="totalBudgetAmount">0.00</span>
-        </div>
-        <div class="ml-2 text-sm text-gray-500 italic">自動計算</div>
-    </div>
-</div>
-                        <!-- 在預算設定頁面添加這個輸入框 -->
-<div class="mb-4">
-    <label class="block text-gray-700 mb-2">預設預算金額（當無類別預算時使用）</label>
-    <input type="number" id="defaultBudgetAmount" placeholder="輸入預設預算金額" class="w-full p-2 border border-gray-300 rounded-md text-base" value="10000">
-    <p class="text-sm text-gray-500 mt-1">當沒有設置類別預算時，將使用此預設值</p>
-</div>
-                        
+                        <div>
+                            <label class="block text-gray-700 mb-2">預算金額</label>
+                            <input type="number" id="budgetAmountInput" placeholder="輸入預算金額" class="w-full p-2 border border-gray-300 rounded-md text-base">
+                        </div>
                         
                         <div>
                             <label class="block text-gray-700 mb-2">重設週期</label>
@@ -1108,62 +1086,35 @@
         </div>
         
         <!-- Settings Modal -->
-<div id="settingsModal" class="modal">
-    
-    <div class="modal-content">
-        <span class="close">&times;</span>
-        <h3 class="text-xl font-bold mb-4">系統設定</h3>
-        
-      <div class="mb-4">
-    <h4 class="font-medium mb-2">匯率設定</h4>
-    
-    
-    <!-- 在設置模態框中添加這些元素 -->
-<div class="mb-4">
-    <h4 class="font-medium mb-2">貨幣設置</h4>
-    <div class="mb-3">
-        <label class="block text-gray-700 mb-2">應用貨幣</label>
-        <!-- 將這個 -->
-<select id="baseCurrencySelect" class="w-full p-2 border border-gray-300 rounded-md text-base">
-            <option value="TWD">新台幣 (TWD)</option>
-            <option value="USD">美元 (USD)</option>
-            <option value="EUR">歐元 (EUR)</option>
-            <option value="JPY">日元 (JPY)</option>
-            <option value="CNY">人民幣 (CNY)</option>
-            <option value="HKD">港幣 (HKD)</option>
-            <option value="GBP">英鎊 (GBP)</option>
-            <option value="AUD">澳元 (AUD)</option>
-            <option value="CAD">加拿大元 (CAD)</option>
-            <option value="SGD">新加坡元 (SGD)</option>
-        </select>
-    </div>
-    <div class="mb-3">
-        <label class="block text-gray-700 mb-2">貨幣符號</label>
-        <input type="text" id="currencySymbolInput" placeholder="例如: $" class="w-full p-2 border border-gray-300 rounded-md text-base" maxlength="3">
-    </div>
-</div>
-    
-    <div class="flex items-center mb-3">
-        <span class="text-gray-600">上次更新: </span>
-        <span id="lastRateUpdateText" class="ml-2">未更新</span>
-    </div>
-    
-    <button id="updateRatesBtn" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition">
-        <i class="fas fa-sync-alt mr-1"></i> 更新匯率
-    </button>
-    
-    <div class="mt-3">
-        <div class="flex justify-between items-center mb-2">
-            <h5 class="font-medium">當前匯率</h5>
-            <button id="toggleRatesBtn" class="text-primary text-sm">
-                <i class="fas fa-eye"></i> 顯示/隱藏
-            </button>
-        </div>
-        <div id="exchangeRatesList" class="bg-gray-50 p-3 rounded-md text-sm hidden">
-            <!-- 汇率数据将在这里显示 -->
-        </div>
-    </div>
-</div>
+        <div id="settingsModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3 class="text-xl font-bold mb-4">系統設定</h3>
+                
+                <div class="mb-4">
+                    <h4 class="font-medium mb-2">貨幣設定</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">選擇默認貨幣</label>
+                            <select id="currencySelect" class="w-full p-2 border border-gray-300 rounded-md text-base">
+                                <option value="TWD">新台幣 (TWD)</option>
+                                <option value="USD">美元 (USD)</option>
+                                <option value="EUR">歐元 (EUR)</option>
+                                <option value="JPY">日元 (JPY)</option>
+                                <option value="CNY">人民幣 (CNY)</option>
+                                <option value="HKD">港幣 (HKD)</option>
+                                <option value="GBP">英鎊 (GBP)</option>
+                                <option value="AUD">澳元 (AUD)</option>
+                                <option value="CAD">加拿大元 (CAD)</option>
+                                <option value="SGD">新加坡元 (SGD)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">貨幣符號</label>
+                            <input type="text" id="currencySymbolInput" class="w-full p-2 border border-gray-300 rounded-md text-base" placeholder="$" value="$">
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="mb-4">
                     <h4 class="font-medium mb-2">性能設定</h4>
@@ -1332,7 +1283,6 @@
             dailySummaryTiming: 'immediate',
             enableVirtualization: true,
             pageSize: 100,
-            
             // Google Drive 同步設定
             googleSync: {
                 enabled: false,
@@ -1340,12 +1290,7 @@
                 lastSync: null,
                 fileId: null
             }
-            
         };
-     // 匯率相關變量
-let exchangeRates = {}; // 存储汇率数据
-let baseCurrency = 'TWD'; // 基准货币，默认为台币
-let lastRateUpdate = null; // 上次更新汇率的时间
         let dataModified = false; // Track if data has been modified since last sync
         let paginationState = {
             currentPage: 1,
@@ -1414,22 +1359,6 @@ let lastRateUpdate = null; // 上次更新汇率的时间
             };
         }
         
-        // 计算所有类别预算的总和
-function calculateTotalBudget() {
-    return categoryBudgets.reduce((total, budget) => total + budget.amount, 0);
-}
-
-// 更新总预算显示
-function updateTotalBudgetDisplay() {
-    const totalAmount = calculateTotalBudget();
-    document.getElementById('totalBudgetAmount').textContent = formatNumber(totalAmount);
-    // 同时更新预算对象
-    budget.amount = totalAmount;
-    saveData('budget');
-    // 更新预算状态显示
-    updateBudgetStatus();
-}
-        
         // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize the app
@@ -1446,62 +1375,59 @@ function updateTotalBudgetDisplay() {
         });
         
         // Initialize the app
-        // Initialize the app
-function initApp() {
-    // Load data from localStorage if available
-    loadData();
-    
-    // Set default transaction date
-    document.getElementById('transactionDate').value = getTodayFormatted();
-    document.getElementById('summaryDate').value = getTodayFormatted();
-    
-    // Set default search dates (1 month range)
-    const today = new Date();
-    const monthAgo = new Date();
-    monthAgo.setMonth(today.getMonth() - 1);
-    
-    document.getElementById('searchStartDate').value = formatDateForInput(monthAgo);
-    document.getElementById('searchEndDate').value = formatDateForInput(today);
-    
-    // Update currency display
-    updateCurrencyDisplay();
-    
-    // Initialize UI elements
-    updateUI();
-    
-    // Setup budget reset day options
-    updateBudgetResetDayOptions();
-    
-    // Initialize account icons
-    initAccountIcons();
-    
-    // Initialize receipt upload listener
-    initReceiptUpload();
-    
-    // Apply virtualization settings
-    applyVirtualizationSettings();
-    
-    // Search transactions with default values
-    searchTransactions();
-    
-    // Generate financial advice
-    generateFinancialAdvice();
-    
-    // Check for budget reset
-    checkBudgetReset();
-    
-    // Check new day status
-    checkNewDayStatus();
-    
-    // Check if sync reminder should be shown
-    checkSyncReminder();
-    
-    // 确保总预算是类别预算的总和
-    updateTotalBudgetDisplay();
-    
-    // Setup auto-sync options
-    setupAutoSync();
-}
+        function initApp() {
+            // Load data from localStorage if available
+            loadData();
+            
+            // Set default transaction date
+            document.getElementById('transactionDate').value = getTodayFormatted();
+            document.getElementById('summaryDate').value = getTodayFormatted();
+            
+            // Set default search dates (1 month range)
+            const today = new Date();
+            const monthAgo = new Date();
+            monthAgo.setMonth(today.getMonth() - 1);
+            
+            document.getElementById('searchStartDate').value = formatDateForInput(monthAgo);
+            document.getElementById('searchEndDate').value = formatDateForInput(today);
+            
+            // Update currency display
+            updateCurrencyDisplay();
+            
+            // Initialize UI elements
+            updateUI();
+            
+            // Setup budget reset day options
+            updateBudgetResetDayOptions();
+            
+            // Initialize account icons
+            initAccountIcons();
+            
+            // Initialize receipt upload listener
+            initReceiptUpload();
+            
+            // Apply virtualization settings
+            applyVirtualizationSettings();
+            
+            // Search transactions with default values
+            searchTransactions();
+            
+            // Generate financial advice
+            generateFinancialAdvice();
+            
+            // Check for budget reset
+            checkBudgetReset();
+            
+            // Check new day status
+            checkNewDayStatus();
+            
+            // Check if sync reminder should be shown
+            checkSyncReminder();
+            
+            // Setup auto-sync options
+            setupAutoSync();
+        }
+        
         // Initialize Google API - 全新版本
         function initGoogleApi() {
             console.log('開始初始化 Google API...');
@@ -2121,51 +2047,6 @@ function initApp() {
                 }
             });
             saveData('transactions');
-            
-                // 加载汇率数据
-    if (hasLocalStorage) {
-        try {
-            const storedRates = localStorage.getItem('finance_exchange_rates');
-            const storedRateUpdate = localStorage.getItem('finance_rate_update');
-            
-            if (storedRates) {
-                exchangeRates = JSON.parse(storedRates);
-                lastRateUpdate = storedRateUpdate;
-            } else {
-                // 设置默认汇率
-                setDefaultExchangeRates();
-            }
-        } catch (error) {
-            console.error('Error loading exchange rates:', error);
-            setDefaultExchangeRates();
-        }
-    } else {
-        setDefaultExchangeRates();
-    }
-    
-    // 设置基准货币（使用应用设置中的默认货币）
-    baseCurrency = appSettings.currency;
-    
-    // 检查是否需要更新汇率（超过24小时）
-    checkExchangeRatesUpdate();
-}
-
-// 检查是否需要更新汇率
-function checkExchangeRatesUpdate() {
-    if (!lastRateUpdate) {
-        // 从未更新过，立即更新
-        fetchExchangeRates();
-        return;
-    }
-    
-    const now = new Date();
-    const lastUpdate = new Date(lastRateUpdate);
-    const hoursDiff = (now - lastUpdate) / (1000 * 60 * 60);
-    
-    // 如果超过24小时，更新汇率
-    if (hoursDiff >= 24) {
-        fetchExchangeRates();
-    }
         }
         
         // Save data to localStorage
@@ -2548,9 +2429,6 @@ function checkExchangeRatesUpdate() {
             // Update budget status
             updateBudgetStatus();
             
-            // 更新总预算显示
-updateTotalBudgetDisplay();
-            
             // Update budget thresholds
             updateBudgetThresholds();
             
@@ -2566,16 +2444,6 @@ updateTotalBudgetDisplay();
         
         // Update dashboard with current data
         function updateDashboard() {
-            
-            // 更新总余额，显示基准货币符号
-    const currencySymbol = currencySymbols[baseCurrency] || appSettings.currencySymbol;
-    document.getElementById('totalBalance').textContent = formatNumber(getTotalBalance());
-    document.getElementById('selectedCurrency').textContent = baseCurrency;
-    
-    // 显示今日收入/支出（已经按账户货币显示，无需修改）
-    document.getElementById('todayIncome').textContent = formatNumber(getTodayIncome());
-    document.getElementById('todayExpense').textContent = formatNumber(getTodayExpense());
-            
             // Update total balance
             document.getElementById('totalBalance').textContent = formatNumber(getTotalBalance());
             
@@ -2895,7 +2763,6 @@ updateTotalBudgetDisplay();
         option.textContent = category;
         categoryForBudget.appendChild(option);
     });
-    }
         
         // Update category budget items
         function updateCategoryBudgetItems() {
@@ -2936,8 +2803,6 @@ updateTotalBudgetDisplay();
                     saveData('categoryBudgets');
                     updateCategoryBudgetItems();
                     updateCategoryBudgetsOnDashboard();
-                    
-                    updateTotalBudgetDisplay();
                 });
                 
                 item.appendChild(leftPart);
@@ -2947,6 +2812,7 @@ updateTotalBudgetDisplay();
             });
         }
         
+        // Update category budgets on dashboard
         function updateCategoryBudgetsOnDashboard() {
     const categoryBudgetList = document.getElementById('categoryBudgetList');
     const categoryBudgetsContainer = document.getElementById('categoryBudgets');
@@ -2967,27 +2833,12 @@ updateTotalBudgetDisplay();
     
     // 添加每個類別預算
     categoryBudgets.forEach(catBudget => {
-        // 计算支出 - 减少预算
-        const expenses = transactions
-            .filter(t => (t.category === catBudget.category) && 
-                       (t.type === 'expense') && 
-                       new Date(t.date) >= monthStart)
+        // 計算此類別的預算使用情況（包括收入和支出）
+        const spent = transactions
+            .filter(t => (t.category === catBudget.category) && new Date(t.date) >= monthStart)
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);
         
-        // 计算收入 - 增加预算
-        const income = transactions
-            .filter(t => (t.category === catBudget.category) && 
-                       (t.type === 'income') && 
-                       new Date(t.date) >= monthStart)
-            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-        
-        // 支出减去收入 = 净支出
-        const netSpent = expenses - income;
-        
-        // 如果净支出为负（即收入大于支出），则视为0
-        const effectiveSpent = Math.max(0, netSpent);
-        
-        const percentage = catBudget.amount > 0 ? Math.min(100, (effectiveSpent / catBudget.amount) * 100) : 0;
+        const percentage = catBudget.amount > 0 ? Math.min(100, (spent / catBudget.amount) * 100) : 0;
         
         const item = document.createElement('div');
         item.className = 'mb-3';
@@ -3001,15 +2852,7 @@ updateTotalBudgetDisplay();
         
         const amountText = document.createElement('div');
         amountText.className = 'text-sm';
-        
-        // 显示净支出和预算
-        const remainingBudget = Math.max(0, catBudget.amount - effectiveSpent);
-        amountText.textContent = `${appSettings.currencySymbol}${formatNumber(effectiveSpent)} / ${appSettings.currencySymbol}${formatNumber(catBudget.amount)}`;
-        
-        // 添加净余额显示
-        const balanceText = document.createElement('div');
-        balanceText.className = 'text-xs text-gray-500';
-        balanceText.textContent = `剩餘: ${appSettings.currencySymbol}${formatNumber(remainingBudget)}`;
+        amountText.textContent = `${appSettings.currencySymbol}${formatNumber(spent)} / ${appSettings.currencySymbol}${formatNumber(catBudget.amount)}`;
         
         const progressBar = document.createElement('div');
         progressBar.className = 'category-budget-bar';
@@ -3032,7 +2875,6 @@ updateTotalBudgetDisplay();
         progressBar.appendChild(progressFill);
         
         item.appendChild(header);
-        item.appendChild(balanceText); // 添加余额显示
         item.appendChild(progressBar);
         
         categoryBudgetList.appendChild(item);
@@ -3137,20 +2979,6 @@ updateTotalBudgetDisplay();
             document.getElementById('budgetAmount').textContent = formatNumber(budget.amount);
             document.getElementById('budgetUsed').textContent = formatNumber(getBudgetUsed());
             
-            // 獲取實際支出和收入（在預算週期內）
-    const lastReset = budget.lastReset ? new Date(budget.lastReset) : null;
-    const expenses = transactions
-        .filter(t => t.type === 'expense' && (!lastReset || new Date(t.date) >= lastReset))
-        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-    
-    const income = transactions
-        .filter(t => t.type === 'income' && (!lastReset || new Date(t.date) >= lastReset))
-        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-    
-    // 更新預算信息，顯示實際支出和收入
-    document.getElementById('budgetExpenses').textContent = formatNumber(expenses);
-    document.getElementById('budgetIncome').textContent = formatNumber(income);
-            
             const remaining = getBudgetRemaining();
             const remainingEl = document.getElementById('budgetRemaining');
             remainingEl.textContent = appSettings.currencySymbol + formatNumber(remaining);
@@ -3179,7 +3007,7 @@ updateTotalBudgetDisplay();
             document.getElementById('budgetPercentage').textContent = percentage + '% 已使用';
             
             // Update budget form
-            
+            document.getElementById('budgetAmountInput').value = budget.amount;
             document.getElementById('budgetCycle').value = budget.cycle;
             if (budget.resetDay) {
                 document.getElementById('budgetResetDay').value = budget.resetDay;
@@ -3241,57 +3069,67 @@ updateTotalBudgetDisplay();
         }
         
         // Update settings modal
-function updateSettingsModal() {
-    document.getElementById('baseCurrencySelect').value = appSettings.currency;
-    document.getElementById('currencySymbolInput').value = appSettings.currencySymbol;
-    document.getElementById('enableSyncReminders').checked = appSettings.syncRemindersEnabled;
-    document.getElementById('themeSelect').value = appSettings.theme;
-    document.getElementById('enableVirtualization').checked = appSettings.enableVirtualization;
-    document.getElementById('pageSize').value = appSettings.pageSize === -1 ? "-1" : appSettings.pageSize.toString();
-    
-    // 更新匯率資訊顯示
-    if (lastRateUpdate) {
-        document.getElementById('lastRateUpdateText').textContent = formatDate(lastRateUpdate);
-    } else {
-        document.getElementById('lastRateUpdateText').textContent = '未更新';
-    }
-    
-    // 更新匯率列表
-    updateExchangeRatesList();
-}
-// 更新汇率列表显示
-function updateExchangeRatesList() {
-    const ratesList = document.getElementById('exchangeRatesList');
-    ratesList.innerHTML = '';
-    
-    if (Object.keys(exchangeRates).length === 0) {
-        ratesList.innerHTML = '<div class="text-gray-500">無匯率數據</div>';
-        return;
-    }
-    
-    // 创建汇率列表
-    const table = document.createElement('table');
-    table.className = 'w-full';
-    
-    const header = document.createElement('tr');
-    header.innerHTML = `
-        <th class="text-left pb-2">貨幣</th>
-        <th class="text-right pb-2">匯率 (相對於 ${baseCurrency})</th>
-    `;
-    table.appendChild(header);
-    
-    Object.entries(exchangeRates).forEach(([currency, rate]) => {
-        if (currency === baseCurrency) return; // 跳过基准货币
+        function updateSettingsModal() {
+            document.getElementById('currencySelect').value = appSettings.currency;
+            document.getElementById('currencySymbolInput').value = appSettings.currencySymbol;
+            document.getElementById('enableSyncReminders').checked = appSettings.syncRemindersEnabled;
+            document.getElementById('themeSelect').value = appSettings.theme;
+            document.getElementById('enableVirtualization').checked = appSettings.enableVirtualization;
+            document.getElementById('pageSize').value = appSettings.pageSize === -1 ? "-1" : appSettings.pageSize.toString();
+        }
         
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td class="py-1">${currency}</td>
-            <td class="text-right">${formatNumber(rate)}</td>
-        `;
-        table.appendChild(row);
-    });
-    
-    ratesList.appendChild(table);
+        // Update budget reset day options based on selected cycle
+        function updateBudgetResetDayOptions() {
+            const budgetCycle = document.getElementById('budgetCycle').value;
+            const budgetResetDay = document.getElementById('budgetResetDay');
+            
+            // Clear previous options
+            budgetResetDay.innerHTML = '';
+            
+            // Add options based on cycle
+            if (budgetCycle === 'daily') {
+                budgetResetDay.disabled = true;
+                const option = document.createElement('option');
+                option.value = '1';
+                option.textContent = '每日自動重設';
+                budgetResetDay.appendChild(option);
+            } else if (budgetCycle === 'weekly') {
+                budgetResetDay.disabled = false;
+                const days = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
+                days.forEach(day => {
+                    const option = document.createElement('option');
+                    option.value = day;
+                    option.textContent = day;
+                    budgetResetDay.appendChild(option);
+                });
+            } else if (budgetCycle === 'monthly') {
+                budgetResetDay.disabled = false;
+                for (let i = 1; i <= 31; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = i + '日';
+                    budgetResetDay.appendChild(option);
+                }
+            }
+            
+            // Set default value
+            if (budget.resetDay) {
+                // Try to find the value in the options
+                const options = Array.from(budgetResetDay.options);
+                const matchingOption = options.find(option => option.value == budget.resetDay);
+                
+                if (matchingOption) {
+                    budgetResetDay.value = budget.resetDay;
+                } else {
+                    // If not found (e.g. when switching from monthly to weekly), set the first option
+                    budgetResetDay.selectedIndex = 0;
+                    budget.resetDay = budgetResetDay.value;
+                }
+            } else {
+                // Set default reset day if not specified
+                budgetResetDay.selectedIndex = 0;
+                budget.resetDay = budgetResetDay.value;
+            }
         }
         
         // Initialize account icons
@@ -3940,86 +3778,6 @@ budgetCard.appendChild(budgetNote);
             // Show the container
             dailySummaryContainer.style.display = 'block';
         }
-        // 获取最新汇率（添加在API相关函数附近，约3800行左右）
-// 获取最新汇率（修改为无需外部API调用的版本）
-async function fetchExchangeRates() {
-    try {
-        // 显示加载状态
-        notify('🔄', '更新匯率', '正在更新匯率...');
-        
-        // 在Poe環境中無法訪問外部API，所以直接使用默認匯率
-        // 注意：在實際應用中，這裡會從外部API獲取最新匯率
-        setDefaultExchangeRates();
-        lastRateUpdate = new Date().toISOString();
-        
-        // 保存到本地存储
-        if (hasLocalStorage) {
-            localStorage.setItem('finance_exchange_rates', JSON.stringify(exchangeRates));
-            localStorage.setItem('finance_rate_update', lastRateUpdate);
-        }
-        
-        notify('✅', '匯率已更新', '已更新匯率資料 (使用內建匯率)');
-        return true;
-    } catch (error) {
-        console.error('Error updating exchange rates:', error);
-        notify('❌', '匯率更新失敗', '無法更新匯率，使用現有匯率或默認值');
-        
-        // 如果没有汇率数据，设置一些默认值
-        if (Object.keys(exchangeRates).length === 0) {
-            setDefaultExchangeRates();
-        }
-        return false;
-    }
-}
-
-// 设置默认汇率（作为备用）
-function setDefaultExchangeRates() {
-    // 设置一些常用货币的默认汇率（相对于TWD）
-    exchangeRates = {
-        'TWD': 1,
-        'USD': 0.032,  // 约31 TWD = 1 USD
-        'EUR': 0.029,  // 约34 TWD = 1 EUR
-        'JPY': 4.44,   // 约0.23 TWD = 1 JPY
-        'CNY': 0.22,   // 约4.5 TWD = 1 CNY
-        'HKD': 0.25,   // 约4 TWD = 1 HKD
-        'GBP': 0.025,  // 约40 TWD = 1 GBP
-        'AUD': 0.043,  // 约23 TWD = 1 AUD
-        'CAD': 0.044,  // 约23 TWD = 1 CAD
-        'SGD': 0.042   // 约24 TWD = 1 SGD
-    };
-}
-
-// 将货币转换为基准货币
-function convertToBaseCurrency(amount, fromCurrency) {
-    if (!fromCurrency || fromCurrency === baseCurrency) {
-        return amount;
-    }
-    
-    // 检查是否有汇率数据
-    if (!exchangeRates[fromCurrency]) {
-        console.warn(`找不到 ${fromCurrency} 的匯率，使用 1:1 匯率`);
-        return amount;
-    }
-    
-    // 将金额转换为基准货币
-    return amount / exchangeRates[fromCurrency];
-}
-
-// 将基准货币转换为目标货币
-function convertFromBaseCurrency(amount, toCurrency) {
-    if (!toCurrency || toCurrency === baseCurrency) {
-        return amount;
-    }
-    
-    // 检查是否有汇率数据
-    if (!exchangeRates[toCurrency]) {
-        console.warn(`找不到 ${toCurrency} 的匯率，使用 1:1 匯率`);
-        return amount;
-    }
-    
-    // 将基准货币金额转换为目标货币
-    return amount * exchangeRates[toCurrency];
-}
         
         // Search transactions with pagination and virtualization
         function searchTransactions() {
@@ -4327,50 +4085,35 @@ function convertFromBaseCurrency(amount, toCurrency) {
                 }
             });
             
+            // Save settings button
             document.getElementById('saveSettingsBtn').addEventListener('click', () => {
-    const currency = document.getElementById('baseCurrencySelect').value || appSettings.currency;
-    const inputSymbol = document.getElementById('currencySymbolInput').value;
-    const currencySymbol = inputSymbol || currencySymbols[currency] || '$';
-    
-    const syncRemindersEnabled = document.getElementById('enableSyncReminders').checked;
-    const theme = document.getElementById('themeSelect').value;
-    const enableVirtualization = document.getElementById('enableVirtualization').checked;
-    const pageSize = parseInt(document.getElementById('pageSize').value);
-    
-    // 修改應用設置
-    appSettings.currency = currency;
-    appSettings.currencySymbol = currencySymbol;
-    appSettings.syncRemindersEnabled = syncRemindersEnabled;
-    appSettings.theme = theme;
-    appSettings.enableVirtualization = enableVirtualization;
-    appSettings.pageSize = pageSize;
-    
-    // 更新基準貨幣（如果發生變化）
-    if (baseCurrency !== currency) {
-        baseCurrency = currency;
-        // 更新匯率
-        fetchExchangeRates();
-    }
-    
-    saveData('appSettings');
-    
-    // 保存匯率數據
-    if (hasLocalStorage) {
-        localStorage.setItem('finance_exchange_rates', JSON.stringify(exchangeRates));
-        localStorage.setItem('finance_rate_update', lastRateUpdate);
-    }
-    
-    updateCurrencyDisplay();
-    applyTheme();
-    applyVirtualizationSettings();
-    updateUI();
-    
-    closeModal('settingsModal');
-    notify('✅', '設定已保存', '您的設定已成功更新');
-    
-    // 刷新搜索結果
-    searchTransactions();
-});
+                const currency = document.getElementById('currencySelect').value;
+                const currencySymbol = document.getElementById('currencySymbolInput').value || currencySymbols[currency] || '$';
+                const syncRemindersEnabled = document.getElementById('enableSyncReminders').checked;
+                const theme = document.getElementById('themeSelect').value;
+                const enableVirtualization = document.getElementById('enableVirtualization').checked;
+                const pageSize = parseInt(document.getElementById('pageSize').value);
+                
+                appSettings.currency = currency;
+                appSettings.currencySymbol = currencySymbol;
+                appSettings.syncRemindersEnabled = syncRemindersEnabled;
+                appSettings.theme = theme;
+                appSettings.enableVirtualization = enableVirtualization;
+                appSettings.pageSize = pageSize;
+                
+                saveData('appSettings');
+                
+                updateCurrencyDisplay();
+                applyTheme();
+                applyVirtualizationSettings();
+                updateUI();
+                
+                closeModal('settingsModal');
+                notify('✅', '設定已保存', '您的設定已成功更新');
+                
+                // Refresh search results with new settings
+                searchTransactions();
+            });
             
             // Reset app button
             document.getElementById('resetAppBtn').addEventListener('click', () => {
@@ -4451,46 +4194,43 @@ function convertFromBaseCurrency(amount, toCurrency) {
             });
             
             // Add category budget button
-            // Add category budget button
-document.getElementById('addCategoryBudgetBtn').addEventListener('click', () => {
-    const categorySelect = document.getElementById('categoryForBudget');
-    const amountInput = document.getElementById('categoryBudgetAmount');
-    
-    const category = categorySelect.value;
-    const amount = parseFloat(amountInput.value);
-    
-    if (!category) {
-        notify('❌', '請選擇類別', '請選擇要設定預算的類別');
-        return;
-    }
-    
-    if (isNaN(amount) || amount <= 0) {
-        notify('❌', '無效金額', '請輸入有效的預算金額');
-        return;
-    }
-    
-    // Check if category budget already exists
-    const existingIndex = categoryBudgets.findIndex(b => b.category === category);
-    if (existingIndex !== -1) {
-        // Update existing
-        categoryBudgets[existingIndex].amount = amount;
-        notify('✅', '已更新', `${category} 的預算已更新為 ${appSettings.currencySymbol}${formatNumber(amount)}`);
-    } else {
-        // Add new
-        categoryBudgets.push({ category, amount });
-        notify('✅', '已添加', `已為 ${category} 設定預算 ${appSettings.currencySymbol}${formatNumber(amount)}`);
-    }
-    
-    saveData('categoryBudgets');
-    updateCategoryBudgetItems();
-    updateCategoryBudgetsOnDashboard();
-    // 更新总预算显示
-    updateTotalBudgetDisplay();
-    
-    // Reset inputs
-    categorySelect.value = '';
-    amountInput.value = '';
-});
+            document.getElementById('addCategoryBudgetBtn').addEventListener('click', () => {
+                const categorySelect = document.getElementById('categoryForBudget');
+                const amountInput = document.getElementById('categoryBudgetAmount');
+                
+                const category = categorySelect.value;
+                const amount = parseFloat(amountInput.value);
+                
+                if (!category) {
+                    notify('❌', '請選擇類別', '請選擇要設定預算的類別');
+                    return;
+                }
+                
+                if (isNaN(amount) || amount <= 0) {
+                    notify('❌', '無效金額', '請輸入有效的預算金額');
+                    return;
+                }
+                
+                // Check if category budget already exists
+                const existingIndex = categoryBudgets.findIndex(b => b.category === category);
+                if (existingIndex !== -1) {
+                    // Update existing
+                    categoryBudgets[existingIndex].amount = amount;
+                    notify('✅', '已更新', `${category} 的預算已更新為 ${appSettings.currencySymbol}${formatNumber(amount)}`);
+                } else {
+                    // Add new
+                    categoryBudgets.push({ category, amount });
+                    notify('✅', '已添加', `已為 ${category} 設定預算 ${appSettings.currencySymbol}${formatNumber(amount)}`);
+                }
+                
+                saveData('categoryBudgets');
+                updateCategoryBudgetItems();
+                updateCategoryBudgetsOnDashboard();
+                
+                // Reset inputs
+                categorySelect.value = '';
+                amountInput.value = '';
+            });
             
             // Save daily summary timing
             document.getElementById('dailySummaryTiming').addEventListener('change', function() {
@@ -4566,54 +4306,28 @@ document.getElementById('addCategoryBudgetBtn').addEventListener('click', () => 
                     }
                 }
             }, 200));
-            
-            document.getElementById('updateRatesBtn').addEventListener('click', async () => {
-                await fetchExchangeRates();
-                updateExchangeRatesList();
-                document.getElementById('lastRateUpdateText').textContent = formatDate(lastRateUpdate);
-            });
-    
-    // 显示/隐藏汇率按钮
-    document.getElementById('toggleRatesBtn').addEventListener('click', function() {
-        const ratesList = document.getElementById('exchangeRatesList');
-        ratesList.classList.toggle('hidden');
-    });
-    
-    // 基准货币更改
-    document.getElementById('baseCurrencySelect').addEventListener('change', function() {
-        baseCurrency = this.value;
-        // 更新汇率数据
-        fetchExchangeRates();
-    });
         }
         
         // Add a category by type (from the categories tab)
         function addCategoryByType(type, name) {
-    // 檢查類別是否已存在
-    if (categories[type].includes(name)) {
-        notify('❌', '類別已存在', `「${name}」類別已經存在。`);
-        return;
-    }
-    
-    // 新增類別
-    categories[type].push(name);
-    
-    // 只有当添加的是支出类别时，才同时添加到收入类别
-    if (type === 'expense' && !categories['income'].includes(name)) {
-        categories['income'].push(name);
-        notify('ℹ️', '類別已同步', `「${name}」類別已同時新增至收入類別中。`);
-    }
-    
-    saveData('categories');
-    
-    // 更新 UI
-    updateCategoriesManagement();
-    updateTransactionCategories();
-    updateStatisticsCategories();
-    updateCategoryBudgetDropdown();
-    
-    notify('✅', '類別已新增', `已成功新增「${name}」類別。`);
-}
+            // 檢查類別是否已存在
+            if (categories[type].includes(name)) {
+                notify('❌', '類別已存在', `「${name}」類別已經存在。`);
+                return;
+            }
+            
+            // 新增類別
+            categories[type].push(name);
+            saveData('categories');
+            
+            // 更新 UI
+            updateCategoriesManagement();
+            updateTransactionCategories();
+            updateStatisticsCategories();
+            updateCategoryBudgetDropdown();
+            
+            notify('✅', '類別已新增', `已成功新增「${name}」類別。`);
+        }
         
         // Delete a category
         function deleteCategory(type, name) {
@@ -4712,110 +4426,110 @@ document.getElementById('addCategoryBudgetBtn').addEventListener('click', () => 
             }, 10);
         }
         
-       // 將此函數完全替換
-function appendSearchResults(results, totalCount) {
-    if (results.length === 0) return;
-    
-    const resultsList = document.getElementById('searchResultsList');
-    const resultsCountEl = document.getElementById('resultsCount');
-    
-    // 添加每個結果
-    results.forEach(transaction => {
-        const row = document.createElement('tr');
-        
-        // Date
-        const dateCell = document.createElement('td');
-        dateCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
-        dateCell.textContent = formatDate(transaction.date);
-        row.appendChild(dateCell);
-        
-        // Type
-        const typeCell = document.createElement('td');
-        typeCell.className = 'px-6 py-4 whitespace-nowrap';
-        typeCell.textContent = transaction.type === 'income' ? '📈 收入' : (transaction.type === 'expense' ? '📉 支出' : '🔄 轉賬');
-        row.appendChild(typeCell);
-        
-        // Account
-        const accountCell = document.createElement('td');
-        accountCell.className = 'px-6 py-4 whitespace-nowrap';
-        
-        const account = getAccount(transaction.account);
-        const accountName = account ? account.name : '未知戶口';
-        const currencyCode = account ? account.currency : appSettings.currency;
-        
-        accountCell.innerHTML = `${accountName} <span class="currency-label">${currencyCode}</span>`;
-        row.appendChild(accountCell);
-        
-        // Category
-        const categoryCell = document.createElement('td');
-        categoryCell.className = 'px-6 py-4 whitespace-nowrap';
-        categoryCell.textContent = transaction.category;
-        row.appendChild(categoryCell);
-        
-        // Amount
-        const amountCell = document.createElement('td');
-        amountCell.className = 'px-6 py-4 whitespace-nowrap';
-        
-        // Get currency symbol for this account
-        const currencySymbol = getAccountCurrencySymbol(transaction.account);
-        
-        if (transaction.type === 'income') {
-            amountCell.classList.add('text-green-600');
-            amountCell.classList.add('font-medium');
-        } else if (transaction.type === 'expense') {
-            amountCell.classList.add('text-red-600');
-            amountCell.classList.add('font-medium');
-        } else {
-            amountCell.classList.add('text-blue-600');
-            amountCell.classList.add('font-medium');
-        }
-        amountCell.textContent = currencySymbol + formatNumber(transaction.amount);
-        row.appendChild(amountCell);
-        
-        // Note
-        const noteCell = document.createElement('td');
-        noteCell.className = 'px-6 py-4 whitespace-nowrap text-gray-500';
-        noteCell.textContent = transaction.note || '-';
-        row.appendChild(noteCell);
-        
-        // Receipt
-        const receiptCell = document.createElement('td');
-        receiptCell.className = 'px-6 py-4 whitespace-nowrap text-center';
-        if (transaction.receipt) {
-            const viewBtn = document.createElement('button');
-            viewBtn.className = 'text-primary hover:text-primary-dark';
-            viewBtn.innerHTML = '<i class="fas fa-image"></i>';
-            viewBtn.addEventListener('click', () => {
-                showReceiptImage(transaction.receipt);
+        // Append more search results without clearing the existing ones
+        function appendSearchResults(results, totalCount) {
+            if (results.length === 0) return;
+            
+            const resultsList = document.getElementById('searchResultsList');
+            const resultsCountEl = document.getElementById('resultsCount');
+            
+            // Add each result
+            results.forEach(transaction => {
+                const row = document.createElement('tr');
+                
+                // Date
+                const dateCell = document.createElement('td');
+                dateCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                dateCell.textContent = formatDate(transaction.date);
+                row.appendChild(dateCell);
+                
+                // Type
+                const typeCell = document.createElement('td');
+                typeCell.className = 'px-6 py-4 whitespace-nowrap';
+                typeCell.textContent = transaction.type === 'income' ? '📈 收入' : (transaction.type === 'expense' ? '📉 支出' : '🔄 轉賬');
+                row.appendChild(typeCell);
+                
+                // Account
+                const accountCell = document.createElement('td');
+                accountCell.className = 'px-6 py-4 whitespace-nowrap';
+                
+                const account = getAccount(transaction.account);
+                const accountName = account ? account.name : '未知戶口';
+                const currencyCode = account ? account.currency : appSettings.currency;
+                
+                accountCell.innerHTML = `${accountName} <span class="currency-label">${currencyCode}</span>`;
+                row.appendChild(accountCell);
+                
+                // Category
+                const categoryCell = document.createElement('td');
+                categoryCell.className = 'px-6 py-4 whitespace-nowrap';
+                categoryCell.textContent = transaction.category;
+                row.appendChild(categoryCell);
+                
+                // Amount
+                const amountCell = document.createElement('td');
+                amountCell.className = 'px-6 py-4 whitespace-nowrap';
+                
+                // Get currency symbol for this account
+                const currencySymbol = getAccountCurrencySymbol(transaction.account);
+                
+                if (transaction.type === 'income') {
+                    amountCell.classList.add('text-green-600');
+                    amountCell.classList.add('font-medium');
+                } else if (transaction.type === 'expense') {
+                    amountCell.classList.add('text-red-600');
+                    amountCell.classList.add('font-medium');
+                } else {
+                    amountCell.classList.add('text-blue-600');
+                    amountCell.classList.add('font-medium');
+                }
+                amountCell.textContent = currencySymbol + formatNumber(transaction.amount);
+                row.appendChild(amountCell);
+                
+                // Note
+                const noteCell = document.createElement('td');
+                noteCell.className = 'px-6 py-4 whitespace-nowrap text-gray-500';
+                noteCell.textContent = transaction.note || '-';
+                row.appendChild(noteCell);
+                
+                // Receipt
+                const receiptCell = document.createElement('td');
+                receiptCell.className = 'px-6 py-4 whitespace-nowrap text-center';
+                if (transaction.receipt) {
+                    const viewBtn = document.createElement('button');
+                    viewBtn.className = 'text-primary hover:text-primary-dark';
+                    viewBtn.innerHTML = '<i class="fas fa-image"></i>';
+                    viewBtn.addEventListener('click', () => {
+                        showReceiptImage(transaction.receipt);
+                    });
+                    receiptCell.appendChild(viewBtn);
+                } else {
+                    receiptCell.textContent = '-';
+                }
+                row.appendChild(receiptCell);
+                
+                // Action
+                const actionCell = document.createElement('td');
+                actionCell.className = 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium';
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'text-red-600 hover:text-red-900';
+                deleteBtn.textContent = '刪除';
+                deleteBtn.addEventListener('click', () => deleteTransaction(transaction.id));
+                
+                actionCell.appendChild(deleteBtn);
+                row.appendChild(actionCell);
+                
+                resultsList.appendChild(row);
             });
-            receiptCell.appendChild(viewBtn);
-        } else {
-            receiptCell.textContent = '-';
+            
+            // Update results count
+            const currentDisplayedCount = paginationState.currentPage * paginationState.pageSize;
+            const displayCount = Math.min(currentDisplayedCount, totalCount);
+            
+            resultsCountEl.textContent = `顯示 ${displayCount} 筆交易記錄（共 ${totalCount} 筆）`;
         }
-        row.appendChild(receiptCell);
         
-        // Action
-        const actionCell = document.createElement('td');
-        actionCell.className = 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium';
-        
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'text-red-600 hover:text-red-900';
-        deleteBtn.textContent = '刪除';
-        deleteBtn.addEventListener('click', () => deleteTransaction(transaction.id));
-        
-        actionCell.appendChild(deleteBtn);
-        row.appendChild(actionCell);
-        
-        resultsList.appendChild(row);
-    });
-    
-    // Update results count
-    const currentDisplayedCount = paginationState.currentPage * paginationState.pageSize;
-    const displayCount = Math.min(currentDisplayedCount, totalCount);
-    
-    resultsCountEl.textContent = `顯示 ${displayCount} 筆交易記錄（共 ${totalCount} 筆）`;
-}
-    
         // Switch tabs
         function switchTab(tabId) {
             // Update tab buttons
@@ -5229,57 +4943,54 @@ function appendSearchResults(results, totalCount) {
             notify('✅', '交易已記錄', `${transactionType === 'income' ? '收入' : '支出'}交易已成功記錄: ${currencySymbol}${formatNumber(amount)}`);
         }
         
-        /// 修改为:
-function saveBudget() {
-    const cycleSelect = document.getElementById('budgetCycle');
-    const resetDaySelect = document.getElementById('budgetResetDay');
-    
-    const cycle = cycleSelect.value;
-    const resetDay = resetDaySelect.value;
-    
-    // 計算所有類別預算的總和作為總預算
-    let totalAmount = calculateTotalBudget();
-    
-    // 如果沒有類別預算，使用預設預算或保留現有預算
-    // 如果沒有類別預算，使用預設預算
-if (totalAmount === 0) {
-    const defaultBudget = parseFloat(document.getElementById('defaultBudgetAmount').value);
-    totalAmount = !isNaN(defaultBudget) ? defaultBudget : budget.amount || 0;
-}
-    
-    // 獲取閾值
-    const thresholdInputs = document.querySelectorAll('.threshold-value');
-    const thresholds = Array.from(thresholdInputs).map(input => parseInt(input.value))
-        .filter(val => !isNaN(val) && val > 0 && val <= 100);
-    
-    if (thresholds.length === 0) {
-        thresholds.push(80); // Default threshold if none valid
-    }
-    
-    // Sort thresholds in descending order
-    thresholds.sort((a, b) => b - a);
-    
-    budget.amount = totalAmount;
-    budget.cycle = cycle;
-    budget.resetDay = resetDay;
-    budget.thresholds = thresholds;
-    
-    // Get daily summary timing
-    appSettings.dailySummaryTiming = document.getElementById('dailySummaryTiming').value;
-    
-    // Set last reset to today if not already set
-    if (!budget.lastReset) {
-        budget.lastReset = new Date().toISOString();
-    }
-    
-    saveData('budget');
-    saveData('appSettings');
-    
-    updateBudgetStatus();
-    generateFinancialAdvice();
-    
-    notify('✅', '預算已設定', '您的預算設定已成功保存。');
-}
+        // Save budget settings
+        function saveBudget() {
+            const amountInput = document.getElementById('budgetAmountInput');
+            const cycleSelect = document.getElementById('budgetCycle');
+            const resetDaySelect = document.getElementById('budgetResetDay');
+            
+            const amount = parseFloat(amountInput.value);
+            const cycle = cycleSelect.value;
+            const resetDay = resetDaySelect.value;
+            
+            if (isNaN(amount) || amount <= 0) {
+                notify('❌', '預算設定失敗', '請輸入有效的預算金額。');
+                return;
+            }
+            
+            // Get thresholds from UI
+            const thresholdInputs = document.querySelectorAll('.threshold-value');
+            const thresholds = Array.from(thresholdInputs).map(input => parseInt(input.value))
+                .filter(val => !isNaN(val) && val > 0 && val <= 100);
+            
+            if (thresholds.length === 0) {
+                thresholds.push(80); // Default threshold if none valid
+            }
+            
+            // Sort thresholds in descending order
+            thresholds.sort((a, b) => b - a);
+            
+            budget.amount = amount;
+            budget.cycle = cycle;
+            budget.resetDay = resetDay;
+            budget.thresholds = thresholds;
+            
+            // Get daily summary timing
+            appSettings.dailySummaryTiming = document.getElementById('dailySummaryTiming').value;
+            
+            // Set last reset to today if not already set
+            if (!budget.lastReset) {
+                budget.lastReset = new Date().toISOString();
+            }
+            
+            saveData('budget');
+            saveData('appSettings');
+            
+            updateBudgetStatus();
+            generateFinancialAdvice();
+            
+            notify('✅', '預算已設定', '您的預算設定已成功保存。');
+        }
         
         // Delete a transaction
         function deleteTransaction(transactionId) {
@@ -5425,14 +5136,9 @@ if (totalAmount === 0) {
             return formatDateForInput(date);
         }
         
-        // 修改getTotalBalance函数（约5898行左右）
-function getTotalBalance() {
-    // 转换每个账户的余额为基准货币，然后求和
-    return accounts.reduce((sum, account) => {
-        const convertedBalance = convertToBaseCurrency(account.balance, account.currency);
-        return sum + convertedBalance;
-    }, 0);
-}
+        function getTotalBalance() {
+            return accounts.reduce((sum, account) => sum + account.balance, 0);
+        }
         
         function getTodayTransactions() {
             const today = getTodayFormatted();
@@ -5476,12 +5182,18 @@ function getTotalBalance() {
     
     const lastReset = new Date(budget.lastReset);
     
-    // 僅計算支出總額
+    // 計算支出總額
     const expenses = transactions
         .filter(t => t.type === 'expense' && new Date(t.date) >= lastReset)
         .reduce((sum, t) => sum + parseFloat(t.amount), 0);
     
-    return expenses;
+    // 計算收入總額 - 現在收入也計入預算
+    const income = transactions
+        .filter(t => t.type === 'income' && new Date(t.date) >= lastReset)
+        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    
+    // 合併計算預算使用情況 (支出+收入)
+    return expenses + income;
 }
         
         function getBudgetRemaining() {
@@ -5573,7 +5285,7 @@ function getTotalBalance() {
             const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
             return Math.max(0, daysRemaining);
-        }        
+        }
     </script>
 </body>
 </html>
