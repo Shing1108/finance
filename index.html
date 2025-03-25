@@ -385,6 +385,50 @@
         .category-delete-btn:hover {
             opacity: 1;
         }
+        /* 分頁橫向滑動樣式 */
+#tabsContainer {
+    display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 5px;
+}
+
+#tabsContainer::-webkit-scrollbar {
+    height: 4px;
+}
+
+#tabsContainer::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#tabsContainer::-webkit-scrollbar-thumb {
+    background: #CCC;
+    border-radius: 4px;
+}
+
+#tabsContainer::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+.dark #tabsContainer::-webkit-scrollbar-track {
+    background: #333;
+}
+
+.dark #tabsContainer::-webkit-scrollbar-thumb {
+    background: #666;
+}
+
+@media (hover: none) {
+    #tabsContainer {
+        scrollbar-width: none;
+    }
+    #tabsContainer::-webkit-scrollbar {
+        display: none;
+    }
+}
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -937,6 +981,63 @@
                         </div>
                     </div>
                 </div>
+                <!-- Exchange Rates Content -->
+<div id="exchangeRates" class="tab-content slide-enter">
+    <div class="mb-6">
+        <h2 class="text-xl font-bold mb-4 text-gray-800"><span class="mr-2">💱</span>匯率資訊</h2>
+        
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <div id="exchangeRatePageStatus" class="sync-status mb-4">
+                <i class="fas fa-circle-info"></i>
+                <span>載入匯率資訊中...</span>
+            </div>
+            
+            <div class="mb-4">
+                <h3 class="font-medium mb-3">選擇基準貨幣</h3>
+                <select id="pageBaseCurrencySelect" class="w-full p-2 border border-gray-300 rounded-md text-base">
+                    <!-- 貨幣選項會動態添加 -->
+                </select>
+            </div>
+            
+            <div id="pageExchangeRatesContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <!-- 匯率卡片會動態添加 -->
+            </div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="font-medium mb-3">貨幣轉換計算機</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-700 mb-2">從</label>
+                    <div class="flex">
+                        <select id="pageFromCurrency" class="flex-1 p-2 border border-gray-300 rounded-md text-base">
+                            <!-- 貨幣選項會動態添加 -->
+                        </select>
+                        <input type="number" id="pageFromAmount" value="1" min="0" step="0.01" class="flex-1 p-2 border border-gray-300 rounded-md text-base ml-2">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">至</label>
+                    <div class="flex">
+                        <select id="pageToCurrency" class="flex-1 p-2 border border-gray-300 rounded-md text-base">
+                            <!-- 貨幣選項會動態添加 -->
+                        </select>
+                        <input type="number" id="pageToAmount" readonly class="flex-1 p-2 border border-gray-300 rounded-md text-base ml-2 bg-gray-50">
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 border-t border-gray-200 pt-4">
+                <div class="flex justify-between">
+                    <span id="pageLastUpdatedInfo" class="text-sm text-gray-500">匯率更新時間: </span>
+                    <button id="pageUpdateRatesBtn" class="bg-green-500 text-white px-3 py-1 rounded-md hover:bg-green-600 transition text-sm">
+                        <i class="fas fa-sync-alt mr-1"></i> 立即更新匯率
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+                
                 
                 <!-- 每日消費摘要 -->
                 <div>
@@ -1385,15 +1486,16 @@
     </div>
 
     <script>
-        // Google API 相關配置
+        
         const GOOGLE_API_CONFIG = {
-            apiKey: 'AIzaSyB6Q_qkp0PowjLYXM2hGPwYGXm7RTOgPBQ', // 需要替換為您的 Google API Key
-            clientId: '75969942287-bkhslov3f4mi6q8lao4ud19bnid9p14e.apps.googleusercontent.com', // 需要替換為您的 Google Client ID
+            apiKey: 'AIzaSyB6Q_qkp0PowjLYXM2hGPwYGXm7RTOgPBQ',
+            clientId: '75969942287-bkhslov3f4mi6q8lao4ud19bnid9p14e.apps.googleusercontent.com',
             discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
             scopes: 'https://www.googleapis.com/auth/drive.file',
             appFolderName: '進階財務追蹤器',
             dataFileName: 'finance_data.json'
         };
+        
 
         // Global variables to store data
         let accounts = [];
@@ -4844,6 +4946,30 @@ updateTotalBudgetDisplay();
                 // Keep transaction type
                 updateTransactionTypeUI();
                 updateTransactionCategories();
+            } else if (tabId === 'exchangeRates') {
+                // 檢查匯率功能是否啟用
+                if (!appSettings.exchangeRates.enabled) {
+                    notify('ℹ️', '未啟用匯率功能', '請在設定中啟用即時匯率功能');
+                    // 切換回之前的頁面
+                    setTimeout(() => {
+                        // 找到當前活躍的頁籤
+                        const activeBtn = document.querySelector('.tab-btn.text-primary');
+                        if (activeBtn) {
+                            activeBtn.click();
+                        } else {
+                            // 默認切換到儀表板
+                            switchTab('dashboard');
+                               }
+                    }, 100);
+                    return;
+                }
+                // 檢查是否有匯率數據
+                if (!exchangeRates.rates || Object.keys(exchangeRates.rates).length === 0) {
+                    notify('ℹ️', '無匯率數據', '請在設定中更新匯率數據');
+                    // 繼續切換到匯率頁面，因為用戶可以在頁面上點擊更新按鈕
+                }
+                // 更新匯率頁面內容
+                setTimeout(updateExchangeRatesContent, 100);
             } else if (tabId === 'advice') {
                 // Regenerate advice when switching to the advice tab
                 generateFinancialAdvice();
@@ -5967,36 +6093,236 @@ function updateCurrencyCalculator() {
     document.getElementById('toAmount').value = convertedAmount.toFixed(2);
 }
 
+// 更新匯率頁面內容
+function updateExchangeRatesContent() {
+    const baseCurrencySelect = document.getElementById('pageBaseCurrencySelect');
+    const fromCurrencySelect = document.getElementById('pageFromCurrency');
+    const toCurrencySelect = document.getElementById('pageToCurrency');
+    const fromAmountInput = document.getElementById('pageFromAmount');
+    const toAmountInput = document.getElementById('pageToAmount');
+    const lastUpdatedInfo = document.getElementById('pageLastUpdatedInfo');
+    const statusElement = document.getElementById('exchangeRatePageStatus');
+    
+    // 檢查匯率數據
+    if (!exchangeRates.rates || Object.keys(exchangeRates.rates).length === 0) {
+        statusElement.className = 'sync-status error';
+        statusElement.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>尚無匯率數據，請在設定中更新匯率</span>';
+        return;
+    }
+    
+    // 更新狀態
+    statusElement.className = 'sync-status success';
+    statusElement.innerHTML = '<i class="fas fa-check-circle"></i><span>匯率數據已載入</span>';
+    
+    // 填充貨幣選擇器
+    const currencies = Object.keys(exchangeRates.rates);
+    currencies.sort(); // 按字母排序
+    
+    // 添加基準貨幣
+    currencies.unshift(exchangeRates.base);
+    
+    // 清空現有選項
+    baseCurrencySelect.innerHTML = '';
+    fromCurrencySelect.innerHTML = '';
+    toCurrencySelect.innerHTML = '';
+    
+    // 添加貨幣選項
+    currencies.forEach(currency => {
+        const optionBase = document.createElement('option');
+        optionBase.value = currency;
+        optionBase.textContent = currency;
+        if (currency === appSettings.currency) {
+            optionBase.selected = true;
+        }
+        baseCurrencySelect.appendChild(optionBase);
+        
+        const optionFrom = document.createElement('option');
+        optionFrom.value = currency;
+        optionFrom.textContent = currency;
+        if (currency === appSettings.currency) {
+            optionFrom.selected = true;
+        }
+        fromCurrencySelect.appendChild(optionFrom);
+        
+        const optionTo = document.createElement('option');
+        optionTo.value = currency;
+        optionTo.textContent = currency;
+        toCurrencySelect.appendChild(optionTo);
+    });
+    
+    // 設置默認目標貨幣為美元或第一個非基準貨幣
+    if (currencies.includes('USD') && exchangeRates.base !== 'USD') {
+        toCurrencySelect.value = 'USD';
+    } else if (currencies.length > 1) {
+        toCurrencySelect.value = currencies.find(c => c !== exchangeRates.base) || currencies[0];
+    }
+    
+    // 更新匯率卡片
+    updatePageExchangeRateCards(exchangeRates.base);
+    
+    // 更新計算器初始值
+    updatePageCurrencyCalculator();
+    
+    // 更新最後更新時間
+    if (exchangeRates.lastUpdated) {
+        const lastUpdate = new Date(exchangeRates.lastUpdated);
+        lastUpdatedInfo.textContent = `匯率更新時間: ${lastUpdate.toLocaleString()}`;
+    } else {
+        lastUpdatedInfo.textContent = '匯率尚未更新';
+    }
+    
+    // 添加事件監聽器
+    baseCurrencySelect.addEventListener('change', function() {
+        updatePageExchangeRateCards(this.value);
+    });
+    
+    fromCurrencySelect.addEventListener('change', updatePageCurrencyCalculator);
+    toCurrencySelect.addEventListener('change', updatePageCurrencyCalculator);
+    fromAmountInput.addEventListener('input', updatePageCurrencyCalculator);
+    
+    // 添加更新按鈕事件
+    document.getElementById('pageUpdateRatesBtn').addEventListener('click', function() {
+        updateExchangeRates();
+        setTimeout(() => {
+            updateExchangeRatesContent();
+        }, 1000);
+    });
+}
+
+// 頁面用的匯率卡片更新
+function updatePageExchangeRateCards(baseCurrency) {
+    const container = document.getElementById('pageExchangeRatesContainer');
+    container.innerHTML = '';
+    
+    // 如果沒有匯率數據或基準貨幣匯率不存在
+    if (!exchangeRates.rates || !exchangeRates.rates[baseCurrency] && baseCurrency !== exchangeRates.base) {
+        container.innerHTML = '<div class="col-span-3 text-center text-gray-500">無法顯示匯率數據</div>';
+        return;
+    }
+    
+    // 獲取所有貨幣對基準貨幣的匯率
+    const rates = {};
+    
+    // 如果當前基準貨幣就是API基準貨幣
+    if (baseCurrency === exchangeRates.base) {
+        Object.entries(exchangeRates.rates).forEach(([currency, rate]) => {
+            if (currency !== baseCurrency) {
+                rates[currency] = rate;
+            }
+        });
+    } else {
+        // 如果不是API基準貨幣，需要轉換
+        const baseRate = exchangeRates.rates[baseCurrency];
+        
+        Object.entries(exchangeRates.rates).forEach(([currency, rate]) => {
+            if (currency !== baseCurrency) {
+                rates[currency] = rate / baseRate;
+            }
+        });
+        
+        // 添加API基準貨幣的匯率
+        rates[exchangeRates.base] = 1 / baseRate;
+    }
+    
+    // 添加常用貨幣的卡片
+    const popularCurrencies = ['USD', 'EUR', 'JPY', 'CNY', 'HKD', 'GBP', 'TWD', 'AUD', 'CAD', 'SGD'];
+    const availableCurrencies = Object.keys(rates);
+    
+    // 按流行程度排序
+    popularCurrencies
+        .filter(currency => availableCurrencies.includes(currency) && currency !== baseCurrency)
+        .forEach(currency => {
+            createPageExchangeRateCard(container, baseCurrency, currency, rates[currency]);
+        });
+    
+    // 添加其他貨幣
+    availableCurrencies
+        .filter(currency => !popularCurrencies.includes(currency) && currency !== baseCurrency)
+        .sort()
+        .forEach(currency => {
+            createPageExchangeRateCard(container, baseCurrency, currency, rates[currency]);
+        });
+}
+
+// 創建頁面用的匯率卡片
+function createPageExchangeRateCard(container, baseCurrency, targetCurrency, rate) {
+    const card = document.createElement('div');
+    card.className = 'exchange-rate-card bg-white p-4 rounded-lg shadow';
+    
+    const header = document.createElement('div');
+    header.className = 'flex justify-between items-center mb-2';
+    
+    const currencyName = document.createElement('span');
+    currencyName.className = 'font-bold';
+    currencyName.textContent = targetCurrency;
+    
+    const currencySymbolEl = document.createElement('span');
+    currencySymbolEl.className = 'text-gray-500';
+    currencySymbolEl.textContent = currencySymbols[targetCurrency] || '';
+    
+    header.appendChild(currencyName);
+    header.appendChild(currencySymbolEl);
+    
+    const rateDisplay = document.createElement('div');
+    rateDisplay.className = 'text-lg font-medium';
+    rateDisplay.textContent = `1 ${baseCurrency} = ${rate.toFixed(4)} ${targetCurrency}`;
+    
+    const inverseRate = 1 / rate;
+    const inverseDisplay = document.createElement('div');
+    inverseDisplay.className = 'text-sm text-gray-500 exchange-rate-info';
+    inverseDisplay.textContent = `1 ${targetCurrency} = ${inverseRate.toFixed(4)} ${baseCurrency}`;
+    
+    // 添加工具提示
+    const tooltip = document.createElement('span');
+    tooltip.className = 'exchange-rate-tooltip';
+    tooltip.textContent = `點擊複製: ${inverseRate.toFixed(4)}`;
+    inverseDisplay.appendChild(tooltip);
+    
+    // 點擊複製匯率
+    inverseDisplay.addEventListener('click', function() {
+        navigator.clipboard.writeText(inverseRate.toFixed(4)).then(() => {
+            notify('✅', '已複製', `匯率 ${inverseRate.toFixed(4)} 已複製到剪貼板`);
+        }).catch(err => {
+            console.error('无法复制文本: ', err);
+        });
+    });
+    
+    card.appendChild(header);
+    card.appendChild(rateDisplay);
+    card.appendChild(inverseDisplay);
+    
+    container.appendChild(card);
+}
+
+// 更新頁面貨幣計算器
+function updatePageCurrencyCalculator() {
+    const fromCurrency = document.getElementById('pageFromCurrency').value;
+    const toCurrency = document.getElementById('pageToCurrency').value;
+    const fromAmount = parseFloat(document.getElementById('pageFromAmount').value) || 0;
+    
+    if (!fromCurrency || !toCurrency) return;
+    
+    const convertedAmount = convertCurrency(fromAmount, fromCurrency, toCurrency);
+    document.getElementById('pageToAmount').value = convertedAmount.toFixed(2);
+}
+
 // 在导航栏添加汇率信息按钮
 function addExchangeRateButton() {
     const navLinks = document.getElementById('tabsContainer');
     
-    // 创建汇率按钮
+    // 創建匯率按鈕，添加 tab-btn 類別和 data-tab 屬性
     const exchangeRateBtn = document.createElement('li');
     exchangeRateBtn.className = 'mr-2';
     exchangeRateBtn.innerHTML = `
-        <button id="exchangeRatesBtn" class="inline-block py-2 px-4 border-b-2 font-medium text-gray-500 hover:text-gray-700 border-transparent">
+        <button data-tab="exchangeRates" class="tab-btn inline-block py-2 px-4 border-b-2 font-medium text-gray-500 hover:text-gray-700 border-transparent">
             <span class="mr-1">💱</span>匯率
         </button>
     `;
     
-    // 添加到导航栏
+    // 添加到導航欄
     navLinks.appendChild(exchangeRateBtn);
     
-    // 添加点击事件
-    document.getElementById('exchangeRatesBtn').addEventListener('click', function() {
-        if (!appSettings.exchangeRates.enabled) {
-            notify('ℹ️', '未啟用匯率功能', '請在設定中啟用即時匯率功能');
-            return;
-        }
-        
-        if (!exchangeRates.rates || Object.keys(exchangeRates.rates).length === 0) {
-            notify('ℹ️', '無匯率數據', '請在設定中更新匯率數據');
-            return;
-        }
-        
-        setupExchangeRatesModal();
-    });
+    // 為新增的按鈕添加標籤切換事件（這個事件會由setupEventListeners自動處理）
 }
         
     </script>
