@@ -483,10 +483,6 @@
     <span><span id="currencySymbol5">$</span><span id="budgetUsed"></span></span>
 </div>
                             <div class="mb-2 flex justify-between">
-                                <span class="text-gray-600">淨支出:</span>
-                                <span class="font-medium"><span id="currencySymbol5">$</span><span id="budgetUsed"></span></span>
-                            </div>
-                            <div class="mb-2 flex justify-between">
                                 <span class="text-gray-600">剩餘預算:</span>
                                 <span id="budgetRemaining" class="font-medium"></span>
                             </div>
@@ -3245,10 +3241,9 @@ updateTotalBudgetDisplay();
         
         // Update settings modal
 // Update settings modal
-function updateSettingsModal() {
-    // 假設我們使用 baseCurrencySelect 代替 currencySelect
-    document.getElementById('baseCurrencySelect').value = appSettings.currency;
-    // 不再使用 currencySymbolInput
+functionfunction updateSettingsModal() {
+    document.getElementById('currencySelect').value = appSettings.currency;
+    document.getElementById('currencySymbolInput').value = appSettings.currencySymbol;
     document.getElementById('enableSyncReminders').checked = appSettings.syncRemindersEnabled;
     document.getElementById('themeSelect').value = appSettings.theme;
     document.getElementById('enableVirtualization').checked = appSettings.enableVirtualization;
@@ -4329,10 +4324,9 @@ function convertFromBaseCurrency(amount, toCurrency) {
             });
             
             document.getElementById('saveSettingsBtn').addEventListener('click', () => {
-    // 使用基準貨幣作為應用貨幣
-    const currency = document.getElementById('baseCurrencySelect').value;
-    // 使用對應貨幣的預設符號
-    const currencySymbol = currencySymbols[currency] || '$';
+    const currency = document.getElementById('currencySelect').value;
+    const inputSymbol = document.getElementById('currencySymbolInput').value;
+    const currencySymbol = inputSymbol || currencySymbols[currency] || '$';
     
     const syncRemindersEnabled = document.getElementById('enableSyncReminders').checked;
     const theme = document.getElementById('themeSelect').value;
