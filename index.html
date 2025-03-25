@@ -2826,7 +2826,6 @@ updateTotalBudgetDisplay();
             });
         }
         
-        // Update category budgets on dashboard
         function updateCategoryBudgetsOnDashboard() {
     const categoryBudgetList = document.getElementById('categoryBudgetList');
     const categoryBudgetsContainer = document.getElementById('categoryBudgets');
@@ -2847,12 +2846,27 @@ updateTotalBudgetDisplay();
     
     // 添加每個類別預算
     categoryBudgets.forEach(catBudget => {
-        // 計算此類別的預算使用情況（包括收入和支出）
-        const spent = transactions
-            .filter(t => (t.category === catBudget.category) && new Date(t.date) >= monthStart)
+        // 计算支出 - 减少预算
+        const expenses = transactions
+            .filter(t => (t.category === catBudget.category) && 
+                       (t.type === 'expense') && 
+                       new Date(t.date) >= monthStart)
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);
         
-        const percentage = catBudget.amount > 0 ? Math.min(100, (spent / catBudget.amount) * 100) : 0;
+        // 计算收入 - 增加预算
+        const income = transactions
+            .filter(t => (t.category === catBudget.category) && 
+                       (t.type === 'income') && 
+                       new Date(t.date) >= monthStart)
+            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        
+        // 支出减去收入 = 净支出
+        const netSpent = expenses - income;
+        
+        // 如果净支出为负（即收入大于支出），则视为0
+        const effectiveSpent = Math.max(0, netSpent);
+        
+        const percentage = catBudget.amount > 0 ? Math.min(100, (effectiveSpent / catBudget.amount) * 100) : 0;
         
         const item = document.createElement('div');
         item.className = 'mb-3';
@@ -2866,7 +2880,15 @@ updateTotalBudgetDisplay();
         
         const amountText = document.createElement('div');
         amountText.className = 'text-sm';
-        amountText.textContent = `${appSettings.currencySymbol}${formatNumber(spent)} / ${appSettings.currencySymbol}${formatNumber(catBudget.amount)}`;
+        
+        // 显示净支出和预算
+        const remainingBudget = Math.max(0, catBudget.amount - effectiveSpent);
+        amountText.textContent = `${appSettings.currencySymbol}${formatNumber(effectiveSpent)} / ${appSettings.currencySymbol}${formatNumber(catBudget.amount)}`;
+        
+        // 添加净余额显示
+        const balanceText = document.createElement('div');
+        balanceText.className = 'text-xs text-gray-500';
+        balanceText.textContent = `剩餘: ${appSettings.currencySymbol}${formatNumber(remainingBudget)}`;
         
         const progressBar = document.createElement('div');
         progressBar.className = 'category-budget-bar';
@@ -2889,6 +2911,7 @@ updateTotalBudgetDisplay();
         progressBar.appendChild(progressFill);
         
         item.appendChild(header);
+        item.appendChild(balanceText); // 添加余额显示
         item.appendChild(progressBar);
         
         categoryBudgetList.appendChild(item);
@@ -4326,24 +4349,31 @@ updateTotalBudgetDisplay();
         
         // Add a category by type (from the categories tab)
         function addCategoryByType(type, name) {
-            // 檢查類別是否已存在
-            if (categories[type].includes(name)) {
-                notify('❌', '類別已存在', `「${name}」類別已經存在。`);
-                return;
-            }
-            
-            // 新增類別
-            categories[type].push(name);
-            saveData('categories');
-            
-            // 更新 UI
-            updateCategoriesManagement();
-            updateTransactionCategories();
-            updateStatisticsCategories();
-            updateCategoryBudgetDropdown();
-            
-            notify('✅', '類別已新增', `已成功新增「${name}」類別。`);
-        }
+    // 檢查類別是否已存在
+    if (categories[type].includes(name)) {
+        notify('❌', '類別已存在', `「${name}」類別已經存在。`);
+        return;
+    }
+    
+    // 新增類別
+    categories[type].push(name);
+    
+    // 只有当添加的是支出类别时，才同时添加到收入类别
+    if (type === 'expense' && !categories['income'].includes(name)) {
+        categories['income'].push(name);
+        notify('ℹ️', '類別已同步', `「${name}」類別已同時新增至收入類別中。`);
+    }
+    
+    saveData('categories');
+    
+    // 更新 UI
+    updateCategoriesManagement();
+    updateTransactionCategories();
+    updateStatisticsCategories();
+    updateCategoryBudgetDropdown();
+    
+    notify('✅', '類別已新增', `已成功新增「${name}」類別。`);
+}
         
         // Delete a category
         function deleteCategory(type, name) {
@@ -5195,18 +5225,21 @@ function saveBudget() {
     
     const lastReset = new Date(budget.lastReset);
     
-    // 計算支出總額
+    // 计算支出总额
     const expenses = transactions
         .filter(t => t.type === 'expense' && new Date(t.date) >= lastReset)
         .reduce((sum, t) => sum + parseFloat(t.amount), 0);
     
-    // 計算收入總額 - 現在收入也計入預算
+    // 计算收入总额
     const income = transactions
         .filter(t => t.type === 'income' && new Date(t.date) >= lastReset)
         .reduce((sum, t) => sum + parseFloat(t.amount), 0);
     
-    // 合併計算預算使用情況 (支出+收入)
-    return expenses + income;
+    // 支出减去收入 = 净支出
+    const netExpenses = expenses - income;
+    
+    // 如果净支出为负（即收入大于支出），则返回0
+    return Math.max(0, netExpenses);
 }
         
         function getBudgetRemaining() {
