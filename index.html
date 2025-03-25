@@ -637,10 +637,16 @@
                     <h2 class="text-xl font-bold mb-4"><span class="mr-2">⚙️</span>總預算設定</h2>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-gray-700 mb-2">預算金額</label>
-                            <input type="number" id="budgetAmountInput" placeholder="輸入預算金額" class="w-full p-2 border border-gray-300 rounded-md text-base">
-                        </div>
+           
+<div>
+    <label class="block text-gray-700 mb-2">預算金額 (類別預算總和)</label>
+    <div class="flex items-center">
+        <div id="totalBudgetDisplay" class="p-2 bg-gray-100 border border-gray-300 rounded-md text-base w-full">
+            <span id="totalBudgetAmount">0.00</span>
+        </div>
+        <div class="ml-2 text-sm text-gray-500 italic">自動計算</div>
+    </div>
+</div>
                         
                         <div>
                             <label class="block text-gray-700 mb-2">重設週期</label>
@@ -1423,6 +1429,9 @@
             
             // Check if sync reminder should be shown
             checkSyncReminder();
+            
+            // 确保总预算是类别预算的总和
+updateTotalBudgetDisplay();
             
             // Setup auto-sync options
             setupAutoSync();
@@ -2429,6 +2438,9 @@
             // Update budget status
             updateBudgetStatus();
             
+            // 更新总预算显示
+updateTotalBudgetDisplay();
+            
             // Update budget thresholds
             updateBudgetThresholds();
             
@@ -2804,6 +2816,7 @@
                     saveData('categoryBudgets');
                     updateCategoryBudgetItems();
                     updateCategoryBudgetsOnDashboard();
+                    updateTotalBudgetDisplay();
                 });
                 
                 item.appendChild(leftPart);
@@ -3008,7 +3021,7 @@
             document.getElementById('budgetPercentage').textContent = percentage + '% 已使用';
             
             // Update budget form
-            document.getElementById('budgetAmountInput').value = budget.amount;
+            
             document.getElementById('budgetCycle').value = budget.cycle;
             if (budget.resetDay) {
                 document.getElementById('budgetResetDay').value = budget.resetDay;
@@ -4227,6 +4240,8 @@ budgetCard.appendChild(budgetNote);
                 saveData('categoryBudgets');
                 updateCategoryBudgetItems();
                 updateCategoryBudgetsOnDashboard();
+                // 更新总预算显示
+updateTotalBudgetDisplay();
                 
                 // Reset inputs
                 categorySelect.value = '';
@@ -4944,54 +4959,51 @@ budgetCard.appendChild(budgetNote);
             notify('✅', '交易已記錄', `${transactionType === 'income' ? '收入' : '支出'}交易已成功記錄: ${currencySymbol}${formatNumber(amount)}`);
         }
         
-        // Save budget settings
-        function saveBudget() {
-            const amountInput = document.getElementById('budgetAmountInput');
-            const cycleSelect = document.getElementById('budgetCycle');
-            const resetDaySelect = document.getElementById('budgetResetDay');
-            
-            const amount = parseFloat(amountInput.value);
-            const cycle = cycleSelect.value;
-            const resetDay = resetDaySelect.value;
-            
-            if (isNaN(amount) || amount <= 0) {
-                notify('❌', '預算設定失敗', '請輸入有效的預算金額。');
-                return;
-            }
-            
-            // Get thresholds from UI
-            const thresholdInputs = document.querySelectorAll('.threshold-value');
-            const thresholds = Array.from(thresholdInputs).map(input => parseInt(input.value))
-                .filter(val => !isNaN(val) && val > 0 && val <= 100);
-            
-            if (thresholds.length === 0) {
-                thresholds.push(80); // Default threshold if none valid
-            }
-            
-            // Sort thresholds in descending order
-            thresholds.sort((a, b) => b - a);
-            
-            budget.amount = amount;
-            budget.cycle = cycle;
-            budget.resetDay = resetDay;
-            budget.thresholds = thresholds;
-            
-            // Get daily summary timing
-            appSettings.dailySummaryTiming = document.getElementById('dailySummaryTiming').value;
-            
-            // Set last reset to today if not already set
-            if (!budget.lastReset) {
-                budget.lastReset = new Date().toISOString();
-            }
-            
-            saveData('budget');
-            saveData('appSettings');
-            
-            updateBudgetStatus();
-            generateFinancialAdvice();
-            
-            notify('✅', '預算已設定', '您的預算設定已成功保存。');
-        }
+        /// 修改为:
+function saveBudget() {
+    // 不再从输入框获取预算金额，而是自动计算
+    const cycleSelect = document.getElementById('budgetCycle');
+    const resetDaySelect = document.getElementById('budgetResetDay');
+    
+    const cycle = cycleSelect.value;
+    const resetDay = resetDaySelect.value;
+    
+    // 计算所有类别预算的总和作为总预算
+    const totalAmount = calculateTotalBudget();
+    
+    // 获取阈值
+    const thresholdInputs = document.querySelectorAll('.threshold-value');
+    const thresholds = Array.from(thresholdInputs).map(input => parseInt(input.value))
+        .filter(val => !isNaN(val) && val > 0 && val <= 100);
+    
+    if (thresholds.length === 0) {
+        thresholds.push(80); // Default threshold if none valid
+    }
+    
+    // Sort thresholds in descending order
+    thresholds.sort((a, b) => b - a);
+    
+    budget.amount = totalAmount;
+    budget.cycle = cycle;
+    budget.resetDay = resetDay;
+    budget.thresholds = thresholds;
+    
+    // Get daily summary timing
+    appSettings.dailySummaryTiming = document.getElementById('dailySummaryTiming').value;
+    
+    // Set last reset to today if not already set
+    if (!budget.lastReset) {
+        budget.lastReset = new Date().toISOString();
+    }
+    
+    saveData('budget');
+    saveData('appSettings');
+    
+    updateBudgetStatus();
+    generateFinancialAdvice();
+    
+    notify('✅', '預算已設定', '您的預算設定已成功保存。');
+}
         
         // Delete a transaction
         function deleteTransaction(transactionId) {
@@ -5287,6 +5299,23 @@ budgetCard.appendChild(budgetNote);
             
             return Math.max(0, daysRemaining);
         }
+        
+        // 计算所有类别预算的总和
+function calculateTotalBudget() {
+    return categoryBudgets.reduce((total, budget) => total + budget.amount, 0);
+}
+
+// 更新总预算显示
+function updateTotalBudgetDisplay() {
+    const totalAmount = calculateTotalBudget();
+    document.getElementById('totalBudgetAmount').textContent = formatNumber(totalAmount);
+    // 同时更新预算对象
+    budget.amount = totalAmount;
+    saveData('budget');
+    // 更新预算状态显示
+    updateBudgetStatus();
+}
+        
     </script>
 </body>
 </html>
