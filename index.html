@@ -1123,7 +1123,8 @@
     <h4 class="font-medium mb-2">貨幣設置</h4>
     <div class="mb-3">
         <label class="block text-gray-700 mb-2">應用貨幣</label>
-        <select id="currencySelect" class="w-full p-2 border border-gray-300 rounded-md text-base">
+        <!-- 將這個 -->
+<select id="baseCurrencySelect" class="w-full p-2 border border-gray-300 rounded-md text-base">
             <option value="TWD">新台幣 (TWD)</option>
             <option value="USD">美元 (USD)</option>
             <option value="EUR">歐元 (EUR)</option>
@@ -5567,6 +5568,57 @@ function getTotalBalance() {
             return Math.max(0, daysRemaining);
         }
         
+        // 等待文檔加載完成後執行
+document.addEventListener('DOMContentLoaded', function() {
+  // 覆蓋原始函數
+  window.updateSettingsModal = function() {
+    try {
+      // 嘗試使用新ID
+      if (document.getElementById('currencySelect')) {
+        document.getElementById('currencySelect').value = appSettings.currency;
+      }
+      // 嘗試使用舊ID
+      else if (document.getElementById('baseCurrencySelect')) {
+        document.getElementById('baseCurrencySelect').value = appSettings.currency;
+      }
+      
+      if (document.getElementById('currencySymbolInput')) {
+        document.getElementById('currencySymbolInput').value = appSettings.currencySymbol;
+      }
+      
+      document.getElementById('enableSyncReminders').checked = appSettings.syncRemindersEnabled;
+      document.getElementById('themeSelect').value = appSettings.theme;
+      document.getElementById('enableVirtualization').checked = appSettings.enableVirtualization;
+      document.getElementById('pageSize').value = appSettings.pageSize === -1 ? "-1" : appSettings.pageSize.toString();
+    } catch(e) {
+      console.error("設定模態框更新錯誤:", e);
+    }
+  };
+  
+  // 修復設定按鈕事件處理器
+  const saveBtn = document.getElementById('saveSettingsBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function() {
+      try {
+        const currency = document.getElementById('currencySelect')?.value || 
+                         document.getElementById('baseCurrencySelect')?.value || 
+                         appSettings.currency;
+        
+        const inputSymbol = document.getElementById('currencySymbolInput')?.value || '';
+        const currencySymbol = inputSymbol || currencySymbols[currency] || '$';
+        
+        // 其餘代碼保持不變...
+        appSettings.currency = currency;
+        appSettings.currencySymbol = currencySymbol;
+        
+        // 通知用戶已修復
+        console.log("已修復設定功能!");
+      } catch(e) {
+        console.error("設定保存錯誤:", e);
+      }
+    }, true); // 使用捕獲模式確保在其他事件處理器之前執行
+  }
+});
     
         
     </script>
