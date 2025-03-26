@@ -104,30 +104,32 @@ try {
 }
 
 // DOM Elements
-const tabButtons = document.querySelectorAll('.tab-btn');
-const tabContents = document.querySelectorAll('.tab-content');
-const newAccountModal = document.getElementById('newAccountModal');
-const newCategoryModal = document.getElementById('newCategoryModal');
-const importExportModal = document.getElementById('importExportModal');
-const settingsModal = document.getElementById('settingsModal');
-const receiptViewModal = document.getElementById('receiptViewModal');
-const dailySummaryModal = document.getElementById('dailySummaryModal');
-const notification = document.getElementById('notification');
-const syncReminder = document.getElementById('syncReminder');
-const searchLoadingIndicator = document.getElementById('searchLoadingIndicator');
+let tabButtons;
+let tabContents;
+let newAccountModal;
+let newCategoryModal;
+let importExportModal;
+let settingsModal;
+let receiptViewModal;
+let dailySummaryModal;
+let notification;
+let syncReminder;
+let searchLoadingIndicator;
 
-// Debounce function for performance optimization
-function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-        const context = this;
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), wait);
-    };
-}
-
-// Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // 初始化DOM元素引用
+    tabButtons = document.querySelectorAll('.tab-btn');
+    tabContents = document.querySelectorAll('.tab-content');
+    newAccountModal = document.getElementById('newAccountModal');
+    newCategoryModal = document.getElementById('newCategoryModal');
+    importExportModal = document.getElementById('importExportModal');
+    settingsModal = document.getElementById('settingsModal');
+    receiptViewModal = document.getElementById('receiptViewModal');
+    dailySummaryModal = document.getElementById('dailySummaryModal');
+    notification = document.getElementById('notification');
+    syncReminder = document.getElementById('syncReminder');
+    searchLoadingIndicator = document.getElementById('searchLoadingIndicator');
+    
     // Initialize the app
     initApp();
     
@@ -141,6 +143,16 @@ document.addEventListener('DOMContentLoaded', function() {
     initGoogleApi();
 });
 
+// Debounce function for performance optimization
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
+
 // Initialize the app
 function initApp() {
     // Load data from localStorage if available
@@ -150,13 +162,46 @@ function initApp() {
     initExchangeRates();
     
     // Set default transaction date
-    document.getElementById('transactionDate').value = getTodayFormatted();
+    const transactionDateInput = document.getElementById('transactionDate');
+    if (transactionDateInput) {
+        transactionDateInput.value = getTodayFormatted();
+    }
+    
+    const summaryDateInput = document.getElementById('summaryDate');
+    if (summaryDateInput) {
+        summaryDateInput.value = getTodayFormatted();
+    }
+    
+    // Set default search dates (1 month range)
+    const searchStartDateInput = document.getElementById('searchStartDate');
+    const searchEndDateInput = document.getElementById('searchEndDate');
+    
+    if (searchStartDateInput && searchEndDateInput) {
+        const today = new Date();
+        const monthAgo = new Date();
+        monthAgo.setMonth(today.getMonth() - 1);
+        
+        searchStartDateInput.value = formatDateForInput(monthAgo);
+        searchEndDateInput.value = formatDateForInput(today);
+    }
     
     // Update currency display
     updateCurrencyDisplay();
     
     // Initialize UI elements
     updateUI();
+    
+    // Setup budget reset day options
+    updateBudgetResetDayOptions();
+    
+    // Initialize account icons
+    initAccountIcons();
+    
+    // Initialize receipt upload listener
+    initReceiptUpload();
+    
+    // Apply virtualization settings
+    applyVirtualizationSettings();
     
     // Check for budget reset
     checkBudgetReset();
@@ -172,6 +217,14 @@ function initApp() {
     if (exchangeRatesTab) {
         exchangeRatesTab.classList.add('tab-content'); // 確保有正確的基本類別
     }
+    
+    // 初始化時搜尋交易
+    if (document.getElementById('searchBtn')) {
+        searchTransactions();
+    }
+    
+    // 生成財務建議
+    generateFinancialAdvice();
 }
 
 // 初始化 Google API - 優化版本
@@ -180,7 +233,10 @@ function initGoogleApi() {
     
     // 重置按鈕狀態和顯示加載中
     const googleSignInBtn = document.getElementById('googleSignInBtn');
-    if (!googleSignInBtn) return; // 安全檢查
+    if (!googleSignInBtn) {
+        console.log('Google sign in button not found');
+        return; // 安全檢查
+    }
     
     googleSignInBtn.disabled = true;
     googleSignInBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 載入中...';
@@ -364,6 +420,396 @@ function initGoogleApi() {
     attemptInitialization();
 }
 
+// Update sign-in status
+function updateSignInStatus(isSignedIn) {
+    if (isSignedIn) {
+        const user = gapi.auth2.getAuthInstance().currentUser.get();
+        const profile = user.getBasicProfile();
+        googleUser = {
+            id: profile.getId(),
+            name: profile.getName(),
+            email: profile.getEmail()
+        };
+        
+        // Update UI
+        const googleAuthStatus = document.getElementById('googleAuthStatus');
+        const googleUserName = document.getElementById('googleUserName');
+        const googleSignInBtn = document.getElementById('googleSignInBtn');
+        const googleSignOutBtn = document.getElementById('googleSignOutBtn');
+        const googleDriveActions = document.getElementById('googleDriveActions');
+        
+        if (googleAuthStatus) googleAuthStatus.style.display = 'flex';
+        if (googleUserName) googleUserName.textContent = googleUser.name;
+        if (googleSignInBtn) googleSignInBtn.style.display = 'none';
+        if (googleSignOutBtn) googleSignOutBtn.style.display = 'block';
+        if (googleDriveActions) googleDriveActions.style.display = 'block';
+        
+        updateGoogleSigninStatus('success', `已登入為 ${googleUser.name}`);
+    } else {
+        googleUser = null;
+        
+        // Update UI
+        const googleAuthStatus = document.getElementById('googleAuthStatus');
+        const googleSignInBtn = document.getElementById('googleSignInBtn');
+        const googleSignOutBtn = document.getElementById('googleSignOutBtn');
+        const googleDriveActions = document.getElementById('googleDriveActions');
+        
+        if (googleAuthStatus) googleAuthStatus.style.display = 'none';
+        if (googleSignInBtn) googleSignInBtn.style.display = 'block';
+        if (googleSignOutBtn) googleSignOutBtn.style.display = 'none';
+        if (googleDriveActions) googleDriveActions.style.display = 'none';
+        
+        updateGoogleSigninStatus('pending', '尚未登入 Google 帳戶');
+    }
+}
+
+// Sign in to Google
+function signInToGoogle() {
+    if (!googleApiInitialized) {
+        notify('❌', 'Google API 尚未初始化', '請稍後再試');
+        return;
+    }
+    
+    gapi.auth2.getAuthInstance().signIn().catch(error => {
+        console.error('Google Sign-in error:', error);
+        notify('❌', '登入失敗', '無法登入到 Google 帳戶');
+    });
+}
+
+// Sign out from Google
+function signOutFromGoogle() {
+    if (!googleApiInitialized) return;
+    
+    gapi.auth2.getAuthInstance().signOut().then(() => {
+        notify('✅', '已登出', '已成功登出 Google 帳戶');
+    }).catch(error => {
+        console.error('Google Sign-out error:', error);
+    });
+}
+
+// Update Google signin status in the import/export modal
+function updateGoogleSigninStatus(type, message) {
+    const statusElement = document.getElementById('googleSigninStatus');
+    if (!statusElement) return;
+    
+    statusElement.style.display = 'flex';
+    statusElement.className = `sync-status ${type}`;
+    
+    let icon = 'fa-circle-info';
+    if (type === 'success') icon = 'fa-check-circle';
+    if (type === 'error') icon = 'fa-times-circle';
+    
+    statusElement.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
+}
+
+// Save data to Google Drive
+function saveToGoogleDrive() {
+    if (!googleUser) {
+        notify('❌', '尚未登入', '請先登入 Google 帳戶');
+        return;
+    }
+    
+    updateGoogleSigninStatus('pending', '正在保存到 Google Drive...');
+    
+    // First, check if our app folder exists
+    findOrCreateAppFolder().then(folderId => {
+        // Get the data to save
+        const data = exportData();
+        
+        // Check if we already have a file ID
+        if (appSettings.googleSync.fileId) {
+            // Update existing file
+            updateDriveFile(appSettings.googleSync.fileId, data).then(() => {
+                appSettings.googleSync.lastSync = new Date().toISOString();
+                saveData('appSettings');
+                updateGoogleSigninStatus('success', '數據已成功保存到 Google Drive');
+                notify('✅', '同步成功', '數據已成功保存到 Google Drive');
+            }).catch(error => {
+                console.error('Error updating file:', error);
+                updateGoogleSigninStatus('error', '保存失敗，正在嘗試創建新文件...');
+                
+                // Try creating a new file instead
+                createDriveFile(folderId, data);
+            });
+        } else {
+            // Create new file
+            createDriveFile(folderId, data);
+        }
+    }).catch(error => {
+        console.error('Error with Google Drive folder:', error);
+        updateGoogleSigninStatus('error', '無法訪問或創建 Google Drive 文件夾');
+        notify('❌', '同步失敗', '無法訪問或創建 Google Drive 文件夾');
+    });
+}
+
+// Find or create app folder in Google Drive
+function findOrCreateAppFolder() {
+    return new Promise((resolve, reject) => {
+        // Search for existing folder
+        gapi.client.drive.files.list({
+            q: `name='${GOOGLE_API_CONFIG.appFolderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            spaces: 'drive',
+            fields: 'files(id, name)'
+        }).then(response => {
+            const folders = response.result.files;
+            
+            if (folders && folders.length > 0) {
+                // Folder found
+                resolve(folders[0].id);
+            } else {
+                // Create folder
+                gapi.client.drive.files.create({
+                    resource: {
+                        name: GOOGLE_API_CONFIG.appFolderName,
+                        mimeType: 'application/vnd.google-apps.folder'
+                    },
+                    fields: 'id'
+                }).then(response => {
+                    resolve(response.result.id);
+                }).catch(error => {
+                    reject(error);
+                });
+            }
+        }).catch(error => {
+            reject(error);
+        });
+    });
+}
+
+// Create a new file in Google Drive
+function createDriveFile(folderId, data) {
+    const file = new Blob([data], {type: 'application/json'});
+    const metadata = {
+        name: GOOGLE_API_CONFIG.dataFileName,
+        mimeType: 'application/json',
+        parents: [folderId]
+    };
+    
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+    form.append('file', file);
+    
+    fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: new Headers({
+            'Authorization': 'Bearer ' + gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token
+        }),
+        body: form
+    }).then(response => response.json())
+      .then(result => {
+          appSettings.googleSync.fileId = result.id;
+          appSettings.googleSync.lastSync = new Date().toISOString();
+          saveData('appSettings');
+          
+          updateGoogleSigninStatus('success', '數據已成功保存到 Google Drive');
+          notify('✅', '同步成功', '數據已成功保存到 Google Drive');
+      })
+      .catch(error => {
+          console.error('Error creating file:', error);
+          updateGoogleSigninStatus('error', '創建文件失敗');
+          notify('❌', '同步失敗', '無法在 Google Drive 中創建文件');
+      });
+}
+
+// Update existing file in Google Drive
+function updateDriveFile(fileId, data) {
+    return new Promise((resolve, reject) => {
+        const file = new Blob([data], {type: 'application/json'});
+        
+        fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+            method: 'PATCH',
+            headers: new Headers({
+                'Authorization': 'Bearer ' + gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token,
+                'Content-Type': 'application/json'
+            }),
+            body: file
+        }).then(response => {
+            if (response.ok) {
+                resolve();
+            } else {
+                reject(new Error('Failed to update file'));
+            }
+        }).catch(error => {
+            reject(error);
+        });
+    });
+}
+
+// Load data from Google Drive
+function loadFromGoogleDrive() {
+    if (!googleUser) {
+        notify('❌', '尚未登入', '請先登入 Google 帳戶');
+        return;
+    }
+    
+    updateGoogleSigninStatus('pending', '正在從 Google Drive 載入數據...');
+    
+    // Check if we have a file ID
+    if (appSettings.googleSync.fileId) {
+        // Get file content
+        gapi.client.drive.files.get({
+            fileId: appSettings.googleSync.fileId,
+            alt: 'media'
+        }).then(response => {
+            const data = response.body;
+            
+            // Import the data
+            if (importData(data)) {
+                updateGoogleSigninStatus('success', '數據已成功從 Google Drive 載入');
+                notify('✅', '同步成功', '數據已成功從 Google Drive 載入');
+            } else {
+                updateGoogleSigninStatus('error', '載入的數據格式不正確');
+            }
+        }).catch(error => {
+            console.error('Error loading file:', error);
+            updateGoogleSigninStatus('error', '無法載入文件，可能已被刪除');
+            
+            // Clear file ID since it's no longer valid
+            appSettings.googleSync.fileId = null;
+            saveData('appSettings');
+            
+            // Try finding the file
+            findFileInDrive();
+        });
+    } else {
+        // Find the file in Drive
+        findFileInDrive();
+    }
+}
+
+// Find file in Google Drive
+function findFileInDrive() {
+    findOrCreateAppFolder().then(folderId => {
+        gapi.client.drive.files.list({
+            q: `name='${GOOGLE_API_CONFIG.dataFileName}' and '${folderId}' in parents and trashed=false`,
+            spaces: 'drive',
+            fields: 'files(id, name, modifiedTime)'
+        }).then(response => {
+            const files = response.result.files;
+            
+            if (files && files.length > 0) {
+                // Sort files by modified time (newest first)
+                files.sort((a, b) => new Date(b.modifiedTime) - new Date(a.modifiedTime));
+                
+                // Get the most recent file
+                const fileId = files[0].id;
+                appSettings.googleSync.fileId = fileId;
+                saveData('appSettings');
+                
+                // Load the file
+                gapi.client.drive.files.get({
+                    fileId: fileId,
+                    alt: 'media'
+                }).then(response => {
+                    const data = response.body;
+                    
+                    // Import the data
+                    if (importData(data)) {
+                        updateGoogleSigninStatus('success', '數據已成功從 Google Drive 載入');
+                        notify('✅', '同步成功', '數據已成功從 Google Drive 載入');
+                    } else {
+                        updateGoogleSigninStatus('error', '載入的數據格式不正確');
+                    }
+                }).catch(error => {
+                    console.error('Error loading file:', error);
+                    updateGoogleSigninStatus('error', '無法載入文件');
+                    notify('❌', '同步失敗', '無法載入 Google Drive 文件');
+                });
+            } else {
+                updateGoogleSigninStatus('error', '在 Google Drive 中找不到數據文件');
+                notify('ℹ️', '找不到數據', '在 Google Drive 中找不到數據文件');
+            }
+        }).catch(error => {
+            console.error('Error listing files:', error);
+            updateGoogleSigninStatus('error', '無法列出 Google Drive 文件');
+            notify('❌', '同步失敗', '無法列出 Google Drive 文件');
+        });
+    }).catch(error => {
+        console.error('Error finding folder:', error);
+        updateGoogleSigninStatus('error', '無法訪問 Google Drive 文件夾');
+        notify('❌', '同步失敗', '無法訪問 Google Drive 文件夾');
+    });
+}
+
+// Setup auto-sync
+function setupAutoSync() {
+    const enableAutoSync = document.getElementById('enableAutoSync');
+    const autoSyncOptions = document.getElementById('autoSyncOptions');
+    
+    if (!enableAutoSync || !autoSyncOptions) return;
+    
+    // Set initial state
+    enableAutoSync.checked = appSettings.googleSync.enabled;
+    autoSyncOptions.style.display = enableAutoSync.checked ? 'block' : 'none';
+    
+    // Set frequency
+    const frequency = appSettings.googleSync.frequency || 'daily';
+    const radioBtn = document.getElementById(`autoSync${frequency.charAt(0).toUpperCase() + frequency.slice(1)}`);
+    if (radioBtn) radioBtn.checked = true;
+    
+    // Add event listeners
+    enableAutoSync.addEventListener('change', function() {
+        autoSyncOptions.style.display = this.checked ? 'block' : 'none';
+        appSettings.googleSync.enabled = this.checked;
+        saveData('appSettings');
+    });
+    
+    // Add event listeners for frequency options
+    document.querySelectorAll('input[name="autoSyncFreq"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            appSettings.googleSync.frequency = this.value;
+            saveData('appSettings');
+        });
+    });
+}
+
+// Check for auto-sync
+function checkAutoSync() {
+    if (!googleApiInitialized || !googleUser || !appSettings.googleSync.enabled) return;
+    
+    const now = new Date();
+    const lastSync = appSettings.googleSync.lastSync ? new Date(appSettings.googleSync.lastSync) : null;
+    
+    // If never synced, sync now
+    if (!lastSync) {
+        saveToGoogleDrive();
+        return;
+    }
+    
+    let shouldSync = false;
+    const daysDiff = (now - lastSync) / (1000 * 60 * 60 * 24);
+    
+    switch (appSettings.googleSync.frequency) {
+        case 'daily':
+            shouldSync = daysDiff >= 1;
+            break;
+        case 'weekly':
+            shouldSync = daysDiff >= 7;
+            break;
+        case 'monthly':
+            shouldSync = daysDiff >= 30;
+            break;
+    }
+    
+    if (shouldSync && dataModified) {
+        saveToGoogleDrive();
+    }
+}
+
+// Apply virtualization settings
+function applyVirtualizationSettings() {
+    paginationState.pageSize = parseInt(appSettings.pageSize) || 100;
+    const pageSizeSelect = document.getElementById('pageSize');
+    if (pageSizeSelect) {
+        pageSizeSelect.value = paginationState.pageSize === -1 ? "-1" : paginationState.pageSize.toString();
+    }
+    
+    const virtualizationCheckbox = document.getElementById('enableVirtualization');
+    if (virtualizationCheckbox) {
+        virtualizationCheckbox.checked = appSettings.enableVirtualization;
+    }
+}
+
 // 更新 getTotalBalance 方法，正確處理匯率轉換
 function getTotalBalance() {
     // 如果未启用汇率转换，直接相加所有账户余额
@@ -384,17 +830,17 @@ function getTotalBalance() {
 
 // 修改 getTodayIncome 和 getTodayExpense 方法，支持匯率轉換
 function getTodayIncome() {
-    const transactions = getTodayTransactions().filter(t => t.type === 'income');
+    const todayTransactions = getTodayTransactions().filter(t => t.type === 'income');
     
     if (!appSettings.exchangeRates.enabled) {
-        return transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        return todayTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
     }
     
     // 基準貨幣
     const baseCurrency = appSettings.currency;
     
     // 轉換每個交易金額至基準貨幣
-    return transactions.reduce((sum, t) => {
+    return todayTransactions.reduce((sum, t) => {
         const account = getAccount(t.account);
         const accountCurrency = account ? account.currency : baseCurrency;
         const transactionCurrency = t.currency || accountCurrency;
@@ -404,17 +850,17 @@ function getTodayIncome() {
 }
 
 function getTodayExpense() {
-    const transactions = getTodayTransactions().filter(t => t.type === 'expense');
+    const todayTransactions = getTodayTransactions().filter(t => t.type === 'expense');
     
     if (!appSettings.exchangeRates.enabled) {
-        return transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        return todayTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
     }
     
     // 基準貨幣
     const baseCurrency = appSettings.currency;
     
     // 轉換每個交易金額至基準貨幣
-    return transactions.reduce((sum, t) => {
+    return todayTransactions.reduce((sum, t) => {
         const account = getAccount(t.account);
         const accountCurrency = account ? account.currency : baseCurrency;
         const transactionCurrency = t.currency || accountCurrency;
@@ -553,12 +999,17 @@ function addTransaction() {
     const enableReceiptUpload = document.getElementById('enableReceiptUpload');
     const receiptImage = document.getElementById('receiptImage');
     
+    if (!accountSelect || !categorySelect || !amountInput || !dateInput) {
+        notify('❌', '系統錯誤', '無法找到表單元素');
+        return;
+    }
+    
     const accountId = accountSelect.value;
-    const selectedCurrency = currencySelect.value; // 可能為空，表示使用戶口貨幣
+    const selectedCurrency = currencySelect ? currencySelect.value : ''; // 可能為空，表示使用戶口貨幣
     const category = categorySelect.value;
     const amount = parseFloat(amountInput.value);
     const date = dateInput.value;
-    const note = noteInput.value.trim();
+    const note = noteInput ? noteInput.value.trim() : '';
     
     if (!accountId || !category || isNaN(amount) || amount <= 0 || !date) {
         notify('❌', '交易失敗', '請填寫完整的交易資料。');
@@ -589,8 +1040,7 @@ function addTransaction() {
     }
     
     // Handle receipt image
-    let receipt = null;
-    if (enableReceiptUpload.checked && receiptImage.files && receiptImage.files[0]) {
+    if (enableReceiptUpload && enableReceiptUpload.checked && receiptImage && receiptImage.files && receiptImage.files[0]) {
         const file = receiptImage.files[0];
         const reader = new FileReader();
         
@@ -643,19 +1093,25 @@ function createTransaction(accountIndex, category, amount, convertedAmount, curr
     checkBudgetAlert();
     
     // Reset form except for type and account
-    const currentType = transactionType;
-    const currentAccount = accounts[accountIndex].id;
+    const categorySelect = document.getElementById('transactionCategory');
+    const amountInput = document.getElementById('transactionAmount');
+    const noteInput = document.getElementById('transactionNote');
+    const currencySelect = document.getElementById('transactionCurrency');
+    const enableReceiptUpload = document.getElementById('enableReceiptUpload');
+    const receiptUploadContainer = document.getElementById('receiptUploadContainer');
+    const receiptImage = document.getElementById('receiptImage');
+    const receiptPreview = document.getElementById('receiptPreview');
     
-    document.getElementById('transactionCategory').value = '';
-    document.getElementById('transactionAmount').value = '';
-    document.getElementById('transactionNote').value = '';
-    document.getElementById('transactionCurrency').value = '';
+    if (categorySelect) categorySelect.value = '';
+    if (amountInput) amountInput.value = '';
+    if (noteInput) noteInput.value = '';
+    if (currencySelect) currencySelect.value = '';
     
     // Reset receipt upload
-    document.getElementById('enableReceiptUpload').checked = false;
-    document.getElementById('receiptUploadContainer').style.display = 'none';
-    document.getElementById('receiptImage').value = '';
-    document.getElementById('receiptPreview').style.display = 'none';
+    if (enableReceiptUpload) enableReceiptUpload.checked = false;
+    if (receiptUploadContainer) receiptUploadContainer.style.display = 'none';
+    if (receiptImage) receiptImage.value = '';
+    if (receiptPreview) receiptPreview.style.display = 'none';
     
     // 隱藏匯率轉換信息
     const conversionInfo = document.getElementById('currencyConversionInfo');
@@ -666,6 +1122,7 @@ function createTransaction(accountIndex, category, amount, convertedAmount, curr
     updateAccountsTab();
     updateDashboard();
     searchTransactions();
+    generateFinancialAdvice();
     
     // 顯示轉換信息（如果進行了貨幣轉換）
     const accountCurrency = accounts[accountIndex].currency;
@@ -690,14 +1147,239 @@ function setupEventListeners() {
         });
     });
     
-    // 初始化交易貨幣選擇
+    // Close modal buttons
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', event => {
+            const modal = event.target.closest('.modal');
+            closeModal(modal.id);
+        });
+    });
+    
+    // New day button
+    const newDayBtn = document.getElementById('newDayBtn');
+    if (newDayBtn) {
+        newDayBtn.addEventListener('click', startNewDay);
+    }
+    
+    // Settings button
+    const settingsBtn = document.getElementById('settingsBtn');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            updateSettingsModal();
+            openModal('settingsModal');
+        });
+    }
+    
+    // Import/Export button
+    const importExportBtn = document.getElementById('importExportBtn');
+    if (importExportBtn) {
+        importExportBtn.addEventListener('click', () => {
+            const exportDataArea = document.getElementById('exportDataArea');
+            const importDataArea = document.getElementById('importDataArea');
+            
+            if (exportDataArea) exportDataArea.value = exportData();
+            if (importDataArea) importDataArea.value = '';
+            
+            openModal('importExportModal');
+        });
+    }
+    
+    // Google Sign-in button
+    const googleSignInBtn = document.getElementById('googleSignInBtn');
+    if (googleSignInBtn) {
+        googleSignInBtn.addEventListener('click', function() {
+            // 檢查 API 是否已初始化
+            if (!googleApiInitialized) {
+                // 如果顯示的是重試按鈕，則嘗試重新初始化
+                if (this.innerHTML.includes('重試')) {
+                    notify('🔄', '正在重新初始化', 'Google API 正在重新初始化...');
+                    initGoogleApi(); // 重新初始化
+                    return;
+                }
+                notify('❌', 'Google API 尚未初始化', '請稍後再試，或點擊重試按鈕');
+                this.innerHTML = '<i class="fas fa-sync mr-2"></i> 重試 Google 登入';
+                return;
+            }
+            
+            // API 已初始化，可以登入
+            signInToGoogle();
+        });
+    }
+    
+    // Google Sign-out button
+    const googleSignOutBtn = document.getElementById('googleSignOutBtn');
+    if (googleSignOutBtn) {
+        googleSignOutBtn.addEventListener('click', signOutFromGoogle);
+    }
+    
+    // Save to Google Drive button
+    const saveToDriveBtn = document.getElementById('saveToDriveBtn');
+    if (saveToDriveBtn) {
+        saveToDriveBtn.addEventListener('click', saveToGoogleDrive);
+    }
+    
+    // Load from Google Drive button
+    const loadFromDriveBtn = document.getElementById('loadFromDriveBtn');
+    if (loadFromDriveBtn) {
+        loadFromDriveBtn.addEventListener('click', loadFromGoogleDrive);
+    }
+    
+    // Copy export data button
+    const copyExportBtn = document.getElementById('copyExportBtn');
+    if (copyExportBtn) {
+        copyExportBtn.addEventListener('click', () => {
+            const exportArea = document.getElementById('exportDataArea');
+            if (exportArea) {
+                exportArea.select();
+                document.execCommand('copy');
+                notify('✅', '已複製', '數據已成功複製到剪貼板');
+            }
+        });
+    }
+    
+    // Transaction type buttons
+    const incomeBtn = document.getElementById('incomeBtn');
+    const expenseBtn = document.getElementById('expenseBtn');
+    
+    if (incomeBtn) {
+        incomeBtn.addEventListener('click', () => {
+            transactionType = 'income';
+            updateTransactionTypeUI();
+            updateTransactionCategories();
+        });
+    }
+    
+    if (expenseBtn) {
+        expenseBtn.addEventListener('click', () => {
+            transactionType = 'expense';
+            updateTransactionTypeUI();
+            updateTransactionCategories();
+        });
+    }
+    
+    // Save transaction button
+    const saveTransactionBtn = document.getElementById('saveTransactionBtn');
+    if (saveTransactionBtn) {
+        saveTransactionBtn.addEventListener('click', addTransaction);
+    }
+    
+    // Initial setup for transaction currency
     initTransactionCurrency();
     
-    // 其他所有事件監聽器...
+    // 其他事件監聽器設置...
+    
+    // 測試 API 連接按鈕
+    const testExchangeRateApiBtn = document.getElementById('testExchangeRateApiBtn');
+    if (testExchangeRateApiBtn) {
+        testExchangeRateApiBtn.addEventListener('click', testExchangeRateApi);
+    }
+    
+    // 立即更新匯率按鈕
+    const updateExchangeRatesBtn = document.getElementById('updateExchangeRatesBtn');
+    if (updateExchangeRatesBtn) {
+        updateExchangeRatesBtn.addEventListener('click', updateExchangeRates);
+    }
+    
+    // 貨幣標籤點擊查看匯率
+    const selectedCurrency = document.querySelector('#selectedCurrency');
+    if (selectedCurrency) {
+        selectedCurrency.addEventListener('click', function() {
+            if (!appSettings.exchangeRates.enabled) {
+                notify('ℹ️', '未啟用匯率功能', '請在設定中啟用即時匯率功能');
+                return;
+            }
+            
+            if (!exchangeRates.rates || Object.keys(exchangeRates.rates).length === 0) {
+                notify('ℹ️', '無匯率數據', '請在設定中更新匯率數據');
+                return;
+            }
+            
+            setupExchangeRatesModal();
+        });
+    }
+    
+    // 設定頁面的匯率啟用狀態變更
+    const enableExchangeRates = document.getElementById('enableExchangeRates');
+    if (enableExchangeRates) {
+        enableExchangeRates.addEventListener('change', function() {
+            const exchangeRateApiSettings = document.getElementById('exchangeRateApiSettings');
+            if (exchangeRateApiSettings) {
+                exchangeRateApiSettings.style.display = this.checked ? 'block' : 'none';
+            }
+        });
+        
+        // 設置初始狀態
+        enableExchangeRates.checked = appSettings.exchangeRates.enabled;
+        const exchangeRateApiSettings = document.getElementById('exchangeRateApiSettings');
+        if (exchangeRateApiSettings) {
+            exchangeRateApiSettings.style.display = enableExchangeRates.checked ? 'block' : 'none';
+        }
+    }
+    
+    // 頁面內匯率更新按鈕
+    const pageUpdateRatesBtn = document.getElementById('pageUpdateRatesBtn');
+    if (pageUpdateRatesBtn) {
+        pageUpdateRatesBtn.addEventListener('click', function() {
+            updateExchangeRates();
+            setTimeout(() => {
+                updateExchangeRatesContent();
+            }, 1000);
+        });
+    }
+}
+
+// 測試匯率 API 連接
+function testExchangeRateApi() {
+    const apiKeyInput = document.getElementById('exchangeRateApiKey');
+    if (!apiKeyInput) return;
+    
+    const apiKey = apiKeyInput.value.trim();
+    
+    if (!apiKey) {
+        notify('❌', '未設置 API 金鑰', '請輸入有效的匯率 API 金鑰');
+        return;
+    }
+    
+    updateExchangeRateApiStatus('pending', '正在測試 API 連接...');
+    
+    // 測試 API 連接
+    fetch(`https://v6.exchangerate-api.com/v6/${apiKey}/latest/USD`)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.result === 'success') {
+                updateExchangeRateApiStatus('success', 'API 連接成功！');
+                notify('✅', 'API 連接成功', '匯率 API 金鑰有效並成功連接');
+            } else {
+                updateExchangeRateApiStatus('error', `API 錯誤: ${data.error || '未知錯誤'}`);
+            }
+        })
+        .catch(error => {
+            console.error('Exchange rate API test error:', error);
+            updateExchangeRateApiStatus('error', `API 連接失敗: ${error.message}`);
+            notify('❌', 'API 連接失敗', `無法連接匯率 API: ${error.message}`);
+        });
+}
+
+// 更新匯率 API 狀態
+function updateExchangeRateApiStatus(type, message) {
+    const statusElement = document.getElementById('exchangeRateApiStatus');
+    if (statusElement) {
+        statusElement.className = `text-sm ${type === 'success' ? 'text-green-600' : type === 'error' ? 'text-red-600' : 'text-yellow-500'}`;
+        statusElement.textContent = message;
+    }
+    
+    // 如果也在匯率模態框中，更新那裡的狀態
+    const modalStatusElement = document.getElementById('exchangeRateStatus');
+    if (modalStatusElement) {
+        modalStatusElement.className = `sync-status ${type}`;
+        modalStatusElement.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-times-circle' : 'fa-circle-info'}"></i><span>${message}</span>`;
+    }
 }
 
 // 修改 switchTab 函數以修復匯率分頁顯示問題
 function switchTab(tabId) {
+    console.log('Switching to tab:', tabId);
+
     // Update tab buttons
     tabButtons.forEach(button => {
         const buttonTabId = button.getAttribute('data-tab');
@@ -714,6 +1396,7 @@ function switchTab(tabId) {
     tabContents.forEach(content => {
         if (content.id === tabId) {
             content.classList.add('active');
+            console.log('Activated tab:', content.id);
         } else {
             content.classList.remove('active');
         }
@@ -721,6 +1404,8 @@ function switchTab(tabId) {
     
     // Specific actions for certain tabs
     if (tabId === 'exchangeRates') {
+        console.log('Exchange rates tab activated');
+        
         // 檢查匯率功能是否啟用
         if (!appSettings.exchangeRates.enabled) {
             notify('ℹ️', '未啟用匯率功能', '請在設定中啟用即時匯率功能');
@@ -735,16 +1420,27 @@ function switchTab(tabId) {
         
         // 更新匯率頁面內容
         setTimeout(updateExchangeRatesContent, 100);
+    } else if (tabId === 'transactions') {
+        // Reset new transaction form when switching to transactions tab
+        const transactionDateInput = document.getElementById('transactionDate');
+        if (transactionDateInput) {
+            transactionDateInput.value = getTodayFormatted();
+        }
+        
+        // Keep transaction type
+        updateTransactionTypeUI();
+        updateTransactionCategories();
+    } else if (tabId === 'stats') {
+        // Reset pagination state when switching to stats tab
+        paginationState.currentPage = 1;
+        searchTransactions();
     }
-    
-    // 其他Tab處理保持不變...
 }
 
-// 載入數據時，確保讀取交易的貨幣信息
+// Load data from localStorage
 function loadData() {
     if (hasLocalStorage) {
         try {
-            // 原有的數據載入...
             const storedAccounts = localStorage.getItem('finance_accounts');
             accounts = storedAccounts ? JSON.parse(storedAccounts) : [];
             
@@ -768,6 +1464,12 @@ function loadData() {
                 appSettings = {...appSettings, ...JSON.parse(storedAppSettings)};
             }
             
+            // 載入匯率數據
+            const storedExchangeRates = localStorage.getItem('finance_exchange_rates');
+            if (storedExchangeRates) {
+                exchangeRates = JSON.parse(storedExchangeRates);
+            }
+            
             // 確保交易記錄有貨幣信息
             transactions.forEach(transaction => {
                 if (!transaction.currency) {
@@ -786,8 +1488,38 @@ function loadData() {
                 }
             });
             
-            saveData('transactions');
+            // If no accounts exist, add a default one
+            if (accounts.length === 0) {
+                accounts.push({
+                    id: generateId(),
+                    name: '現金',
+                    balance: 0,
+                    icon: '💵',
+                    currency: 'TWD'
+                });
+            }
             
+            // Add currency property to existing accounts if missing
+            let accountsUpdated = false;
+            accounts.forEach(account => {
+                if (!account.currency) {
+                    account.currency = appSettings.currency || 'TWD';
+                    accountsUpdated = true;
+                }
+            });
+            
+            if (accountsUpdated) {
+                saveData('accounts');
+            }
+            
+            // Initialize default categories if empty
+            initDefaultCategories();
+            
+            // Ensure budget.thresholds exists
+            if (!budget.thresholds || !Array.isArray(budget.thresholds)) {
+                budget.thresholds = [80];
+                saveData('budget');
+            }
         } catch (error) {
             console.error('Error loading data:', error);
             initDefaultData();
@@ -795,50 +1527,85 @@ function loadData() {
     } else {
         initDefaultData();
     }
-    
-    // 其他數據載入邏輯...
 }
 
-// 其他所有函數和方法...
-// 這裡需要包含原始代碼中的所有其他函數
+// Initialize default categories
+function initDefaultCategories() {
+    if (!categories.income || categories.income.length === 0) {
+        categories.income = ['薪資', '獎金', '投資收益', '禮金', '其他收入'];
+    }
+    
+    if (!categories.expense || categories.expense.length === 0) {
+        categories.expense = ['飲食', '娛樂', '車資', '日用', '儲錢', '電信', '家用', '應急', '大陸', '還款'];
+    }
+    
+    saveData('categories');
+}
 
-// 確保 convertCurrency 函數存在
-function convertCurrency(amount, fromCurrency, toCurrency) {
-    if (!appSettings.exchangeRates.enabled || !exchangeRates.rates) {
-        return amount; // 如果未启用或没有汇率数据，直接返回原金额
-    }
+// Initialize default data
+function initDefaultData() {
+    // Reset to defaults
+    accounts = [{
+        id: generateId(),
+        name: '現金',
+        balance: 0,
+        icon: '💵',
+        currency: 'TWD'
+    }];
     
-    // 如果货币相同，无需转换
-    if (fromCurrency === toCurrency) {
-        return amount;
-    }
+    categories = {
+        income: ['薪資', '獎金', '投資收益', '禮金', '其他收入'],
+        expense: ['飲食', '娛樂', '車資', '日用', '儲錢', '電信', '家用', '應急', '大陸', '還款']
+    };
     
-    // 获取汇率
-    const baseRate = exchangeRates.base; // 基准货币
+    transactions = [];
     
-    // 如果基准货币就是 fromCurrency，直接使用 toCurrency 的汇率
-    if (baseRate === fromCurrency) {
-        const rate = exchangeRates.rates[toCurrency];
-        return rate ? amount * rate : amount;
-    }
+    budget = {
+        amount: 0,
+        cycle: 'monthly',
+        resetDay: 1,
+        thresholds: [80],
+        lastReset: null
+    };
     
-    // 如果基准货币就是 toCurrency，使用 fromCurrency 的汇率倒数
-    if (baseRate === toCurrency) {
-        const rate = exchangeRates.rates[fromCurrency];
-        return rate ? amount / rate : amount;
-    }
+    categoryBudgets = [];
     
-    // 否则，先转换为基准货币，再转换为目标货币
-    const fromRate = exchangeRates.rates[fromCurrency];
-    const toRate = exchangeRates.rates[toCurrency];
+    newDayStatus = {
+        active: false,
+        lastActivated: null
+    };
     
-    if (!fromRate || !toRate) {
-        return amount; // 如果缺少汇率，返回原金额
-    }
+    appSettings = {
+        currency: 'TWD',
+        currencySymbol: '$',
+        syncRemindersEnabled: true,
+        lastSyncReminder: null,
+        theme: 'system',
+        dailySummaryTiming: 'immediate',
+        enableVirtualization: true,
+        pageSize: 100,
+        googleSync: {
+            enabled: false,
+            frequency: 'daily',
+            lastSync: null,
+            fileId: null
+        },
+        exchangeRates: {
+            enabled: false,
+            apiKey: '',
+            cacheHours: 24,
+            lastUpdated: null
+        }
+    };
     
-    // 先转换为基准货币，再转换为目标货币
-    const amountInBase = amount / fromRate;
-    return amountInBase * toRate;
+    exchangeRates = {
+        base: 'TWD',
+        rates: {},
+        lastUpdated: null,
+        expiryHours: 24
+    };
+    
+    saveData();
 }
 
 // 匯率頁面更新函數
@@ -851,7 +1618,10 @@ function updateExchangeRatesContent() {
     const lastUpdatedInfo = document.getElementById('pageLastUpdatedInfo');
     const statusElement = document.getElementById('exchangeRatePageStatus');
     
-    if (!baseCurrencySelect || !statusElement) return; // 安全检查
+    if (!baseCurrencySelect || !statusElement) {
+        console.error('Exchange rate page elements not found');
+        return; // 安全检查
+    }
     
     // 檢查匯率數據
     if (!exchangeRates.rates || Object.keys(exchangeRates.rates).length === 0) {
@@ -929,37 +1699,969 @@ function updateExchangeRatesContent() {
     fromCurrencySelect.addEventListener('change', updatePageCurrencyCalculator);
     toCurrencySelect.addEventListener('change', updatePageCurrencyCalculator);
     fromAmountInput.addEventListener('input', updatePageCurrencyCalculator);
-    
-    // 添加更新按鈕事件
-    document.getElementById('pageUpdateRatesBtn').addEventListener('click', function() {
-        updateExchangeRates();
-        setTimeout(() => {
-            updateExchangeRatesContent();
-        }, 1000);
-    });
 }
 
-// 這裡需要包含其餘所有必要的函數...
-
-// 匯率頁面的其他必要函數
+// 頁面用的匯率卡片更新
 function updatePageExchangeRateCards(baseCurrency) {
-    // 實現詳細內容...
+    const container = document.getElementById('pageExchangeRatesContainer');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    // 如果沒有匯率數據或基準貨幣匯率不存在
+    if (!exchangeRates.rates || !exchangeRates.rates[baseCurrency] && baseCurrency !== exchangeRates.base) {
+        container.innerHTML = '<div class="col-span-3 text-center text-gray-500">無法顯示匯率數據</div>';
+        return;
+    }
+    
+    // 獲取所有貨幣對基準貨幣的匯率
+    const rates = {};
+    
+    // 如果當前基準貨幣就是API基準貨幣
+    if (baseCurrency === exchangeRates.base) {
+        Object.entries(exchangeRates.rates).forEach(([currency, rate]) => {
+            if (currency !== baseCurrency) {
+                rates[currency] = rate;
+            }
+        });
+    } else {
+        // 如果不是API基準貨幣，需要轉換
+        const baseRate = exchangeRates.rates[baseCurrency];
+        if (!baseRate) return;
+        
+        Object.entries(exchangeRates.rates).forEach(([currency, rate]) => {
+            if (currency !== baseCurrency) {
+                rates[currency] = rate / baseRate;
+            }
+        });
+        
+        // 添加API基準貨幣的匯率
+        rates[exchangeRates.base] = 1 / baseRate;
+    }
+    
+    // 添加常用貨幣的卡片
+    const popularCurrencies = ['USD', 'EUR', 'JPY', 'CNY', 'HKD', 'GBP', 'TWD', 'AUD', 'CAD', 'SGD'];
+    const availableCurrencies = Object.keys(rates);
+    
+    // 按流行程度排序
+    popularCurrencies
+        .filter(currency => availableCurrencies.includes(currency) && currency !== baseCurrency)
+        .forEach(currency => {
+            createPageExchangeRateCard(container, baseCurrency, currency, rates[currency]);
+        });
+    
+    // 添加其他貨幣
+    availableCurrencies
+        .filter(currency => !popularCurrencies.includes(currency) && currency !== baseCurrency)
+        .sort()
+        .forEach(currency => {
+            createPageExchangeRateCard(container, baseCurrency, currency, rates[currency]);
+        });
 }
 
+// 創建頁面用的匯率卡片
+function createPageExchangeRateCard(container, baseCurrency, targetCurrency, rate) {
+    const card = document.createElement('div');
+    card.className = 'exchange-rate-card bg-white p-4 rounded-lg shadow';
+    
+    const header = document.createElement('div');
+    header.className = 'flex justify-between items-center mb-2';
+    
+    const currencyName = document.createElement('span');
+    currencyName.className = 'font-bold';
+    currencyName.textContent = targetCurrency;
+    
+    const currencySymbolEl = document.createElement('span');
+    currencySymbolEl.className = 'text-gray-500';
+    currencySymbolEl.textContent = currencySymbols[targetCurrency] || '';
+    
+    header.appendChild(currencyName);
+    header.appendChild(currencySymbolEl);
+    
+    const rateDisplay = document.createElement('div');
+    rateDisplay.className = 'text-lg font-medium';
+    rateDisplay.textContent = `1 ${baseCurrency} = ${rate.toFixed(4)} ${targetCurrency}`;
+    
+    const inverseRate = 1 / rate;
+    const inverseDisplay = document.createElement('div');
+    inverseDisplay.className = 'text-sm text-gray-500 exchange-rate-info';
+    inverseDisplay.textContent = `1 ${targetCurrency} = ${inverseRate.toFixed(4)} ${baseCurrency}`;
+    
+    // 添加工具提示
+    const tooltip = document.createElement('span');
+    tooltip.className = 'exchange-rate-tooltip';
+    tooltip.textContent = `點擊複製: ${inverseRate.toFixed(4)}`;
+    inverseDisplay.appendChild(tooltip);
+    
+    // 點擊複製匯率
+    inverseDisplay.addEventListener('click', function() {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(inverseRate.toFixed(4)).then(() => {
+                notify('✅', '已複製', `匯率 ${inverseRate.toFixed(4)} 已複製到剪貼板`);
+            }).catch(err => {
+                console.error('无法复制文本: ', err);
+            });
+        } else {
+            // 舊版瀏覽器相容性處理
+            const tempInput = document.createElement('textarea');
+            tempInput.value = inverseRate.toFixed(4);
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            notify('✅', '已複製', `匯率 ${inverseRate.toFixed(4)} 已複製到剪貼板`);
+        }
+    });
+    
+    card.appendChild(header);
+    card.appendChild(rateDisplay);
+    card.appendChild(inverseDisplay);
+    
+    container.appendChild(card);
+}
+
+// 更新頁面貨幣計算器
 function updatePageCurrencyCalculator() {
-    // 實現詳細內容...
+    const fromCurrency = document.getElementById('pageFromCurrency').value;
+    const toCurrency = document.getElementById('pageToCurrency').value;
+    const fromAmount = parseFloat(document.getElementById('pageFromAmount').value) || 0;
+    
+    if (!fromCurrency || !toCurrency) return;
+    
+    const convertedAmount = convertCurrency(fromAmount, fromCurrency, toCurrency);
+    const toAmountInput = document.getElementById('pageToAmount');
+    if (toAmountInput) {
+        toAmountInput.value = convertedAmount.toFixed(2);
+    }
 }
 
-function updateExchangeRates() {
-    // 實現詳細內容...
+// 設置匯率資訊模態框
+function setupExchangeRatesModal() {
+    const modal = document.getElementById('exchangeRatesModal');
+    if (!modal) return;
+    
+    const baseCurrencySelect = document.getElementById('baseCurrencySelect');
+    const fromCurrencySelect = document.getElementById('fromCurrency');
+    const toCurrencySelect = document.getElementById('toCurrency');
+    const fromAmountInput = document.getElementById('fromAmount');
+    const toAmountInput = document.getElementById('toAmount');
+    const lastUpdatedInfo = document.getElementById('lastUpdatedInfo');
+    
+    // 填充貨幣選擇器
+    const currencies = Object.keys(exchangeRates.rates);
+    currencies.sort(); // 按字母排序
+    
+    // 添加基準貨幣
+    currencies.unshift(exchangeRates.base);
+    
+    // 清空現有選項
+    baseCurrencySelect.innerHTML = '';
+    fromCurrencySelect.innerHTML = '';
+    toCurrencySelect.innerHTML = '';
+    
+    // 添加貨幣選項
+    currencies.forEach(currency => {
+        const optionBase = document.createElement('option');
+        optionBase.value = currency;
+        optionBase.textContent = currency;
+        if (currency === appSettings.currency) {
+            optionBase.selected = true;
+        }
+        baseCurrencySelect.appendChild(optionBase);
+        
+        const optionFrom = document.createElement('option');
+        optionFrom.value = currency;
+        optionFrom.textContent = currency;
+        if (currency === appSettings.currency) {
+            optionFrom.selected = true;
+        }
+        fromCurrencySelect.appendChild(optionFrom);
+        
+        const optionTo = document.createElement('option');
+        optionTo.value = currency;
+        optionTo.textContent = currency;
+        toCurrencySelect.appendChild(optionTo);
+    });
+    
+    // 設置默認目標貨幣為美元或第一個非基準貨幣
+    if (currencies.includes('USD') && exchangeRates.base !== 'USD') {
+        toCurrencySelect.value = 'USD';
+    } else if (currencies.length > 1) {
+        toCurrencySelect.value = currencies.find(c => c !== exchangeRates.base) || currencies[0];
+    }
+    
+    // 更新匯率卡片
+    updateExchangeRateCards(exchangeRates.base);
+    
+    // 更新計算器初始值
+    updateCurrencyCalculator();
+    
+    // 更新最後更新時間
+    if (exchangeRates.lastUpdated) {
+        const lastUpdate = new Date(exchangeRates.lastUpdated);
+        lastUpdatedInfo.textContent = `匯率更新時間: ${lastUpdate.toLocaleString()}`;
+    } else {
+        lastUpdatedInfo.textContent = '匯率尚未更新';
+    }
+    
+    // 添加事件監聽器
+    baseCurrencySelect.addEventListener('change', function() {
+        updateExchangeRateCards(this.value);
+    });
+    
+    fromCurrencySelect.addEventListener('change', updateCurrencyCalculator);
+    toCurrencySelect.addEventListener('change', updateCurrencyCalculator);
+    fromAmountInput.addEventListener('input', updateCurrencyCalculator);
+    
+    // 顯示模態框
+    modal.style.display = 'block';
 }
 
-// 初始化匯率資料
+// 初始化匯率功能
 function initExchangeRates() {
-    // 實現詳細內容...
+    // 如果有緩存的匯率數據，先加載
+    if (hasLocalStorage) {
+        try {
+            const storedRates = localStorage.getItem('finance_exchange_rates');
+            if (storedRates) {
+                exchangeRates = JSON.parse(storedRates);
+            }
+        } catch (error) {
+            console.error('Error loading exchange rates:', error);
+        }
+    }
+    
+    // 如果啟用了匯率功能並且緩存過期，獲取最新匯率
+    if (appSettings.exchangeRates.enabled) {
+        checkAndUpdateExchangeRates();
+    }
+    
+    // 設置模態框中的匯率設置
+    const enableExchangeRates = document.getElementById('enableExchangeRates');
+    const exchangeRateApiKey = document.getElementById('exchangeRateApiKey');
+    const exchangeRateCacheHours = document.getElementById('exchangeRateCacheHours');
+    
+    if (enableExchangeRates) enableExchangeRates.checked = appSettings.exchangeRates.enabled;
+    if (exchangeRateApiKey) exchangeRateApiKey.value = appSettings.exchangeRates.apiKey || '';
+    if (exchangeRateCacheHours) exchangeRateCacheHours.value = appSettings.exchangeRates.cacheHours || 24;
+    
+    // 設置匯率數據緩存時間
+    exchangeRates.expiryHours = appSettings.exchangeRates.cacheHours || 24;
+}
+
+// 檢查並更新匯率數據
+function checkAndUpdateExchangeRates() {
+    if (!appSettings.exchangeRates.enabled || !appSettings.exchangeRates.apiKey) {
+        return;
+    }
+    
+    // 檢查是否需要更新
+    const now = new Date();
+    const lastUpdated = exchangeRates.lastUpdated ? new Date(exchangeRates.lastUpdated) : null;
+    
+    if (!lastUpdated || ((now - lastUpdated) / (1000 * 60 * 60) >= exchangeRates.expiryHours)) {
+        updateExchangeRates();
+    }
+}
+
+// 更新匯率數據
+function updateExchangeRates() {
+    if (!appSettings.exchangeRates.apiKey) {
+        notify('❌', '未設置 API 金鑰', '請在設定中添加有效的匯率 API 金鑰');
+        return;
+    }
+    
+    const apiKey = appSettings.exchangeRates.apiKey;
+    const baseCurrency = appSettings.currency;
+    
+    // 更新狀態
+    updateExchangeRateApiStatus('pending', '正在更新匯率數據...');
+    
+    // 使用 fetch 獲取匯率數據
+    fetch(`https://v6.exchangerate-api.com/v6/${apiKey}/latest/${baseCurrency}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.result === 'success') {
+                // 更新匯率數據
+                exchangeRates.base = data.base_code;
+                exchangeRates.rates = data.conversion_rates;
+                exchangeRates.lastUpdated = new Date().toISOString();
+                
+                // 更新 appSettings 中的最後更新時間
+                appSettings.exchangeRates.lastUpdated = exchangeRates.lastUpdated;
+                
+                // 保存到 localStorage
+                saveExchangeRates();
+                
+                // 更新狀態
+                updateExchangeRateApiStatus('success', '匯率數據已更新');
+                
+                // 更新 UI
+                updateCurrencyDisplay();
+                updateAccountsTab();
+                updateDashboard();
+                
+                notify('✅', '匯率已更新', `已成功更新 ${baseCurrency} 的匯率數據`);
+            } else {
+                updateExchangeRateApiStatus('error', `API 錯誤: ${data.error || '未知錯誤'}`);
+            }
+        })
+        .catch(error => {
+            console.error('Exchange rate API error:', error);
+            updateExchangeRateApiStatus('error', `無法連接匯率 API: ${error.message}`);
+            notify('❌', '匯率更新失敗', `無法獲取匯率數據: ${error.message}`);
+        });
+}
+
+// 保存匯率數據到 localStorage
+function saveExchangeRates() {
+    if (hasLocalStorage) {
+        try {
+            localStorage.setItem('finance_exchange_rates', JSON.stringify(exchangeRates));
+        } catch (error) {
+            console.error('Error saving exchange rates:', error);
+        }
+    }
+}
+
+// 更新匯率卡片
+function updateExchangeRateCards(baseCurrency) {
+    const container = document.getElementById('exchangeRatesContainer');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    // 如果沒有匯率數據或基準貨幣匯率不存在
+    if (!exchangeRates.rates || !exchangeRates.rates[baseCurrency] && baseCurrency !== exchangeRates.base) {
+        container.innerHTML = '<div class="col-span-3 text-center text-gray-500">無法顯示匯率數據</div>';
+        return;
+    }
+    
+    // 獲取所有貨幣對基準貨幣的匯率
+    const rates = {};
+    
+    // 如果當前基準貨幣就是API基準貨幣
+    if (baseCurrency === exchangeRates.base) {
+        Object.entries(exchangeRates.rates).forEach(([currency, rate]) => {
+            if (currency !== baseCurrency) {
+                rates[currency] = rate;
+            }
+        });
+    } else {
+        // 如果不是API基準貨幣，需要轉換
+        const baseRate = exchangeRates.rates[baseCurrency];
+        if (!baseRate) return;
+        
+        Object.entries(exchangeRates.rates).forEach(([currency, rate]) => {
+            if (currency !== baseCurrency) {
+                rates[currency] = rate / baseRate;
+            }
+        });
+        
+        // 添加API基準貨幣的匯率
+        rates[exchangeRates.base] = 1 / baseRate;
+    }
+    
+    // 添加常用貨幣的卡片
+    const popularCurrencies = ['USD', 'EUR', 'JPY', 'CNY', 'HKD', 'GBP', 'TWD', 'AUD', 'CAD', 'SGD'];
+    const availableCurrencies = Object.keys(rates);
+    
+    // 按流行程度排序
+    popularCurrencies
+        .filter(currency => availableCurrencies.includes(currency) && currency !== baseCurrency)
+        .forEach(currency => {
+            createExchangeRateCard(container, baseCurrency, currency, rates[currency]);
+        });
+    
+    // 添加其他貨幣
+    availableCurrencies
+        .filter(currency => !popularCurrencies.includes(currency) && currency !== baseCurrency)
+        .sort()
+        .forEach(currency => {
+            createExchangeRateCard(container, baseCurrency, currency, rates[currency]);
+        });
+}
+
+// 創建匯率卡片
+function createExchangeRateCard(container, baseCurrency, targetCurrency, rate) {
+    const card = document.createElement('div');
+    card.className = 'exchange-rate-card bg-white p-4 rounded-lg shadow';
+    
+    const header = document.createElement('div');
+    header.className = 'flex justify-between items-center mb-2';
+    
+    const currencyName = document.createElement('span');
+    currencyName.className = 'font-bold';
+    currencyName.textContent = targetCurrency;
+    
+    const currencySymbolEl = document.createElement('span');
+    currencySymbolEl.className = 'text-gray-500';
+    currencySymbolEl.textContent = currencySymbols[targetCurrency] || '';
+    
+    header.appendChild(currencyName);
+    header.appendChild(currencySymbolEl);
+    
+    const rateDisplay = document.createElement('div');
+    rateDisplay.className = 'text-lg font-medium';
+    rateDisplay.textContent = `1 ${baseCurrency} = ${rate.toFixed(4)} ${targetCurrency}`;
+    
+    const inverseRate = 1 / rate;
+    const inverseDisplay = document.createElement('div');
+    inverseDisplay.className = 'text-sm text-gray-500 exchange-rate-info';
+    inverseDisplay.textContent = `1 ${targetCurrency} = ${inverseRate.toFixed(4)} ${baseCurrency}`;
+    
+    // 添加工具提示
+    const tooltip = document.createElement('span');
+    tooltip.className = 'exchange-rate-tooltip';
+    tooltip.textContent = `點擊複製: ${inverseRate.toFixed(4)}`;
+    inverseDisplay.appendChild(tooltip);
+    
+    // 點擊複製匯率
+    inverseDisplay.addEventListener('click', function() {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(inverseRate.toFixed(4)).then(() => {
+                notify('✅', '已複製', `匯率 ${inverseRate.toFixed(4)} 已複製到剪貼板`);
+            }).catch(err => {
+                console.error('无法复制文本: ', err);
+            });
+        } else {
+            // 舊版瀏覽器相容性處理
+            const tempInput = document.createElement('textarea');
+            tempInput.value = inverseRate.toFixed(4);
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            notify('✅', '已複製', `匯率 ${inverseRate.toFixed(4)} 已複製到剪貼板`);
+        }
+    });
+    
+    card.appendChild(header);
+    card.appendChild(rateDisplay);
+    card.appendChild(inverseDisplay);
+    
+    container.appendChild(card);
+}
+
+// 更新貨幣計算器
+function updateCurrencyCalculator() {
+    const fromCurrency = document.getElementById('fromCurrency').value;
+    const toCurrency = document.getElementById('toCurrency').value;
+    const fromAmount = parseFloat(document.getElementById('fromAmount').value) || 0;
+    
+    if (!fromCurrency || !toCurrency) return;
+    
+    const convertedAmount = convertCurrency(fromAmount, fromCurrency, toCurrency);
+    document.getElementById('toAmount').value = convertedAmount.toFixed(2);
+}
+
+// 貨幣轉換函數
+function convertCurrency(amount, fromCurrency, toCurrency) {
+    if (!appSettings.exchangeRates.enabled || !exchangeRates.rates) {
+        return amount; // 如果未启用或没有汇率数据，直接返回原金额
+    }
+    
+    // 如果货币相同，无需转换
+    if (fromCurrency === toCurrency) {
+        return amount;
+    }
+    
+    // 获取汇率
+    const baseRate = exchangeRates.base; // 基准货币
+    
+    // 如果基准货币就是 fromCurrency，直接使用 toCurrency 的汇率
+    if (baseRate === fromCurrency) {
+        const rate = exchangeRates.rates[toCurrency];
+        return rate ? amount * rate : amount;
+    }
+    
+    // 如果基准货币就是 toCurrency，使用 fromCurrency 的汇率倒数
+    if (baseRate === toCurrency) {
+        const rate = exchangeRates.rates[fromCurrency];
+        return rate ? amount / rate : amount;
+    }
+    
+    // 否则，先转换为基准货币，再转换为目标货币
+    const fromRate = exchangeRates.rates[fromCurrency];
+    const toRate = exchangeRates.rates[toCurrency];
+    
+    if (!fromRate || !toRate) {
+        return amount; // 如果缺少汇率，返回原金额
+    }
+    
+    // 先转换为基准货币，再转换为目标货币
+    const amountInBase = amount / fromRate;
+    return amountInBase * toRate;
 }
 
 // 顯示通知訊息
 function notify(icon, title, message) {
-    // 實現詳細內容...
+    const notificationEl = document.getElementById('notification');
+    if (!notificationEl) return;
+    
+    const notificationIcon = document.getElementById('notificationIcon');
+    const notificationTitle = document.getElementById('notificationTitle');
+    const notificationMessage = document.getElementById('notificationMessage');
+    
+    if (notificationIcon) notificationIcon.textContent = icon;
+    if (notificationTitle) notificationTitle.textContent = title;
+    if (notificationMessage) notificationMessage.textContent = message;
+    
+    notificationEl.style.display = 'block';
+    
+    // Auto-hide notification after 3 seconds
+    setTimeout(() => {
+        if (notificationEl) notificationEl.style.display = 'none';
+    }, 3000);
+}
+
+// 更新 UI
+function updateUI() {
+    // Update dashboard
+    updateDashboard();
+    
+    // Update accounts tab
+    updateAccountsTab();
+    
+    // Update transaction categories
+    updateTransactionCategories();
+    
+    // Update category budget dropdown
+    updateCategoryBudgetDropdown();
+    
+    // Update category budget items
+    updateCategoryBudgetItems();
+    
+    // Update statistics categories
+    updateStatisticsCategories();
+    
+    // Update account dropdowns
+    updateAccountDropdowns();
+    
+    // Update budget status
+    updateBudgetStatus();
+    
+    // Update currency display
+    updateCurrencyDisplay();
+}
+
+// 更新貨幣顯示
+function updateCurrencyDisplay() {
+    // Update currency symbol in header
+    const selectedCurrencyEl = document.getElementById('selectedCurrency');
+    if (selectedCurrencyEl) selectedCurrencyEl.textContent = appSettings.currency;
+    
+    // Update all currency symbols in the UI
+    const currencyElements = document.querySelectorAll('[id^="currencySymbol"]');
+    currencyElements.forEach(element => {
+        element.textContent = appSettings.currencySymbol;
+    });
+    
+    // Update currency symbols in summary modal
+    const summarySymbols = document.querySelectorAll('[id^="summarySymbol"]');
+    summarySymbols.forEach(element => {
+        element.textContent = appSettings.currencySymbol;
+    });
+}
+
+// Update dashboard
+function updateDashboard() {
+    const totalBalanceEl = document.getElementById('totalBalance');
+    const todayIncomeEl = document.getElementById('todayIncome');
+    const todayExpenseEl = document.getElementById('todayExpense');
+    
+    // Update total balance
+    if (totalBalanceEl) totalBalanceEl.textContent = formatNumber(getTotalBalance());
+    
+    // Update today income/expense
+    if (todayIncomeEl) todayIncomeEl.textContent = formatNumber(getTodayIncome());
+    if (todayExpenseEl) todayExpenseEl.textContent = formatNumber(getTodayExpense());
+    
+    // Update today transactions
+    updateTodayTransactions();
+    
+    // Update recent transactions
+    updateRecentTransactions();
+}
+
+// Update accounts tab
+function updateAccountsTab() {
+    const accountsGrid = document.getElementById('accountsGrid');
+    if (!accountsGrid) return;
+    
+    // Clear previous content
+    accountsGrid.innerHTML = '';
+    
+    // Add each account
+    accounts.forEach(account => {
+        const accountCard = document.createElement('div');
+        accountCard.className = 'bg-white p-6 rounded-lg shadow relative';
+        
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'absolute top-2 right-2 flex space-x-1';
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'text-red-500 hover:text-red-700';
+        deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+        deleteBtn.addEventListener('click', () => deleteAccount(account.id));
+        actionsDiv.appendChild(deleteBtn);
+        
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'text-3xl mb-2 emoji-btn';
+        iconDiv.textContent = account.icon || '💳';
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'flex items-center mb-1';
+        
+        const nameHeading = document.createElement('h3');
+        nameHeading.className = 'text-lg font-bold';
+        nameHeading.textContent = account.name;
+        
+        const currencyBadge = document.createElement('span');
+        currencyBadge.className = 'currency-label ml-2';
+        currencyBadge.textContent = account.currency || appSettings.currency;
+        
+        nameDiv.appendChild(nameHeading);
+        nameDiv.appendChild(currencyBadge);
+        
+        const balanceDiv = document.createElement('div');
+        balanceDiv.className = 'text-2xl font-bold';
+        
+        // Get currency symbol for this account
+        const currencySymbol = account.currency ? 
+            (currencySymbols[account.currency] || appSettings.currencySymbol) : 
+            appSettings.currencySymbol;
+        
+        balanceDiv.textContent = currencySymbol + formatNumber(account.balance);
+        
+        accountCard.appendChild(actionsDiv);
+        accountCard.appendChild(iconDiv);
+        accountCard.appendChild(nameDiv);
+        accountCard.appendChild(balanceDiv);
+        
+        accountsGrid.appendChild(accountCard);
+    });
+    
+    // Add the "Add New Account" card
+    const addNewCard = document.createElement('div');
+    addNewCard.className = 'bg-gray-100 p-6 rounded-lg shadow border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 transition';
+    addNewCard.innerHTML = `
+        <div class="text-3xl mb-2">➕</div>
+        <h3 class="text-lg font-medium text-gray-600">新增戶口</h3>
+    `;
+    addNewCard.addEventListener('click', () => {
+        const newAccountNameInput = document.getElementById('newAccountName');
+        const newAccountBalanceInput = document.getElementById('newAccountBalance');
+        const newAccountCurrencySelect = document.getElementById('newAccountCurrency');
+        
+        if (newAccountNameInput) newAccountNameInput.value = '';
+        if (newAccountBalanceInput) newAccountBalanceInput.value = '';
+        if (newAccountCurrencySelect) newAccountCurrencySelect.value = appSettings.currency || 'TWD';
+        
+        selectedIcon = '💳';
+        updateSelectedAccountIcon();
+        openModal('newAccountModal');
+    });
+    
+    accountsGrid.appendChild(addNewCard);
+}
+
+// Update account dropdowns
+function updateAccountDropdowns() {
+    const transferFrom = document.getElementById('transferFrom');
+    const transferTo = document.getElementById('transferTo');
+    const transactionAccount = document.getElementById('transactionAccount');
+    
+    // Safety checks
+    if (!transferFrom && !transferTo && !transactionAccount) return;
+    
+    // Clear previous options
+    if (transferFrom) transferFrom.innerHTML = '<option value="" disabled selected>選擇戶口</option>';
+    if (transferTo) transferTo.innerHTML = '<option value="" disabled selected>選擇戶口</option>';
+    if (transactionAccount) transactionAccount.innerHTML = '<option value="" disabled selected>選擇戶口</option>';
+    
+    // Add account options
+    accounts.forEach(account => {
+        const currencyCode = account.currency || appSettings.currency;
+        const displayName = `${account.name} (${currencyCode})`;
+        
+        if (transferFrom) {
+            const option1 = document.createElement('option');
+            option1.value = account.id;
+            option1.textContent = displayName;
+            transferFrom.appendChild(option1);
+        }
+        
+        if (transferTo) {
+            const option2 = document.createElement('option');
+            option2.value = account.id;
+            option2.textContent = displayName;
+            transferTo.appendChild(option2);
+        }
+        
+        if (transactionAccount) {
+            const option3 = document.createElement('option');
+            option3.value = account.id;
+            option3.textContent = displayName;
+            transactionAccount.appendChild(option3);
+        }
+    });
+}
+
+// Update transaction categories
+function updateTransactionCategories() {
+    const transactionCategory = document.getElementById('transactionCategory');
+    if (!transactionCategory) return;
+    
+    // Clear previous options
+    transactionCategory.innerHTML = '<option value="" disabled selected>選擇類別</option>';
+    
+    // Add category options based on current transaction type
+    const categoriesList = categories[transactionType] || [];
+    categoriesList.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        transactionCategory.appendChild(option);
+    });
+}
+
+// 其他必要函數 (簡化版)
+function updateTodayTransactions() {
+    // 根據您的代碼實現
+}
+
+function updateRecentTransactions() {
+    // 根據您的代碼實現
+}
+
+function updateCategoryBudgetDropdown() {
+    // 根據您的代碼實現
+}
+
+function updateCategoryBudgetItems() {
+    // 根據您的代碼實現
+}
+
+function updateStatisticsCategories() {
+    // 根據您的代碼實現
+}
+
+function updateBudgetStatus() {
+    // 根據您的代碼實現
+}
+
+function updateBudgetResetDayOptions() {
+    // 根據您的代碼實現
+}
+
+function initAccountIcons() {
+    // 根據您的代碼實現
+}
+
+function updateSelectedAccountIcon() {
+    // 根據您的代碼實現
+}
+
+function initReceiptUpload() {
+    // 根據您的代碼實現
+}
+
+function updateSettingsModal() {
+    // 根據您的代碼實現
+}
+
+function saveData(dataType) {
+    if (!hasLocalStorage) return;
+    
+    try {
+        switch (dataType) {
+            case 'accounts':
+                localStorage.setItem('finance_accounts', JSON.stringify(accounts));
+                break;
+            case 'categories':
+                localStorage.setItem('finance_categories', JSON.stringify(categories));
+                break;
+            case 'transactions':
+                localStorage.setItem('finance_transactions', JSON.stringify(transactions));
+                break;
+            case 'budget':
+                localStorage.setItem('finance_budget', JSON.stringify(budget));
+                break;
+            case 'categoryBudgets':
+                localStorage.setItem('finance_category_budgets', JSON.stringify(categoryBudgets));
+                break;
+            case 'newDayStatus':
+                localStorage.setItem('finance_new_day_status', JSON.stringify(newDayStatus));
+                break;
+            case 'appSettings':
+                localStorage.setItem('finance_app_settings', JSON.stringify(appSettings));
+                break;
+            default:
+                // Save all
+                localStorage.setItem('finance_accounts', JSON.stringify(accounts));
+                localStorage.setItem('finance_categories', JSON.stringify(categories));
+                localStorage.setItem('finance_transactions', JSON.stringify(transactions));
+                localStorage.setItem('finance_budget', JSON.stringify(budget));
+                localStorage.setItem('finance_category_budgets', JSON.stringify(categoryBudgets));
+                localStorage.setItem('finance_new_day_status', JSON.stringify(newDayStatus));
+                localStorage.setItem('finance_app_settings', JSON.stringify(appSettings));
+        }
+        
+        // Mark data as modified
+        dataModified = true;
+    } catch (error) {
+        console.error('Error saving data:', error);
+    }
+}
+
+function exportData() {
+    return JSON.stringify({
+        accounts: accounts,
+        categories: categories,
+        transactions: transactions,
+        budget: budget,
+        categoryBudgets: categoryBudgets,
+        newDayStatus: newDayStatus,
+        appSettings: appSettings,
+        exchangeRates: exchangeRates,
+        exportDate: new Date().toISOString(),
+        version: '2.2.0'
+    }, null, 2);
+}
+
+function importData(jsonString) {
+    try {
+        const data = JSON.parse(jsonString);
+        // 進行數據驗證和匯入...
+        return true;
+    } catch (error) {
+        console.error('Import error:', error);
+        notify('❌', '匯入失敗', '匯入的數據格式不正確');
+        return false;
+    }
+}
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.style.display = 'block';
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.style.display = 'none';
+}
+
+function updateTransactionTypeUI() {
+    const incomeBtn = document.getElementById('incomeBtn');
+    const expenseBtn = document.getElementById('expenseBtn');
+    
+    if (!incomeBtn || !expenseBtn) return;
+    
+    if (transactionType === 'income') {
+        incomeBtn.classList.remove('bg-gray-200', 'text-gray-700');
+        incomeBtn.classList.add('bg-green-500', 'text-white');
+        expenseBtn.classList.remove('bg-red-500', 'text-white');
+        expenseBtn.classList.add('bg-gray-200', 'text-gray-700');
+    } else {
+        incomeBtn.classList.remove('bg-green-500', 'text-white');
+        incomeBtn.classList.add('bg-gray-200', 'text-gray-700');
+        expenseBtn.classList.remove('bg-gray-200', 'text-gray-700');
+        expenseBtn.classList.add('bg-red-500', 'text-white');
+    }
+}
+
+function applyTheme() {
+    const theme = appSettings.theme;
+    
+    if (theme === 'system') {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    } else if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+}
+
+function searchTransactions() {
+    // 根據您的代碼實現
+}
+
+function generateFinancialAdvice() {
+    // 根據您的代碼實現
+}
+
+function checkBudgetReset() {
+    // 根據您的代碼實現
+}
+
+function checkNewDayStatus() {
+    // 根據您的代碼實現
+}
+
+function startNewDay() {
+    // 根據您的代碼實現
+}
+
+function checkSyncReminder() {
+    // 根據您的代碼實現
+}
+
+function checkBudgetAlert() {
+    // 根據您的代碼實現
+}
+
+function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function getAccount(accountId) {
+    return accounts.find(a => a.id === accountId) || null;
+}
+
+function getAccountCurrencySymbol(accountId) {
+    const account = getAccount(accountId);
+    if (!account) return appSettings.currencySymbol;
+    
+    const currency = account.currency;
+    return currency ? (currencySymbols[currency] || appSettings.currencySymbol) : appSettings.currencySymbol;
+}
+
+function getTodayFormatted() {
+    return formatDateForInput(new Date());
+}
+
+function formatDateForInput(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}/${month}/${day}`;
+}
+
+function formatNumber(number) {
+    if (typeof number !== 'number') {
+        number = parseFloat(number) || 0;
+    }
+    return number.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function getTodayTransactions() {
+    const today = getTodayFormatted();
+    return transactions.filter(t => t.date === today);
+}
+
+function deleteAccount(accountId) {
+    // 實現刪除戶口的邏輯
 }
