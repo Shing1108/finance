@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>進階個人財務追蹤器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.css" rel="stylesheet">
+    <!-- Google API 客戶端庫 -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <!-- Axios for API requests -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- 引用外部 CSS 檔案 -->
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                        'primary-dark': '#4645B2',
+                        'primary-light': '#7877E6',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <header class="mb-6">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-primary">
+                    <span class="mr-2">💰</span>進階財務追蹤器
+                    <span id="selectedCurrency" class="text-sm bg-primary bg-opacity-20 text-primary px-2 py-1 rounded-full ml-2 cursor-pointer">TWD</span>
+                </h1>
+                <div class="flex space-x-2">
+                    <!-- Google Sign-in Status -->
+                    <div id="googleAuthStatus" class="bg-gray-100 text-gray-600 px-3 py-2 rounded-md text-sm hidden items-center">
+                        <i class="fab fa-google mr-1"></i>
+                        <span id="googleUserName">未登入</span>
+                    </div>
+                    <!-- Settings Button -->
+                    <button id="settingsBtn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
+                        <span class="mr-1">⚙️</span>設定
+                    </button>
+                    <!-- New Day Button -->
+                    <button id="newDayBtn" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition">
+                        <span class="mr-1">🌅</span>開啟新的一天
+                    </button>
+                    <!-- Import/Export Button -->
+                    <button id="importExportBtn" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition">
+                        <span class="mr-1">💾</span>匯入/匯出
+                    </button>
+                </div>
+            </div>
+            <!-- Balance Summary -->
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white p-4 rounded-lg shadow slide-enter border-l-4 border-blue-500">
+                    <div class="text-gray-600">總資產</div>
+                    <div class="text-2xl font-bold text-blue-600"><span id="currencySymbol">$</span> <span id="totalBalance">0.00</span></div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow slide-enter border-l-4 border-green-500">
+                    <div class="text-gray-600">今日收入</div>
+                    <div class="text-2xl font-bold text-green-600"><span id="currencySymbol2">$</span> <span id="todayIncome">0.00</span></div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow slide-enter border-l-4 border-red-500">
+                    <div class="text-gray-600">今日支出</div>
+                    <div class="text-2xl font-bold text-red-600"><span id="currencySymbol3">$</span> <span id="todayExpense">0.00</span></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="mb-6 border-b border-gray-200">
+            <ul class="flex flex-wrap -mb-px" id="tabsContainer">
+                <li class="mr-2">
+                    <button data-tab="dashboard" class="tab-btn inline-block py-2 px-4 border-b-2 font-medium text-primary border-primary">
+                        <span class="mr-1">📊</span>儀表板
+                    </button>
+                </li>
+                <li class="mr-2">
+                    <button data-tab="accounts" class="tab-btn inline-block py-2 px-4 border-b-2 font-medium text-gray-500 hover:text-gray-700 border-transparent">
+                        <span class="mr-1">💳</span>戶口管理
+                    </button>
+                </li>
+                <li class="mr-2">
+                    <button data-tab="transactions" class="tab-btn inline-block py-2 px-4 border-b-2 font-medium text-gray-500 hover:text-gray-700 border-transparent">
+                        <span class="mr-1">📝</span>記賬
+                    </button>
+                </li>
+                <li class="mr-2">
+                    <button data-tab="budget" class="tab-btn inline-block py-2 px-4 border-b-2 font-medium text-gray-500 hover:text-gray-700 border-transparent">
+                        <span class="mr-1">⚙️</span>預算設定
+                    </button>
+                </li>
+                <li class="mr-2">
+                    <button data-tab="categories" class="tab-btn inline-block py-2 px-4 border-b-2 font-medium text-gray-500 hover:text-gray-700 border-transparent">
+                        <span class="mr-1">🏷️</span>類別管理
+                    </button>
+                </li>
+                <li class="mr-2">
+                    <button data-tab="stats" class="tab-btn inline-block py-2 px-4 border-b-2 font-medium text-gray-500 hover:text-gray-700 border-transparent">
+                        <span class="mr-1">📈</span>統計分析
+                    </button>
+                </li>
+                <li class="mr-2">
+                    <button data-tab="advice" class="tab-btn inline-block py-2 px-4 border-b-2 font-medium text-gray-500 hover:text-gray-700 border-transparent">
+                        <span class="mr-1">💡</span>財務建議
+                    </button>
+                </li>
+                <li class="mr-2">
+                    <button data-tab="exchangeRates" class="tab-btn inline-block py-2 px-4 border-b-2 font-medium text-gray-500 hover:text-gray-700 border-transparent">
+                        <span class="mr-1">💱</span>匯率
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Main Content -->
+        <main>
+            <!-- 其他Tab內容保持不變 -->
+            
+            <!-- Exchange Rates Tab Content -->
+            <div id="exchangeRates" class="tab-content slide-enter">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold mb-4 text-gray-800"><span class="mr-2">💱</span>匯率資訊</h2>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <div id="exchangeRatePageStatus" class="sync-status mb-4">
+                            <i class="fas fa-circle-info"></i>
+                            <span>載入匯率資訊中...</span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h3 class="font-medium mb-3">選擇基準貨幣</h3>
+                            <select id="pageBaseCurrencySelect" class="w-full p-2 border border-gray-300 rounded-md text-base">
+                                <!-- 貨幣選項會動態添加 -->
+                            </select>
+                        </div>
+                        
+                        <div id="pageExchangeRatesContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <!-- 匯率卡片會動態添加 -->
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="font-medium mb-3">貨幣轉換計算機</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-700 mb-2">從</label>
+                                <div class="flex">
+                                    <select id="pageFromCurrency" class="flex-1 p-2 border border-gray-300 rounded-md text-base">
+                                        <!-- 貨幣選項會動態添加 -->
+                                    </select>
+                                    <input type="number" id="pageFromAmount" value="1" min="0" step="0.01" class="flex-1 p-2 border border-gray-300 rounded-md text-base ml-2">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 mb-2">至</label>
+                                <div class="flex">
+                                    <select id="pageToCurrency" class="flex-1 p-2 border border-gray-300 rounded-md text-base">
+                                        <!-- 貨幣選項會動態添加 -->
+                                    </select>
+                                    <input type="number" id="pageToAmount" readonly class="flex-1 p-2 border border-gray-300 rounded-md text-base ml-2 bg-gray-50">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 border-t border-gray-200 pt-4">
+                            <div class="flex justify-between">
+                                <span id="pageLastUpdatedInfo" class="text-sm text-gray-500">匯率更新時間: </span>
+                                <button id="pageUpdateRatesBtn" class="bg-green-500 text-white px-3 py-1 rounded-md hover:bg-green-600 transition text-sm">
+                                    <i class="fas fa-sync-alt mr-1"></i> 立即更新匯率
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 交易記賬部分修改 - 增加貨幣選擇 -->
+            <div id="transactions" class="tab-content slide-enter">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-bold mb-4"><span class="mr-2">📝</span>記錄收入/支出</h2>
+                    
+                    <div class="mb-4">
+                        <div class="flex space-x-4">
+                            <button id="incomeBtn" class="flex-1 py-2 px-4 rounded-md font-medium bg-gray-200 text-gray-700">
+                                <span class="mr-2">💹</span>收入
+                            </button>
+                            <button id="expenseBtn" class="flex-1 py-2 px-4 rounded-md font-medium bg-red-500 text-white">
+                                <span class="mr-2">💸</span>支出
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">選擇戶口</label>
+                            <select id="transactionAccount" class="w-full p-2 border border-gray-300 rounded-md text-base">
+                                <option value="" disabled selected>選擇戶口</option>
+                                <!-- Account options will be inserted here -->
+                            </select>
+                        </div>
+                        
+                        <!-- 新增貨幣選擇 -->
+                        <div>
+                            <label class="block text-gray-700 mb-2">選擇貨幣</label>
+                            <select id="transactionCurrency" class="w-full p-2 border border-gray-300 rounded-md text-base">
+                                <option value="" disabled selected>自動跟隨戶口</option>
+                                <option value="TWD">新台幣 (TWD)</option>
+                                <option value="USD">美元 (USD)</option>
+                                <option value="EUR">歐元 (EUR)</option>
+                                <option value="JPY">日元 (JPY)</option>
+                                <option value="CNY">人民幣 (CNY)</option>
+                                <option value="HKD">港幣 (HKD)</option>
+                                <option value="GBP">英鎊 (GBP)</option>
+                                <option value="AUD">澳元 (AUD)</option>
+                                <option value="CAD">加拿大元 (CAD)</option>
+                                <option value="SGD">新加坡元 (SGD)</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 mb-2">選擇類別</label>
+                            <div class="flex gap-2">
+                                <select id="transactionCategory" class="flex-1 p-2 border border-gray-300 rounded-md text-base">
+                                    <option value="" disabled selected>選擇類別</option>
+                                    <!-- Category options will be inserted here -->
+                                </select>
+                                <button id="addCategoryBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-md">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 mb-2">金額</label>
+                            <input type="number" id="transactionAmount" placeholder="輸入金額" class="w-full p-2 border border-gray-300 rounded-md text-base">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 mb-2">日期</label>
+                            <input type="date" id="transactionDate" class="w-full p-2 border border-gray-300 rounded-md text-base">
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 mb-2">備註 (可選)</label>
+                            <textarea id="transactionNote" placeholder="輸入備註" class="w-full p-2 border border-gray-300 rounded-md text-base" rows="2"></textarea>
+                        </div>
+                        
+                        <!-- 收據上傳 -->
+                        <div class="md:col-span-2">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-gray-700">收據圖片 (可選)</label>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="enableReceiptUpload" class="mr-2">
+                                    <label for="enableReceiptUpload" class="text-sm text-gray-600">啟用收據上傳</label>
+                                </div>
+                            </div>
+                            <div id="receiptUploadContainer" style="display: none;">
+                                <input type="file" id="receiptImage" accept="image/*" class="w-full p-2 border border-gray-300 rounded-md text-base">
+                                <img id="receiptPreview" class="image-preview" alt="收據預覽">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end">
+                        <button id="saveTransactionBtn" class="bg-primary text-white px-6 py-2 rounded-md hover:bg-primary-dark transition">
+                            <span class="mr-2">✅</span>保存
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 其他Tab內容保持不變 -->
+        </main>
+
+        <!-- Modals -->
+        <!-- 包括匯率相關模態框和其他模態框 -->
+        <div id="exchangeRatesModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3 class="text-xl font-bold mb-4">貨幣匯率資訊</h3>
+                
+                <div id="exchangeRateStatus" class="sync-status mb-4">
+                    <i class="fas fa-circle-info"></i>
+                    <span>正在載入匯率資訊...</span>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">基準貨幣</label>
+                    <select id="baseCurrencySelect" class="w-full p-2 border border-gray-300 rounded-md text-base">
+                        <!-- 货币选项会动态添加 -->
+                    </select>
+                </div>
+                
+                <div id="exchangeRatesContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <!-- 汇率卡片会动态添加 -->
+                </div>
+                
+                <div class="currency-converter">
+                    <h4 class="font-medium mb-3">貨幣轉換計算機</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">從</label>
+                            <div class="flex">
+                                <select id="fromCurrency" class="flex-1 p-2 border border-gray-300 rounded-md text-base">
+                                    <!-- 货币选项会动态添加 -->
+                                </select>
+                                <input type="number" id="fromAmount" value="1" min="0" step="0.01" class="flex-1 p-2 border border-gray-300 rounded-md text-base ml-2">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">至</label>
+                            <div class="flex">
+                                <select id="toCurrency" class="flex-1 p-2 border border-gray-300 rounded-md text-base">
+                                    <!-- 货币选项会动态添加 -->
+                                </select>
+                                <input type="number" id="toAmount" readonly class="flex-1 p-2 border border-gray-300 rounded-md text-base ml-2 bg-gray-50">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-right">
+                        <span id="lastUpdatedInfo" class="text-sm text-gray-500">匯率更新時間: </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 其他模態框保持不變 -->
+        
+        <!-- Notification -->
+        <div id="notification" class="notification">
+            <div class="p-4">
+                <div class="text-center">
+                    <div id="notificationIcon" class="text-4xl mb-4"></div>
+                    <h3 id="notificationTitle" class="text-lg font-bold mb-2"></h3>
+                    <p id="notificationMessage" class="text-gray-600 mb-4"></p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sync Reminder -->
+        <div id="syncReminder">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <span>請記得同步/備份您的數據！</span>
+                <button id="closeSyncReminder" class="ml-3 text-white opacity-80 hover:opacity-100 text-sm">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引用外部 JavaScript 檔案 -->
+    <script src="script.js"></script>
+</body>
+</html>
