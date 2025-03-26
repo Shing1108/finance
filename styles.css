@@ -381,3 +381,33 @@
     color: #3B82F6;
     display: none;
 }
+
+/* 類別管理樣式 */
+.category-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+}
+.category-item:hover {
+    background-color: #e9ecef;
+}
+.dark .category-item {
+    background-color: #333;
+}
+.dark .category-item:hover {
+    background-color: #444;
+}
+.category-delete-btn {
+    color: #ef4444;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+.category-delete-btn:hover {
+    opacity: 1;
+}
