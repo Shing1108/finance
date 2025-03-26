@@ -1,0 +1,413 @@
+.emoji-btn {
+    transition: transform 0.2s;
+}
+.emoji-btn:hover {
+    transform: scale(1.1);
+}
+.slide-enter {
+    animation: slideIn 0.3s ease forwards;
+}
+@keyframes slideIn {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+}
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+}
+.dark .bg-white {
+    background-color: #222;
+    color: #fff;
+}
+.dark .bg-gray-50 {
+    background-color: #181818;
+    color: #fff;
+}
+.dark .bg-gray-100 {
+    background-color: #2a2a2a;
+    color: #fff;
+}
+.dark .text-gray-800 {
+    color: #eee;
+}
+.dark .text-gray-700 {
+    color: #ddd;
+}
+.dark .text-gray-600 {
+    color: #ccc;
+}
+.dark .border-gray-200 {
+    border-color: #444;
+}
+.dark .modal-content {
+    background-color: #222;
+    color: #fff;
+}
+.dark select, .dark input, .dark textarea {
+    background-color: #333;
+    color: #fff;
+    border-color: #555;
+}
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    max-width: 300px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    overflow: hidden;
+    display: none;
+}
+.dark .notification {
+    background-color: #333;
+    color: #fff;
+}
+.image-preview {
+    max-width: 100%;
+    max-height: 200px;
+    margin-top: 10px;
+    border-radius: 4px;
+    display: none;
+}
+.threshold-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 8px;
+}
+/* 財務分析卡片 */
+.advice-card {
+    border-left: 4px solid;
+    padding: 12px;
+    margin-bottom: 12px;
+    border-radius: 6px;
+    background-color: rgba(93, 92, 222, 0.05);
+}
+.advice-card.saving {
+    border-color: #10B981;
+}
+.advice-card.warning {
+    border-color: #F59E0B;
+}
+.advice-card.danger {
+    border-color: #EF4444;
+}
+.advice-card.info {
+    border-color: #3B82F6;
+}
+/* 類別預算視覺化 */
+.category-budget-bar {
+    height: 8px;
+    border-radius: 4px;
+    background-color: #E5E7EB;
+    margin-top: 4px;
+    overflow: hidden;
+}
+.category-budget-progress {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+#syncReminder {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #EF4444;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 6px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: none;
+    z-index: 999;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+.dark #syncReminder {
+    background-color: #DC2626;
+}
+
+/* 匯率相關樣式 */
+.exchange-rate-card {
+    transition: all 0.3s ease;
+}
+.exchange-rate-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+.exchange-rate-info {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+.exchange-rate-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    display: none;
+    z-index: 10;
+}
+.exchange-rate-info:hover .exchange-rate-tooltip {
+    display: block;
+}
+.dark .exchange-rate-tooltip {
+    background-color: #666;
+}
+.currency-converter {
+    background-color: rgba(93, 92, 222, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(93, 92, 222, 0.2);
+    padding: 15px;
+    margin-top: 15px;
+}
+.dark .currency-converter {
+    background-color: rgba(93, 92, 222, 0.15);
+}
+.currency-label {
+    display: inline-block;
+    background-color: rgba(93, 92, 222, 0.1);
+    color: #5D5CDE;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+.dark .currency-label {
+    background-color: rgba(93, 92, 222, 0.3);
+}
+/* 虛擬滾動相關樣式 */
+.virtual-scroll-container {
+    position: relative;
+    overflow: auto;
+    height: 100%;
+}
+.virtual-scroll-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+}
+/* 載入指示器 */
+.loading-indicator {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    color: #5D5CDE;
+}
+.spinner {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(93, 92, 222, 0.3);
+    border-radius: 50%;
+    border-top-color: #5D5CDE;
+    animation: spin 1s ease-in-out infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+/* Google Drive 整合樣式 */
+.google-signin-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fff;
+    color: #757575;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+.google-signin-button:hover {
+    background-color: #f5f5f5;
+}
+.google-icon {
+    margin-right: 10px;
+    width: 18px;
+    height: 18px;
+}
+.dark .google-signin-button {
+    background-color: #333;
+    color: #fff;
+    border-color: #555;
+}
+.dark .google-signin-button:hover {
+    background-color: #444;
+}
+.sync-status {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    margin-bottom: 10px;
+}
+.sync-status.success {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: #10B981;
+}
+.sync-status.error {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #EF4444;
+}
+.sync-status.pending {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: #F59E0B;
+}
+.sync-status i {
+    margin-right: 8px;
+}
+.dark .sync-status.success {
+    background-color: rgba(16, 185, 129, 0.2);
+}
+.dark .sync-status.error {
+    background-color: rgba(239, 68, 68, 0.2);
+}
+.dark .sync-status.pending {
+    background-color: rgba(245, 158, 11, 0.2);
+}
+
+/* 分頁橫向滑動樣式 */
+#tabsContainer {
+    display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 5px;
+}
+#tabsContainer::-webkit-scrollbar {
+    height: 4px;
+}
+#tabsContainer::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+#tabsContainer::-webkit-scrollbar-thumb {
+    background: #CCC;
+    border-radius: 4px;
+}
+#tabsContainer::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+.dark #tabsContainer::-webkit-scrollbar-track {
+    background: #333;
+}
+.dark #tabsContainer::-webkit-scrollbar-thumb {
+    background: #666;
+}
+@media (hover: none) {
+    #tabsContainer {
+        scrollbar-width: none;
+    }
+    #tabsContainer::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* 新增交易貨幣選擇樣式 */
+.currency-select-wrapper {
+    position: relative;
+}
+.currency-select-wrapper .currency-info {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8rem;
+    color: #666;
+}
+.currency-conversion-info {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background-color: rgba(59, 130, 246, 0.1);
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    color: #3B82F6;
+    display: none;
+}
+
+/* 類別管理樣式 */
+.category-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+}
+.category-item:hover {
+    background-color: #e9ecef;
+}
+.dark .category-item {
+    background-color: #333;
+}
+.dark .category-item:hover {
+    background-color: #444;
+}
+.category-delete-btn {
+    color: #ef4444;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+.category-delete-btn:hover {
+    opacity: 1;
+}
