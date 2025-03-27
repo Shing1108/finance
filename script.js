@@ -609,42 +609,213 @@ function saveToGoogleDrive() {
     
     updateGoogleSigninStatus('pending', '正在保存到 Google Drive...');
     
-    // 確保 Drive API 已載入
-    loadGoogleDriveAPI().then(() => {
-        // 繼續使用舊的 gapi 庫操作 Drive API，但使用新的身份驗證方式
-        findOrCreateAppFolder().then(folderId => {
-            // 取得數據
-            const data = exportData();
+    // 打印令牌以進行調試
+    console.log('使用令牌:', googleUser.token.substring(0, 10) + '...');
+    
+    // 新的 Google API 直接上傳方法
+    uploadToGoogleDrive(googleUser.token)
+        .then(fileId => {
+            // 保存成功
+            appSettings.googleSync = appSettings.googleSync || {};
+            appSettings.googleSync.fileId = fileId;
+            appSettings.googleSync.lastSync = new Date().toISOString();
+            saveData('appSettings');
             
-            // 檢查是否已有文件 ID
-            if (appSettings.googleSync.fileId) {
-                // 更新現有文件
-                updateDriveFile(appSettings.googleSync.fileId, data).then(() => {
-                    appSettings.googleSync.lastSync = new Date().toISOString();
-                    saveData('appSettings');
-                    updateGoogleSigninStatus('success', '數據已成功保存到 Google Drive');
-                    notify('✅', '同步成功', '數據已成功保存到 Google Drive');
-                }).catch(error => {
-                    console.error('更新檔案失敗:', error);
-                    updateGoogleSigninStatus('error', '保存失敗，正在嘗試創建新文件...');
-                    
-                    // 嘗試創建新文件
-                    createDriveFile(folderId, data);
-                });
-            } else {
-                // 創建新文件
-                createDriveFile(folderId, data);
-            }
-        }).catch(error => {
-            console.error('處理 Google Drive 文件夾時發生錯誤:', error);
-            updateGoogleSigninStatus('error', '無法訪問或創建 Google Drive 文件夾');
-            notify('❌', '同步失敗', '無法訪問或創建 Google Drive 文件夾');
+            updateGoogleSigninStatus('success', '數據已成功保存到 Google Drive');
+            notify('✅', '同步成功', '數據已成功保存到 Google Drive');
+        })
+        .catch(error => {
+            console.error('Google Drive 上傳錯誤:', error);
+            updateGoogleSigninStatus('error', `上傳失敗: ${error.message || '未知錯誤'}`);
+            notify('❌', '同步失敗', '無法上傳到 Google Drive');
         });
-    }).catch(error => {
-        console.error('載入 Google Drive API 失敗:', error);
-        updateGoogleSigninStatus('error', 'Google Drive API 載入失敗');
-        notify('❌', '同步失敗', 'Google Drive API 無法初始化');
-    });
+}
+
+// 直接上傳到 Google Drive 的新方法
+async function uploadToGoogleDrive(accessToken) {
+    // 準備要上傳的數據
+    const data = exportData();
+    const fileName = GOOGLE_API_CONFIG.dataFileName || 'finance_data.json';
+    const folderName = GOOGLE_API_CONFIG.appFolderName || '進階財務追蹤器';
+    
+    // 使用 Fetch API 代替 gapi
+    try {
+        // 步驟 1: 查找或創建資料夾
+        let folderId = null;
+        
+        // 搜索現有資料夾
+        const folderSearchResponse = await fetch(
+            `https://www.googleapis.com/drive/v3/files?q=name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`,
+            {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        
+        if (!folderSearchResponse.ok) {
+            const errorData = await folderSearchResponse.json();
+            throw new Error(`搜索資料夾失敗: ${errorData.error?.message || folderSearchResponse.statusText}`);
+        }
+        
+        const folderSearchResult = await folderSearchResponse.json();
+        console.log('資料夾搜索結果:', folderSearchResult);
+        
+        if (folderSearchResult.files && folderSearchResult.files.length > 0) {
+            // 使用現有資料夾
+            folderId = folderSearchResult.files[0].id;
+            console.log('找到現有資料夾, ID:', folderId);
+        } else {
+            // 創建新資料夾
+            console.log('未找到資料夾，正在創建...');
+            const createFolderResponse = await fetch(
+                'https://www.googleapis.com/drive/v3/files',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: folderName,
+                        mimeType: 'application/vnd.google-apps.folder'
+                    })
+                }
+            );
+            
+            if (!createFolderResponse.ok) {
+                const errorData = await createFolderResponse.json();
+                throw new Error(`創建資料夾失敗: ${errorData.error?.message || createFolderResponse.statusText}`);
+            }
+            
+            const folder = await createFolderResponse.json();
+            folderId = folder.id;
+            console.log('已創建新資料夾, ID:', folderId);
+        }
+        
+        // 步驟 2: 查找現有文件
+        let fileId = null;
+        if (appSettings.googleSync && appSettings.googleSync.fileId) {
+            // 檢查文件是否存在
+            try {
+                const fileCheckResponse = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${appSettings.googleSync.fileId}?fields=id,name,trashed`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`
+                        }
+                    }
+                );
+                
+                if (fileCheckResponse.ok) {
+                    const fileInfo = await fileCheckResponse.json();
+                    if (!fileInfo.trashed) {
+                        fileId = fileInfo.id;
+                        console.log('找到現有文件, ID:', fileId);
+                    }
+                }
+            } catch (error) {
+                console.warn('檢查文件時發生錯誤, 將創建新文件:', error);
+            }
+        }
+        
+        // 步驟 3: 上傳/更新文件
+        let uploadResponse;
+        
+        const metadata = {
+            name: fileName,
+            mimeType: 'application/json'
+        };
+        
+        if (fileId) {
+            // 更新現有文件
+            console.log('正在更新現有文件...');
+            
+            // 首先更新文件元數據
+            const metadataResponse = await fetch(
+                `https://www.googleapis.com/drive/v3/files/${fileId}`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(metadata)
+                }
+            );
+            
+            if (!metadataResponse.ok) {
+                const errorData = await metadataResponse.json();
+                throw new Error(`更新文件元數據失敗: ${errorData.error?.message || metadataResponse.statusText}`);
+            }
+            
+            // 然後更新文件內容
+            uploadResponse = await fetch(
+                `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: data
+                }
+            );
+            
+        } else {
+            // 創建新文件
+            console.log('正在創建新文件...');
+            
+            // 如果有資料夾，放入資料夾中
+            if (folderId) {
+                metadata.parents = [folderId];
+            }
+            
+            // 使用 multipart 上傳
+            const boundary = '-------314159265358979323846';
+            const delimiter = `\r\n--${boundary}\r\n`;
+            const closeDelim = `\r\n--${boundary}--`;
+            
+            const multipartBody = 
+                delimiter +
+                'Content-Type: application/json\r\n\r\n' +
+                JSON.stringify(metadata) +
+                delimiter +
+                'Content-Type: application/json\r\n\r\n' +
+                data +
+                closeDelim;
+            
+            uploadResponse = await fetch(
+                'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': `multipart/related; boundary=${boundary}`
+                    },
+                    body: multipartBody
+                }
+            );
+        }
+        
+        if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json();
+            throw new Error(`上傳文件失敗: ${errorData.error?.message || uploadResponse.statusText}`);
+        }
+        
+        const result = await uploadResponse.json();
+        console.log('上傳成功, 文件 ID:', result.id);
+        
+        // 返回文件 ID
+        return fileId || result.id;
+        
+    } catch (error) {
+        console.error('Google Drive 操作錯誤:', error);
+        throw error;
+    }
 }
 
 // 尋找或創建應用程式資料夾
@@ -797,48 +968,152 @@ function loadFromGoogleDrive() {
     
     updateGoogleSigninStatus('pending', '正在從 Google Drive 載入數據...');
     
-    // 確保 Drive API 已載入
-    loadGoogleDriveAPI().then(() => {
-        // 設置身份驗證
-        gapi.client.setToken({
-            access_token: googleUser.token
+    // 直接使用新方法下載
+    downloadFromGoogleDrive(googleUser.token)
+        .then(data => {
+            // 匯入數據
+            if (importData(data)) {
+                updateGoogleSigninStatus('success', '數據已成功從 Google Drive 載入');
+                notify('✅', '同步成功', '數據已成功從 Google Drive 載入');
+            } else {
+                updateGoogleSigninStatus('error', '載入的數據格式不正確');
+                notify('❌', '同步失敗', '數據格式不正確或損壞');
+            }
+        })
+        .catch(error => {
+            console.error('Google Drive 下載錯誤:', error);
+            updateGoogleSigninStatus('error', `下載失敗: ${error.message || '未知錯誤'}`);
+            notify('❌', '同步失敗', '無法從 Google Drive 下載數據');
         });
+}
+
+// 從 Google Drive 下載的新方法
+async function downloadFromGoogleDrive(accessToken) {
+    const fileName = GOOGLE_API_CONFIG.dataFileName || 'finance_data.json';
+    const folderName = GOOGLE_API_CONFIG.appFolderName || '進階財務追蹤器';
+    
+    try {
+        let fileId = null;
         
-        // 檢查是否有檔案 ID
-        if (appSettings.googleSync.fileId) {
-            // 取得檔案內容
-            gapi.client.drive.files.get({
-                fileId: appSettings.googleSync.fileId,
-                alt: 'media'
-            }).then(response => {
-                const data = response.body;
+        // 如果有保存的文件 ID，直接使用
+        if (appSettings.googleSync && appSettings.googleSync.fileId) {
+            fileId = appSettings.googleSync.fileId;
+            console.log('使用保存的文件 ID:', fileId);
+            
+            // 嘗試直接獲取文件
+            try {
+                const response = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`
+                        }
+                    }
+                );
                 
-                // 匯入數據
-                if (importData(data)) {
-                    updateGoogleSigninStatus('success', '數據已成功從 Google Drive 載入');
-                    notify('✅', '同步成功', '數據已成功從 Google Drive 載入');
+                if (response.ok) {
+                    return await response.text();
                 } else {
-                    updateGoogleSigninStatus('error', '載入的數據格式不正確');
+                    console.warn('無法獲取已保存的文件，嘗試搜索文件...');
+                    fileId = null; // 重置 fileId，嘗試搜索
                 }
-            }).catch(error => {
-                console.error('載入檔案失敗:', error);
-                updateGoogleSigninStatus('error', '無法載入檔案，可能已被刪除');
-                
-                // 清除檔案 ID
-                appSettings.googleSync.fileId = null;
-                saveData('appSettings');
-                
-                // 嘗試尋找檔案
-                findFileInDrive();
-            });
-        } else {
-            // 尋找檔案
-            findFileInDrive();
+            } catch (error) {
+                console.warn('獲取已保存文件時發生錯誤:', error);
+                fileId = null; // 重置 fileId，嘗試搜索
+            }
         }
-    }).catch(error => {
-        console.error('載入 Google Drive API 失敗:', error);
-        updateGoogleSigninStatus('error', 'Google Drive API 載入失敗');
-        notify('❌', '同步失敗', 'Google Drive API 無法初始化');
+        
+        // 如果沒有文件 ID 或獲取失敗，搜索文件
+        if (!fileId) {
+            // 搜索資料夾
+            const folderSearchResponse = await fetch(
+                `https://www.googleapis.com/drive/v3/files?q=name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id)`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                }
+            );
+            
+            if (!folderSearchResponse.ok) {
+                throw new Error('搜索資料夾失敗');
+            }
+            
+            const folderData = await folderSearchResponse.json();
+            
+            if (!folderData.files || folderData.files.length === 0) {
+                throw new Error('未找到應用程式資料夾');
+            }
+            
+            const folderId = folderData.files[0].id;
+            console.log('找到資料夾 ID:', folderId);
+            
+            // 搜索文件
+            const fileSearchResponse = await fetch(
+                `https://www.googleapis.com/drive/v3/files?q=name='${fileName}' and '${folderId}' in parents and trashed=false&fields=files(id,modifiedTime)&orderBy=modifiedTime desc`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                }
+            );
+            
+            if (!fileSearchResponse.ok) {
+                throw new Error('搜索文件失敗');
+            }
+            
+            const fileData = await fileSearchResponse.json();
+            
+            if (!fileData.files || fileData.files.length === 0) {
+                throw new Error('未找到數據文件');
+            }
+            
+            // 使用最新修改的文件
+            fileId = fileData.files[0].id;
+            console.log('找到文件 ID:', fileId);
+            
+            // 保存文件 ID
+            appSettings.googleSync = appSettings.googleSync || {};
+            appSettings.googleSync.fileId = fileId;
+            saveData('appSettings');
+        }
+        
+        // 獲取文件內容
+        const response = await fetch(
+            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+            {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            }
+        );
+        
+        if (!response.ok) {
+            throw new Error(`獲取文件失敗: ${response.statusText}`);
+        }
+        
+        return await response.text();
+        
+    } catch (error) {
+        console.error('下載 Google Drive 數據失敗:', error);
+        throw error;
+    }
+}
+
+// 獲取有效的訪問令牌
+function getAccessToken() {
+    return new Promise((resolve, reject) => {
+        if (!googleUser || !googleUser.token) {
+            reject(new Error('尚未登入 Google 帳戶'));
+            return;
+        }
+        
+        // 使用當前的 ID 令牌
+        resolve(googleUser.token);
     });
 }
 
