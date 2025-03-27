@@ -227,7 +227,7 @@ function initApp() {
     generateFinancialAdvice();
 }
 
-// 完全替換 initGoogleApi 函數
+// 1. 替換現有的 initGoogleApi 函數
 function initGoogleApi() {
     console.log('開始初始化 Google API...');
     
@@ -251,32 +251,71 @@ function initGoogleApi() {
             cancel_on_tap_outside: true
         });
         
-        // 確保 Google Drive API 可用
-        loadGoogleDriveAPI();
-        
         // 啟用登入按鈕
         googleSignInBtn.disabled = false;
-        googleSignInBtn.innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
+        googleSignInBtn.innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">...</svg> 使用 Google 帳戶登入';
         updateGoogleSigninStatus('success', 'Google API 已準備就緒，請登入');
         
-        // 綁定自訂登入按鈕事件
-        googleSignInBtn.onclick = function() {
+        // 設置定制按鈕
+        googleSignInBtn.addEventListener('click', function() {
+            // 初始化 gapi 用於 Drive API
+            loadGapiAndAuthorize();
+            // 顯示登入提示
             google.accounts.id.prompt();
-        };
-        
-        // 標記為已初始化
-        googleApiInitialized = true;
+        });
         
         console.log('Google Identity Services 初始化成功');
     } catch (error) {
         console.error('Google API 初始化錯誤:', error);
-        updateGoogleSigninStatus('error', `初始化失敗: ${error.message || '未知錯誤'}`);
-        googleSignInBtn.disabled = false;
-        googleSignInBtn.innerHTML = '<i class="fas fa-sync mr-2"></i> 重試載入';
+        updateGoogleSigninStatus('error', '初始化失敗: ' + (error.message || '未知錯誤'));
     }
 }
 
-// 處理 Google 登入回調
+// 2. 在 initGoogleApi 函數後添加這個新函數
+function loadGapiAndAuthorize() {
+    // 動態載入 gapi 腳本
+    if (!window.gapi) {
+        console.log('載入 gapi 腳本...');
+        const script = document.createElement('script');
+        script.src = 'https://apis.google.com/js/api.js';
+        script.onload = initializeGapiClient;
+        document.head.appendChild(script);
+    } else if (!window.gapi.client) {
+        console.log('gapi 已載入，初始化客戶端...');
+        initializeGapiClient();
+    } else {
+        console.log('gapi 客戶端已初始化');
+    }
+}
+
+// 3. 在 loadGapiAndAuthorize 函數後添加這個新函數
+async function initializeGapiClient() {
+    console.log('初始化 gapi 客戶端...');
+    
+    try {
+        await new Promise((resolve, reject) => {
+            gapi.load('client:auth2', {
+                callback: resolve,
+                onerror: reject,
+                timeout: 10000,
+                ontimeout: reject
+            });
+        });
+        
+        await gapi.client.init({
+            apiKey: GOOGLE_API_CONFIG.apiKey,
+            clientId: GOOGLE_API_CONFIG.clientId,
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+            scope: 'https://www.googleapis.com/auth/drive.file'
+        });
+        
+        console.log('gapi 客戶端已初始化，並設置了 Drive API 權限');
+    } catch (error) {
+        console.error('初始化 gapi 客戶端失敗:', error);
+    }
+}
+
+// 1. 替換現有的 handleCredentialResponse 函數
 function handleCredentialResponse(response) {
     if (!response.credential) {
         console.error('登入未返回憑證');
@@ -292,31 +331,94 @@ function handleCredentialResponse(response) {
         id: payload.sub,
         name: payload.name,
         email: payload.email,
-        token: response.credential // 保存令牌供後續使用
+        idToken: response.credential // 保存 ID 令牌
     };
     
-    // 更新 UI
+    // 使用 ID 令牌獲取訪問令牌
+    exchangeIDTokenForAccessToken(response.credential)
+        .then(accessToken => {
+            console.log('成功獲取訪問令牌');
+            googleUser.accessToken = accessToken;
+            
+            // 更新 gapi 的授權狀態
+            if (window.gapi && window.gapi.client) {
+                gapi.client.setToken({ access_token: accessToken });
+            }
+            
+            // 更新 UI
+            updateGoogleSigninUI(true);
+            
+            notify('✅', '登入成功', `已成功登入 Google 帳戶: ${googleUser.name}`);
+        })
+        .catch(error => {
+            console.error('獲取訪問令牌失敗:', error);
+            // 仍然更新 UI 以允許用戶登入
+            updateGoogleSigninUI(true);
+            notify('⚠️', '登入成功，但有限制', '某些 Google Drive 功能可能受限');
+        });
+}
+
+// 2. 在 handleCredentialResponse 函數後添加這些新函數
+function updateGoogleSigninUI(isSignedIn) {
     const googleAuthStatus = document.getElementById('googleAuthStatus');
     const googleUserName = document.getElementById('googleUserName');
     const googleSignInBtn = document.getElementById('googleSignInBtn');
     const googleSignOutBtn = document.getElementById('googleSignOutBtn');
     const googleDriveActions = document.getElementById('googleDriveActions');
     
-    if (googleAuthStatus) googleAuthStatus.style.display = 'flex';
-    if (googleUserName) googleUserName.textContent = googleUser.name;
-    if (googleSignInBtn) googleSignInBtn.style.display = 'none';
-    if (googleSignOutBtn) googleSignOutBtn.style.display = 'block';
-    if (googleDriveActions) googleDriveActions.style.display = 'block';
-    
-    updateGoogleSigninStatus('success', `已登入為 ${googleUser.name}`);
-    
-    notify('✅', '登入成功', `已成功登入 Google 帳戶: ${googleUser.name}`);
-    
-    // 檢查自動同步
-    checkAutoSync();
+    if (isSignedIn) {
+        if (googleAuthStatus) googleAuthStatus.style.display = 'flex';
+        if (googleUserName) googleUserName.textContent = googleUser.name;
+        if (googleSignInBtn) googleSignInBtn.style.display = 'none';
+        if (googleSignOutBtn) googleSignOutBtn.style.display = 'block';
+        if (googleDriveActions) googleDriveActions.style.display = 'block';
+        
+        updateGoogleSigninStatus('success', `已登入為 ${googleUser.name}`);
+    } else {
+        if (googleAuthStatus) googleAuthStatus.style.display = 'none';
+        if (googleSignInBtn) googleSignInBtn.style.display = 'block';
+        if (googleSignOutBtn) googleSignOutBtn.style.display = 'none';
+        if (googleDriveActions) googleDriveActions.style.display = 'none';
+        
+        updateGoogleSigninStatus('pending', '尚未登入 Google 帳戶');
+    }
 }
 
-// 解析 JWT 令牌
+// 3. 在 updateGoogleSigninUI 函數後添加這個新函數
+async function exchangeIDTokenForAccessToken(idToken) {
+    // 這通常需要一個後端服務來安全地執行
+    // 由於我們無法直接從前端執行此操作，這裡提供兩種替代方案
+    
+    // 方案 1：假設您有一個後端 API 端點可以執行此交換
+    // 實際使用時取消註釋這段代碼
+    /*
+    try {
+        const response = await fetch('/api/google/exchange-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Token exchange failed');
+        }
+        
+        const data = await response.json();
+        return data.accessToken;
+    } catch (error) {
+        console.error('Token exchange error:', error);
+        throw error;
+    }
+    */
+    
+    // 方案 2：暫時使用 ID 令牌作為有限的替代方案（不推薦用於生產環境）
+    // 某些 Google API 可能接受 ID 令牌，但有限制
+    console.warn('警告：使用 ID 令牌代替訪問令牌 - 僅用於測試');
+    return idToken;
+}
+
+// 4. 在 exchangeIDTokenForAccessToken 函數後添加這個函數
+// 如果已有 parseJwt 函數，則不需要添加此函數
 function parseJwt(token) {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -561,27 +663,22 @@ function signInToGoogle() {
     });
 }
 
-// Sign out from Google
-f// 登出 Google 帳戶
+// 替換現有的 signOutFromGoogle 函數
 function signOutFromGoogle() {
     // 使用新 API 方式登出
     google.accounts.id.disableAutoSelect();
+    
+    // 清除 gapi 的授權
+    if (window.gapi && window.gapi.client) {
+        gapi.client.setToken(null);
+    }
     
     // 清除用戶資訊
     googleUser = null;
     
     // 更新 UI
-    const googleAuthStatus = document.getElementById('googleAuthStatus');
-    const googleSignInBtn = document.getElementById('googleSignInBtn');
-    const googleSignOutBtn = document.getElementById('googleSignOutBtn');
-    const googleDriveActions = document.getElementById('googleDriveActions');
+    updateGoogleSigninUI(false);
     
-    if (googleAuthStatus) googleAuthStatus.style.display = 'none';
-    if (googleSignInBtn) googleSignInBtn.style.display = 'block';
-    if (googleSignOutBtn) googleSignOutBtn.style.display = 'none';
-    if (googleDriveActions) googleDriveActions.style.display = 'none';
-    
-    updateGoogleSigninStatus('pending', '尚未登入 Google 帳戶');
     notify('✅', '已登出', '已成功登出 Google 帳戶');
 }
 
@@ -600,35 +697,392 @@ function updateGoogleSigninStatus(type, message) {
     statusElement.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
 }
 
-// 保存數據到 Google Drive
+// 1. 替換現有的 saveToGoogleDrive 函數
 function saveToGoogleDrive() {
-    if (!googleUser || !googleUser.token) {
+    if (!googleUser) {
         notify('❌', '尚未登入', '請先登入 Google 帳戶');
+        return;
+    }
+    
+    if (!googleUser.accessToken) {
+        notify('❌', '授權不足', '無法訪問 Google Drive');
         return;
     }
     
     updateGoogleSigninStatus('pending', '正在保存到 Google Drive...');
     
-    // 打印令牌以進行調試
-    console.log('使用令牌:', googleUser.token.substring(0, 10) + '...');
+    // 確保 gapi 已載入
+    if (!window.gapi || !window.gapi.client) {
+        notify('❌', 'API 未載入', '正在載入 Google API，請稍後再試');
+        loadGapiAndAuthorize().then(() => {
+            notify('✅', 'API 已載入', '現在可以嘗試保存到 Google Drive');
+        });
+        return;
+    }
     
-    // 新的 Google API 直接上傳方法
-    uploadToGoogleDrive(googleUser.token)
-        .then(fileId => {
-            // 保存成功
-            appSettings.googleSync = appSettings.googleSync || {};
-            appSettings.googleSync.fileId = fileId;
-            appSettings.googleSync.lastSync = new Date().toISOString();
-            saveData('appSettings');
+    // 設置授權令牌
+    gapi.client.setToken({ access_token: googleUser.accessToken });
+    
+    // 檢查 Drive API 是否已載入
+    if (!gapi.client.drive) {
+        gapi.client.load('drive', 'v3').then(function() {
+            saveFileToDrive();
+        }).catch(function(error) {
+            console.error('載入 Drive API 失敗:', error);
+            updateGoogleSigninStatus('error', '無法載入 Drive API');
+            notify('❌', '同步失敗', '無法載入 Google Drive API');
+        });
+    } else {
+        saveFileToDrive();
+    }
+}
+
+// 2. 在 saveToGoogleDrive 函數後添加這個新函數
+function saveFileToDrive() {
+    console.log('開始保存到 Google Drive...');
+    
+    // 使用 exponential backoff 策略處理可能的網絡問題
+    const maxRetries = 3;
+    let retries = 0;
+    
+    function attemptSave() {
+        // 資料夾名稱和檔案名稱
+        const folderName = GOOGLE_API_CONFIG.appFolderName || '進階財務追蹤器';
+        const fileName = GOOGLE_API_CONFIG.dataFileName || 'finance_data.json';
+        
+        // 獲取數據
+        const data = exportData();
+        
+        // 1. 查找或創建應用程式資料夾
+        findOrCreateFolder(folderName)
+            .then(folderId => {
+                console.log('找到/創建資料夾成功, ID:', folderId);
+                
+                // 2. 檢查檔案是否存在
+                const existingFileId = appSettings.googleSync?.fileId;
+                
+                if (existingFileId) {
+                    // 嘗試更新現有文件
+                    updateFile(existingFileId, data)
+                        .then(() => {
+                            console.log('文件更新成功');
+                            handleSaveSuccess();
+                        })
+                        .catch(error => {
+                            console.warn('更新檔案失敗, 嘗試創建新檔案:', error);
+                            createNewFile(folderId, fileName, data);
+                        });
+                } else {
+                    // 創建新文件
+                    createNewFile(folderId, fileName, data);
+                }
+            })
+            .catch(error => {
+                console.error('處理資料夾失敗:', error);
+                
+                if (retries < maxRetries) {
+                    retries++;
+                    const delay = Math.pow(2, retries) * 1000;
+                    console.log(`重試 (${retries}/${maxRetries}) 將在 ${delay}ms 後進行...`);
+                    
+                    setTimeout(attemptSave, delay);
+                } else {
+                    updateGoogleSigninStatus('error', '無法訪問或創建 Google Drive 資料夾');
+                    notify('❌', '同步失敗', '無法訪問 Google Drive');
+                }
+            });
+    }
+    
+    // 處理保存成功
+    function handleSaveSuccess() {
+        appSettings.googleSync = appSettings.googleSync || {};
+        appSettings.googleSync.lastSync = new Date().toISOString();
+        saveData('appSettings');
+        
+        updateGoogleSigninStatus('success', '數據已成功保存到 Google Drive');
+        notify('✅', '同步成功', '數據已成功保存到 Google Drive');
+    }
+    
+    // 查找或創建資料夾
+    function findOrCreateFolder(folderName) {
+        return new Promise((resolve, reject) => {
+            // 搜索現有資料夾
+            gapi.client.drive.files.list({
+                q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+                spaces: 'drive',
+                fields: 'files(id, name)'
+            }).then(response => {
+                const folders = response.result.files;
+                
+                if (folders && folders.length > 0) {
+                    // 使用現有資料夾
+                    resolve(folders[0].id);
+                } else {
+                    // 創建新資料夾
+                    gapi.client.drive.files.create({
+                        resource: {
+                            name: folderName,
+                            mimeType: 'application/vnd.google-apps.folder'
+                        },
+                        fields: 'id'
+                    }).then(response => {
+                        resolve(response.result.id);
+                    }).catch(error => {
+                        console.error('創建資料夾失敗:', error);
+                        reject(error);
+                    });
+                }
+            }).catch(error => {
+                console.error('搜索資料夾失敗:', error);
+                reject(error);
+            });
+        });
+    }
+    
+    // 更新檔案
+    function updateFile(fileId, data) {
+        return new Promise((resolve, reject) => {
+            // 先檢查檔案是否存在
+            gapi.client.drive.files.get({
+                fileId: fileId,
+                fields: 'id, name'
+            }).then(() => {
+                // 檔案存在，更新內容
+                const metadata = {
+                    mimeType: 'application/json'
+                };
+                
+                const blob = new Blob([data], {type: 'application/json'});
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+                form.append('file', blob);
+                
+                // 使用 fetch API 更新文件
+                fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
+                    method: 'PATCH',
+                    headers: new Headers({'Authorization': `Bearer ${googleUser.accessToken}`}),
+                    body: form
+                })
+                .then(response => {
+                    if (response.ok) {
+                        resolve();
+                    } else {
+                        response.json().then(errorData => {
+                            reject(new Error(errorData.error?.message || '更新失敗'));
+                        }).catch(() => reject(new Error('更新失敗')));
+                    }
+                })
+                .catch(error => {
+                    console.error('更新檔案失敗 (fetch):', error);
+                    reject(error);
+                });
+            }).catch(error => {
+                // 檔案不存在或無法訪問
+                console.error('檢查檔案時發生錯誤:', error);
+                reject(error);
+            });
+        });
+    }
+    
+    // 創建新檔案
+    function createNewFile(folderId, fileName, data) {
+        // 使用 multipart 上傳
+        const metadata = {
+            name: fileName,
+            mimeType: 'application/json',
+            parents: [folderId]
+        };
+        
+        const blob = new Blob([data], {type: 'application/json'});
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+        form.append('file', blob);
+        
+        fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: new Headers({'Authorization': `Bearer ${googleUser.accessToken}`}),
+            body: form
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.error?.message || '上傳失敗');
+                });
+            }
+            return response.json();
+        })
+        .then(result => {
+            console.log('檔案創建成功, ID:', result.id);
             
-            updateGoogleSigninStatus('success', '數據已成功保存到 Google Drive');
-            notify('✅', '同步成功', '數據已成功保存到 Google Drive');
+            // 保存檔案 ID
+            appSettings.googleSync = appSettings.googleSync || {};
+            appSettings.googleSync.fileId = result.id;
+            
+            handleSaveSuccess();
         })
         .catch(error => {
-            console.error('Google Drive 上傳錯誤:', error);
-            updateGoogleSigninStatus('error', `上傳失敗: ${error.message || '未知錯誤'}`);
-            notify('❌', '同步失敗', '無法上傳到 Google Drive');
+            console.error('創建檔案失敗:', error);
+            updateGoogleSigninStatus('error', `檔案創建失敗: ${error.message || '未知錯誤'}`);
+            notify('❌', '同步失敗', '無法保存到 Google Drive');
         });
+    }
+    
+    // 開始嘗試保存
+    attemptSave();
+}
+
+// 3. 替換現有的 loadFromGoogleDrive 函數
+function loadFromGoogleDrive() {
+    if (!googleUser) {
+        notify('❌', '尚未登入', '請先登入 Google 帳戶');
+        return;
+    }
+    
+    if (!googleUser.accessToken) {
+        notify('❌', '授權不足', '無法訪問 Google Drive');
+        return;
+    }
+    
+    updateGoogleSigninStatus('pending', '正在從 Google Drive 載入數據...');
+    
+    // 確保 gapi 已載入
+    if (!window.gapi || !window.gapi.client) {
+        notify('❌', 'API 未載入', '正在載入 Google API，請稍後再試');
+        loadGapiAndAuthorize().then(() => {
+            notify('✅', 'API 已載入', '現在可以嘗試從 Google Drive 載入');
+        });
+        return;
+    }
+    
+    // 設置授權令牌
+    gapi.client.setToken({ access_token: googleUser.accessToken });
+    
+    // 檢查 Drive API 是否已載入
+    if (!gapi.client.drive) {
+        gapi.client.load('drive', 'v3').then(function() {
+            loadFileFromDrive();
+        }).catch(function(error) {
+            console.error('載入 Drive API 失敗:', error);
+            updateGoogleSigninStatus('error', '無法載入 Drive API');
+            notify('❌', '同步失敗', '無法載入 Google Drive API');
+        });
+    } else {
+        loadFileFromDrive();
+    }
+}
+
+// 4. 在 loadFromGoogleDrive 函數後添加這個新函數
+function loadFileFromDrive() {
+    // 檢查是否有保存的檔案 ID
+    const fileId = appSettings.googleSync?.fileId;
+    
+    if (fileId) {
+        // 直接獲取檔案
+        gapi.client.drive.files.get({
+            fileId: fileId,
+            alt: 'media'
+        }).then(response => {
+            // 檔案內容在 response.body
+            const data = response.body;
+            
+            // 匯入數據
+            if (importData(data)) {
+                updateGoogleSigninStatus('success', '數據已成功從 Google Drive 載入');
+                notify('✅', '同步成功', '數據已成功從 Google Drive 載入');
+            } else {
+                updateGoogleSigninStatus('error', '載入的數據格式不正確');
+                notify('❌', '同步失敗', '無法解析 Google Drive 中的數據');
+            }
+        }).catch(error => {
+            console.error('獲取檔案失敗:', error);
+            
+            // 檔案可能已刪除或移動，清除保存的 ID
+            delete appSettings.googleSync.fileId;
+            saveData('appSettings');
+            
+            // 搜索檔案
+            searchForFile();
+        });
+    } else {
+        // 搜索檔案
+        searchForFile();
+    }
+    
+    // 搜索檔案
+    function searchForFile() {
+        const folderName = GOOGLE_API_CONFIG.appFolderName || '進階財務追蹤器';
+        const fileName = GOOGLE_API_CONFIG.dataFileName || 'finance_data.json';
+        
+        // 1. 先查找應用資料夾
+        gapi.client.drive.files.list({
+            q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            spaces: 'drive',
+            fields: 'files(id, name)'
+        }).then(folderResponse => {
+            const folders = folderResponse.result.files;
+            
+            if (!folders || folders.length === 0) {
+                updateGoogleSigninStatus('error', '在 Google Drive 中找不到應用程式資料夾');
+                notify('ℹ️', '找不到數據', '在 Google Drive 中找不到應用程式資料夾');
+                return;
+            }
+            
+            const folderId = folders[0].id;
+            
+            // 2. 在資料夾中查找檔案
+            gapi.client.drive.files.list({
+                q: `name='${fileName}' and '${folderId}' in parents and trashed=false`,
+                spaces: 'drive',
+                fields: 'files(id, name, modifiedTime)'
+            }).then(fileResponse => {
+                const files = fileResponse.result.files;
+                
+                if (!files || files.length === 0) {
+                    updateGoogleSigninStatus('error', '在 Google Drive 中找不到數據檔案');
+                    notify('ℹ️', '找不到數據', '在 Google Drive 中找不到數據檔案');
+                    return;
+                }
+                
+                // 按修改時間排序，使用最新的檔案
+                files.sort((a, b) => new Date(b.modifiedTime) - new Date(a.modifiedTime));
+                const latestFile = files[0];
+                
+                // 保存檔案 ID
+                appSettings.googleSync = appSettings.googleSync || {};
+                appSettings.googleSync.fileId = latestFile.id;
+                saveData('appSettings');
+                
+                // 獲取檔案內容
+                gapi.client.drive.files.get({
+                    fileId: latestFile.id,
+                    alt: 'media'
+                }).then(response => {
+                    const data = response.body;
+                    
+                    // 匯入數據
+                    if (importData(data)) {
+                        updateGoogleSigninStatus('success', '數據已成功從 Google Drive 載入');
+                        notify('✅', '同步成功', '數據已成功從 Google Drive 載入');
+                    } else {
+                        updateGoogleSigninStatus('error', '載入的數據格式不正確');
+                        notify('❌', '同步失敗', '無法解析 Google Drive 中的數據');
+                    }
+                }).catch(error => {
+                    console.error('獲取檔案內容失敗:', error);
+                    updateGoogleSigninStatus('error', '無法讀取檔案內容');
+                    notify('❌', '同步失敗', '無法讀取 Google Drive 檔案內容');
+                });
+            }).catch(error => {
+                console.error('搜索檔案失敗:', error);
+                updateGoogleSigninStatus('error', '無法搜索 Google Drive 檔案');
+                notify('❌', '同步失敗', '無法在 Google Drive 中搜索檔案');
+            });
+        }).catch(error => {
+            console.error('搜索資料夾失敗:', error);
+            updateGoogleSigninStatus('error', '無法搜索 Google Drive 資料夾');
+            notify('❌', '同步失敗', '無法在 Google Drive 中搜索資料夾');
+        });
+    }
 }
 
 // 直接上傳到 Google Drive 的新方法
