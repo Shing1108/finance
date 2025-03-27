@@ -503,7 +503,7 @@ function loadGoogleDriveAPI() {
     
     // 開始第一次嘗試初始化
     attemptInitialization();
-}
+
 
 // Update sign-in status
 function updateSignInStatus(isSignedIn) {
