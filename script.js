@@ -367,36 +367,61 @@ function initGoogleApiAfterLoad() {
     }
 }
 
-// 2. 在 initGoogleApi 函數後添加這個新函數
 function loadGapiAndAuthorize() {
+    console.log('準備載入 Drive API...');
+    
     // 動態載入 gapi 腳本
     if (!window.gapi) {
         console.log('載入 gapi 腳本...');
         const script = document.createElement('script');
         script.src = 'https://apis.google.com/js/api.js';
-        script.onload = initializeGapiClient;
+        script.onload = function() {
+            console.log('gapi 腳本已載入，初始化 client');
+            initializeGapiClient();
+        };
+        script.onerror = function(err) {
+            console.error('載入 gapi 腳本失敗:', err);
+            notify('❌', 'API 載入失敗', '無法載入 Google API 客戶端庫');
+        };
         document.head.appendChild(script);
     } else if (!window.gapi.client) {
         console.log('gapi 已載入，初始化客戶端...');
         initializeGapiClient();
     } else {
-        console.log('gapi 客戶端已初始化');
+        console.log('gapi 客戶端已初始化，檢查 Drive API...');
+        if (!gapi.client.drive) {
+            console.log('需要載入 Drive API...');
+            gapi.client.load('drive', 'v3')
+                .then(function() {
+                    console.log('Drive API 已載入');
+                    // 確保設置訪問令牌
+                    if (googleUser && googleUser.accessToken) {
+                        gapi.client.setToken({
+                            access_token: googleUser.accessToken
+                        });
+                    }
+                })
+                .catch(function(err) {
+                    console.error('載入 Drive API 失敗:', err);
+                });
+        }
     }
-}
+}}
 
-// 3. 在 loadGapiAndAuthorize 函數後添加這個新函數
 async function initializeGapiClient() {
     console.log('初始化 gapi 客戶端...');
     
     try {
         await new Promise((resolve, reject) => {
-            gapi.load('client:auth2', {
+            gapi.load('client', {
                 callback: resolve,
                 onerror: reject,
                 timeout: 10000,
                 ontimeout: reject
             });
         });
+        
+        console.log('gapi client 已載入，初始化配置...');
         
         await gapi.client.init({
             apiKey: GOOGLE_API_CONFIG.apiKey,
@@ -405,19 +430,34 @@ async function initializeGapiClient() {
             scope: 'https://www.googleapis.com/auth/drive.file'
         });
         
-        console.log('gapi 客戶端已初始化，並設置了 Drive API 權限');
+        console.log('gapi 客戶端已初始化，載入 Drive API...');
+        
+        await gapi.client.load('drive', 'v3');
+        
+        console.log('Drive API 已載入');
+        
+        // 如果用戶已登入，設置令牌
+        if (googleUser && googleUser.accessToken) {
+            gapi.client.setToken({
+                access_token: googleUser.accessToken
+            });
+            console.log('已設置訪問令牌');
+        }
+        
     } catch (error) {
         console.error('初始化 gapi 客戶端失敗:', error);
+        notify('❌', 'API 初始化失敗', '無法初始化 Google Drive API');
     }
 }
 
-// 1. 替換現有的 handleCredentialResponse 函數
 function handleCredentialResponse(response) {
     if (!response.credential) {
         console.error('登入未返回憑證');
         notify('❌', '登入失敗', '無法獲取 Google 帳戶資訊');
         return;
     }
+    
+    console.log('收到登入憑證，正在處理...');
     
     // 解析 JWT 令牌
     const payload = parseJwt(response.credential);
@@ -427,31 +467,35 @@ function handleCredentialResponse(response) {
         id: payload.sub,
         name: payload.name,
         email: payload.email,
-        idToken: response.credential // 保存 ID 令牌
+        idToken: response.credential,
+        accessToken: response.credential // 暫時使用 ID 令牌作為訪問令牌
     };
     
-    // 使用 ID 令牌獲取訪問令牌
-    exchangeIDTokenForAccessToken(response.credential)
-        .then(accessToken => {
-            console.log('成功獲取訪問令牌');
-            googleUser.accessToken = accessToken;
-            
-            // 更新 gapi 的授權狀態
-            if (window.gapi && window.gapi.client) {
-                gapi.client.setToken({ access_token: accessToken });
-            }
-            
-            // 更新 UI
-            updateGoogleSigninUI(true);
-            
-            notify('✅', '登入成功', `已成功登入 Google 帳戶: ${googleUser.name}`);
-        })
-        .catch(error => {
-            console.error('獲取訪問令牌失敗:', error);
-            // 仍然更新 UI 以允許用戶登入
-            updateGoogleSigninUI(true);
-            notify('⚠️', '登入成功，但有限制', '某些 Google Drive 功能可能受限');
-        });
+    console.log('用戶資訊已設置:', googleUser.name);
+    
+    // 嘗試使用此憑證進行 Drive API 存取
+    loadGapiAndAuthorize().then(() => {
+        console.log('Drive API 已準備就緒');
+        
+        if (gapi.client) {
+            gapi.client.setToken({
+                access_token: googleUser.accessToken
+            });
+            console.log('已設置 gapi 訪問令牌');
+        }
+        
+        // 更新 UI
+        updateGoogleSigninUI(true);
+        
+        notify('✅', '登入成功', `已成功登入 Google 帳戶: ${googleUser.name}`);
+        
+        // 檢查 API 設置
+        setTimeout(checkGoogleApiSettings, 2000);
+    }).catch(error => {
+        console.error('載入 Drive API 失敗:', error);
+        updateGoogleSigninUI(true); // 仍然更新 UI 以允許用戶登入
+        notify('⚠️', '登入成功，但有限制', '某些 Google Drive 功能可能受限');
+    });
 }
 
 // 2. 在 handleCredentialResponse 函數後添加這些新函數
@@ -793,44 +837,296 @@ function updateGoogleSigninStatus(type, message) {
     statusElement.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
 }
 
-// 1. 替換現有的 saveToGoogleDrive 函數
 function saveToGoogleDrive() {
+    console.log('開始保存到 Google Drive 流程...');
+    
     if (!googleUser) {
         notify('❌', '尚未登入', '請先登入 Google 帳戶');
         return;
     }
     
-    if (!googleUser.accessToken) {
-        notify('❌', '授權不足', '無法訪問 Google Drive');
-        return;
-    }
-    
     updateGoogleSigninStatus('pending', '正在保存到 Google Drive...');
     
-    // 確保 gapi 已載入
-    if (!window.gapi || !window.gapi.client) {
-        notify('❌', 'API 未載入', '正在載入 Google API，請稍後再試');
-        loadGapiAndAuthorize().then(() => {
-            notify('✅', 'API 已載入', '現在可以嘗試保存到 Google Drive');
+    // 使用直接上傳方法
+    directUploadToDrive()
+        .then(fileId => {
+            // 保存成功
+            appSettings.googleSync = appSettings.googleSync || {};
+            appSettings.googleSync.fileId = fileId;
+            appSettings.googleSync.lastSync = new Date().toISOString();
+            saveData('appSettings');
+            
+            updateGoogleSigninStatus('success', '數據已成功保存到 Google Drive');
+            notify('✅', '同步成功', '數據已成功保存到 Google Drive');
+        })
+        .catch(error => {
+            console.error('Google Drive 上傳錯誤:', error);
+            
+            // 分析錯誤類型並提供更詳細的提示
+            let errorMessage = '無法上傳到 Google Drive';
+            let errorDetails = error.message || '未知錯誤';
+            
+            if (errorDetails.includes('搜索資料夾失敗')) {
+                errorMessage = '無法訪問 Google Drive 資料夾';
+                // 提示檢查權限
+                checkGoogleApiSettings();
+            } else if (errorDetails.includes('創建資料夾失敗')) {
+                errorMessage = '無法在 Google Drive 中創建資料夾';
+                // 提示檢查寫入權限
+                checkGoogleApiSettings();
+            } else if (errorDetails.includes('上傳檔案時出錯')) {
+                errorMessage = '檔案上傳失敗';
+            }
+            
+            updateGoogleSigninStatus('error', `上傳失敗: ${errorDetails}`);
+            notify('❌', '同步失敗', errorMessage);
         });
+}
+
+async function directUploadToDrive() {
+    console.log('使用直接上傳方法...');
+    
+    if (!googleUser || !googleUser.accessToken) {
+        throw new Error('未登入或缺少訪問令牌');
+    }
+    
+    const accessToken = googleUser.accessToken;
+    const folderName = GOOGLE_API_CONFIG.appFolderName || '進階財務追蹤器';
+    const fileName = GOOGLE_API_CONFIG.dataFileName || 'finance_data.json';
+    
+    console.log(`準備上傳到資料夾 "${folderName}", 文件名: "${fileName}"`);
+    
+    // 第 1 步: 查找或創建資料夾
+    console.log('嘗試查找應用程式資料夾...');
+    
+    let folderId;
+    try {
+        const folderResponse = await fetch(
+            `https://www.googleapis.com/drive/v3/files?q=name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`,
+            {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        
+        if (!folderResponse.ok) {
+            const errorData = await folderResponse.json();
+            console.error('資料夾查詢請求失敗:', errorData);
+            throw new Error(`搜索資料夾失敗: ${errorData.error?.message || folderResponse.statusText}`);
+        }
+        
+        const folderData = await folderResponse.json();
+        console.log('資料夾搜索結果:', folderData);
+        
+        if (folderData.files && folderData.files.length > 0) {
+            folderId = folderData.files[0].id;
+            console.log('找到現有資料夾, ID:', folderId);
+        } else {
+            console.log('資料夾不存在，創建新資料夾...');
+            
+            const createResponse = await fetch(
+                'https://www.googleapis.com/drive/v3/files',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: folderName,
+                        mimeType: 'application/vnd.google-apps.folder'
+                    })
+                }
+            );
+            
+            if (!createResponse.ok) {
+                const errorData = await createResponse.json();
+                console.error('創建資料夾請求失敗:', errorData);
+                throw new Error(`創建資料夾失敗: ${errorData.error?.message || createResponse.statusText}`);
+            }
+            
+            const newFolder = await createResponse.json();
+            folderId = newFolder.id;
+            console.log('已創建新資料夾, ID:', folderId);
+        }
+    } catch (error) {
+        console.error('處理資料夾時出錯:', error);
+        throw new Error(`處理資料夾時出錯: ${error.message}`);
+    }
+    
+    // 第 2 步: 準備上傳數據
+    console.log('準備數據和元數據...');
+    
+    const data = exportData();
+    let fileId = appSettings.googleSync?.fileId;
+    
+    // 第 3 步: 上傳或更新檔案
+    try {
+        if (fileId) {
+            // 嘗試更新現有檔案
+            console.log('嘗試更新現有檔案 ID:', fileId);
+            
+            // 先檢查檔案是否存在
+            try {
+                const checkResponse = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`
+                        }
+                    }
+                );
+                
+                if (!checkResponse.ok) {
+                    console.log('檔案不存在或無法訪問，將創建新檔案');
+                    fileId = null; // 重置 fileId 以創建新檔案
+                }
+            } catch (error) {
+                console.warn('檢查檔案時出錯，將創建新檔案:', error);
+                fileId = null; // 重置 fileId 以創建新檔案
+            }
+        }
+        
+        if (fileId) {
+            // 更新現有檔案
+            console.log('更新檔案內容...');
+            
+            // 使用 Blob 和 FormData 進行更可靠的上傳
+            const blob = new Blob([data], {type: 'application/json'});
+            const formData = new FormData();
+            formData.append('metadata', new Blob([JSON.stringify({
+                name: fileName,
+                mimeType: 'application/json'
+            })], {type: 'application/json'}));
+            formData.append('file', blob);
+            
+            const updateResponse = await fetch(
+                `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: formData
+                }
+            );
+            
+            if (!updateResponse.ok) {
+                const errorData = await updateResponse.json();
+                console.error('更新檔案請求失敗:', errorData);
+                throw new Error(`更新檔案失敗: ${errorData.error?.message || updateResponse.statusText}`);
+            }
+            
+            console.log('檔案已成功更新');
+            return fileId; // 返回現有檔案的 ID
+            
+        } else {
+            // 創建新檔案
+            console.log('創建新檔案...');
+            
+            // 使用 Blob 和 FormData 進行更可靠的上傳
+            const blob = new Blob([data], {type: 'application/json'});
+            const formData = new FormData();
+            formData.append('metadata', new Blob([JSON.stringify({
+                name: fileName,
+                mimeType: 'application/json',
+                parents: [folderId]
+            })], {type: 'application/json'}));
+            formData.append('file', blob);
+            
+            const createResponse = await fetch(
+                'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: formData
+                }
+            );
+            
+            if (!createResponse.ok) {
+                let errorMessage;
+                try {
+                    const errorData = await createResponse.json();
+                    console.error('創建檔案請求失敗:', errorData);
+                    errorMessage = errorData.error?.message || createResponse.statusText;
+                } catch (e) {
+                    errorMessage = `狀態碼: ${createResponse.status}`;
+                }
+                throw new Error(`創建檔案失敗: ${errorMessage}`);
+            }
+            
+            const newFile = await createResponse.json();
+            console.log('新檔案已創建, ID:', newFile.id);
+            return newFile.id; // 返回新檔案的 ID
+        }
+    } catch (error) {
+        console.error('上傳檔案時出錯:', error);
+        throw new Error(`上傳檔案時出錯: ${error.message}`);
+    }
+}
+
+// 檢查 Google API 設置
+function checkGoogleApiSettings() {
+    if (!googleUser) return;
+    
+    // 檢查訪問令牌
+    if (!googleUser.accessToken) {
+        console.warn('沒有有效的訪問令牌，Drive API 可能無法正常工作');
+        notify('⚠️', 'API 設置問題', '您的 Google 訪問令牌可能無效，請嘗試重新登入');
         return;
     }
     
-    // 設置授權令牌
-    gapi.client.setToken({ access_token: googleUser.accessToken });
-    
-    // 檢查 Drive API 是否已載入
-    if (!gapi.client.drive) {
-        gapi.client.load('drive', 'v3').then(function() {
-            saveFileToDrive();
-        }).catch(function(error) {
-            console.error('載入 Drive API 失敗:', error);
-            updateGoogleSigninStatus('error', '無法載入 Drive API');
-            notify('❌', '同步失敗', '無法載入 Google Drive API');
-        });
-    } else {
-        saveFileToDrive();
+    // 檢查 API 密鑰設置
+    if (!GOOGLE_API_CONFIG.apiKey) {
+        console.warn('未設置 API 密鑰，某些 API 功能可能受限');
+        notify('⚠️', 'API 設置問題', '未設置 API 密鑰，請在配置中添加有效的 Google API 密鑰');
     }
+    
+    console.log('正在檢查 Google API 設置...');
+    
+    // 嘗試一個簡單的 Drive API 操作來測試權限
+    fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
+        headers: {
+            'Authorization': `Bearer ${googleUser.accessToken}`
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`API 調用失敗: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(() => {
+        console.log('Drive API 權限檢查通過');
+    })
+    .catch(error => {
+        console.error('Drive API 權限檢查失敗:', error);
+        
+        // 顯示更詳細的配置提示
+        notify('ℹ️', 'Drive API 設置說明', '請確保您已在 Google Cloud Console 中啟用 Drive API 並設置了正確的權限', 10000);
+        
+        // 在控制台輸出詳細指引
+        console.info(`
+=== Google API 設置檢查清單 ===
+1. 訪問 https://console.cloud.google.com/
+2. 選擇您的專案
+3. 前往「API 和服務」>「啟用的 API 和服務」
+4. 確保「Google Drive API」已啟用
+5. 前往「API 和服務」>「憑證」
+6. 檢查 OAuth 客戶端 ID 設置
+7. 前往「API 和服務」>「OAuth 同意畫面」
+8. 確保添加了以下範圍：
+   - https://www.googleapis.com/auth/drive.file
+
+如需更多幫助，請訪問: https://developers.google.com/identity/sign-in/web/
+        `);
+    });
 }
 
 // 2. 在 saveToGoogleDrive 函數後添加這個新函數
