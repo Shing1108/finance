@@ -1744,7 +1744,7 @@ function searchForLatestFile() {
             notify('❌', '同步失敗', '無法在 Google Drive 中搜索資料夾');
         });
     }
-}
+
 
 // 直接上傳到 Google Drive 的新方法
 async function uploadToGoogleDrive(accessToken) {
