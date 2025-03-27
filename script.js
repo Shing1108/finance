@@ -141,6 +141,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize Google API
     initGoogleApi();
+    
+    // 初始化 Google API (使用延遲確保頁面完全載入)
+    setTimeout(initGoogleApi, 500);
 });
 
 // Debounce function for performance optimization
@@ -227,10 +230,53 @@ function initApp() {
     generateFinancialAdvice();
 }
 
-// 1. 替換現有的 initGoogleApi 函數
 function initGoogleApi() {
     console.log('開始初始化 Google API...');
     
+    // 檢查 google 對象是否已載入
+    if (typeof google === 'undefined') {
+        console.log('Google API 尚未載入，正在嘗試動態載入...');
+        
+        // 動態載入 Google Identity Services
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = function() {
+            console.log('Google API 已動態載入，正在初始化...');
+            initGoogleApiAfterLoad();
+        };
+        script.onerror = function(error) {
+            console.error('載入 Google API 失敗:', error);
+            updateGoogleSigninStatus('error', '無法載入 Google API，請確保您的網絡連接正常');
+            
+            // 啟用重試按鈕
+            const googleSignInBtn = document.getElementById('googleSignInBtn');
+            if (googleSignInBtn) {
+                googleSignInBtn.disabled = false;
+                googleSignInBtn.innerHTML = '<i class="fas fa-sync mr-2"></i> 重試載入';
+            }
+        };
+        
+        document.head.appendChild(script);
+        
+        // 更新按鈕狀態
+        const googleSignInBtn = document.getElementById('googleSignInBtn');
+        if (googleSignInBtn) {
+            googleSignInBtn.disabled = true;
+            googleSignInBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 載入中...';
+        }
+        
+        updateGoogleSigninStatus('pending', 'Google API 正在載入...');
+        return;
+    }
+    
+    // Google API 已載入，直接進行初始化
+    initGoogleApiAfterLoad();
+}
+
+// 在 Google API 載入後進行初始化
+function initGoogleApiAfterLoad() {
     // 重置按鈕狀態和顯示加載中
     const googleSignInBtn = document.getElementById('googleSignInBtn');
     if (!googleSignInBtn) {
@@ -253,21 +299,26 @@ function initGoogleApi() {
         
         // 啟用登入按鈕
         googleSignInBtn.disabled = false;
-        googleSignInBtn.innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">...</svg> 使用 Google 帳戶登入';
+        googleSignInBtn.innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
         updateGoogleSigninStatus('success', 'Google API 已準備就緒，請登入');
         
-        // 設置定制按鈕
-        googleSignInBtn.addEventListener('click', function() {
+        // 綁定自訂登入按鈕事件
+        googleSignInBtn.onclick = function() {
             // 初始化 gapi 用於 Drive API
             loadGapiAndAuthorize();
             // 顯示登入提示
             google.accounts.id.prompt();
-        });
+        };
+        
+        // 標記為已初始化
+        googleApiInitialized = true;
         
         console.log('Google Identity Services 初始化成功');
     } catch (error) {
         console.error('Google API 初始化錯誤:', error);
-        updateGoogleSigninStatus('error', '初始化失敗: ' + (error.message || '未知錯誤'));
+        updateGoogleSigninStatus('error', `初始化失敗: ${error.message || '未知錯誤'}`);
+        googleSignInBtn.disabled = false;
+        googleSignInBtn.innerHTML = '<i class="fas fa-sync mr-2"></i> 重試載入';
     }
 }
 
@@ -470,7 +521,7 @@ function loadGoogleDriveAPI() {
 
     
     // 嘗試初始化的函數
-    function attemptInitialization() {
+    /*function attemptInitialization() {
         console.log(`嘗試 Google API 初始化... (嘗試 ${currentRetry + 1}/${MAX_RETRIES + 1})`);
         
         // 設置超時定時器
@@ -571,7 +622,7 @@ function loadGoogleDriveAPI() {
                 processInitError(error);
             }
         }
-    }
+    }*/
     
     // 處理初始化錯誤
     function processInitError(error) {
@@ -2266,28 +2317,28 @@ function setupEventListeners() {
             openModal('importExportModal');
         });
     }
-    
+
     // Google Sign-in button
-    const googleSignInBtn = document.getElementById('googleSignInBtn');
-    if (googleSignInBtn) {
-        googleSignInBtn.addEventListener('click', function() {
-            // 檢查 API 是否已初始化
-            if (!googleApiInitialized) {
-                // 如果顯示的是重試按鈕，則嘗試重新初始化
-                if (this.innerHTML.includes('重試')) {
-                    notify('🔄', '正在重新初始化', 'Google API 正在重新初始化...');
-                    initGoogleApi(); // 重新初始化
-                    return;
-                }
-                notify('❌', 'Google API 尚未初始化', '請稍後再試，或點擊重試按鈕');
-                this.innerHTML = '<i class="fas fa-sync mr-2"></i> 重試 Google 登入';
-                return;
-            }
-            
-            // API 已初始化，可以登入
-            signInToGoogle();
-        });
-    }
+const googleSignInBtn = document.getElementById('googleSignInBtn');
+if (googleSignInBtn) {
+    googleSignInBtn.addEventListener('click', function() {
+        // 如果顯示的是重試按鈕，則嘗試重新初始化
+        if (this.innerHTML.includes('重試')) {
+            notify('🔄', '正在重新初始化', 'Google API 正在重新初始化...');
+            initGoogleApi(); // 重新初始化
+            return;
+        }
+        
+        // 檢查 API 是否已初始化，如果還沒有，則嘗試初始化
+        if (!googleApiInitialized) {
+            initGoogleApi();
+            return;
+        }
+        
+        // 如果 API 已經初始化，但不知道為什麼按鈕還可見，就顯示提示
+        notify('ℹ️', 'Google API 正在處理中', '請稍候...');
+    });
+}
     
     // Google Sign-out button
     const googleSignOutBtn = document.getElementById('googleSignOutBtn');
