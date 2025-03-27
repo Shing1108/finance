@@ -139,8 +139,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check for dark mode
     applyTheme();
     
-    // Initialize Google API
-    initGoogleApi();
+    /*// Initialize Google API
+    initGoogleApi();*/
     
     // 初始化 Google API (使用延遲確保頁面完全載入)
     setTimeout(initGoogleApi, 500);
@@ -288,7 +288,7 @@ function initGoogleApiAfterLoad() {
     googleSignInBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 載入中...';
     updateGoogleSigninStatus('pending', 'Google API 正在初始化...');
     
-    try {
+        try {
         // 使用新版 Google Identity Services
         google.accounts.id.initialize({
             client_id: GOOGLE_API_CONFIG.clientId,
@@ -302,14 +302,6 @@ function initGoogleApiAfterLoad() {
         googleSignInBtn.innerHTML = '<svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 使用 Google 帳戶登入';
         updateGoogleSigninStatus('success', 'Google API 已準備就緒，請登入');
         
-       /* // 綁定自訂登入按鈕事件
-        googleSignInBtn.onclick = function() {
-            // 初始化 gapi 用於 Drive API
-            loadGapiAndAuthorize();
-            // 顯示登入提示
-            google.accounts.id.prompt();
-        };*/
-        
         // 標記為已初始化
         googleApiInitialized = true;
         
@@ -322,45 +314,54 @@ function initGoogleApiAfterLoad() {
     }
 }
 
+
 function loadGapiAndAuthorize() {
-    console.log('準備載入 Drive API...');
-    
-    // 動態載入 gapi 腳本
-    if (!window.gapi) {
-        console.log('載入 gapi 腳本...');
-        const script = document.createElement('script');
-        script.src = 'https://apis.google.com/js/api.js';
-        script.onload = function() {
-            console.log('gapi 腳本已載入，初始化 client');
-            initializeGapiClient();
-        };
-        script.onerror = function(err) {
-            console.error('載入 gapi 腳本失敗:', err);
-            notify('❌', 'API 載入失敗', '無法載入 Google API 客戶端庫');
-        };
-        document.head.appendChild(script);
-    } else if (!window.gapi.client) {
-        console.log('gapi 已載入，初始化客戶端...');
-        initializeGapiClient();
-    } else {
-        console.log('gapi 客戶端已初始化，檢查 Drive API...');
-        if (!gapi.client.drive) {
-            console.log('需要載入 Drive API...');
-            gapi.client.load('drive', 'v3')
-                .then(function() {
-                    console.log('Drive API 已載入');
-                    // 確保設置訪問令牌
-                    if (googleUser && googleUser.accessToken) {
-                        gapi.client.setToken({
-                            access_token: googleUser.accessToken
-                        });
-                    }
-                })
-                .catch(function(err) {
-                    console.error('載入 Drive API 失敗:', err);
-                });
+    return new Promise((resolve, reject) => {
+        console.log('準備載入 Drive API...');
+        
+        // 動態載入 gapi 腳本
+        if (!window.gapi) {
+            console.log('載入 gapi 腳本...');
+            const script = document.createElement('script');
+            script.src = 'https://apis.google.com/js/api.js';
+            script.onload = function() {
+                console.log('gapi 腳本已載入，初始化 client');
+                initializeGapiClient().then(resolve).catch(reject);
+            };
+            script.onerror = function(err) {
+                console.error('載入 gapi 腳本失敗:', err);
+                notify('❌', 'API 載入失敗', '無法載入 Google API 客戶端庫');
+                reject(err);
+            };
+            document.head.appendChild(script);
+        } else if (!window.gapi.client) {
+            console.log('gapi 已載入，初始化客戶端...');
+            initializeGapiClient().then(resolve).catch(reject);
+        } else {
+            console.log('gapi 客戶端已初始化，檢查 Drive API...');
+            if (!gapi.client.drive) {
+                console.log('需要載入 Drive API...');
+                gapi.client.load('drive', 'v3')
+                    .then(function() {
+                        console.log('Drive API 已載入');
+                        // 確保設置訪問令牌
+                        if (googleUser && googleUser.accessToken) {
+                            gapi.client.setToken({
+                                access_token: googleUser.accessToken
+                            });
+                        }
+                        resolve();
+                    })
+                    .catch(function(err) {
+                        console.error('載入 Drive API 失敗:', err);
+                        reject(err);
+                    });
+            } else {
+                console.log('Drive API 已載入');
+                resolve();
+            }
         }
-    }
+    });
 }
 
 async function initializeGapiClient() {
@@ -2634,14 +2635,29 @@ if (googleSignInBtn) {
             return;
         }
         
-        // 檢查 API 是否已初始化，如果還沒有，則嘗試初始化
+        // 檢查 API 是否已初始化
         if (!googleApiInitialized) {
+            notify('ℹ️', 'API 尚未初始化', '正在嘗試初始化 Google API...');
             initGoogleApi();
             return;
         }
         
-        // 如果 API 已經初始化，但不知道為什麼按鈕還可見，就顯示提示
-        notify('ℹ️', 'Google API 正在處理中', '請稍候...');
+        // 如果已初始化，則顯示登入提示
+        console.log('顯示 Google 登入提示...');
+        try {
+            // 確保 google 對象存在
+            if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+                // 初始化 gapi 用於 Drive API
+                loadGapiAndAuthorize();
+                // 顯示登入提示
+                google.accounts.id.prompt();
+            } else {
+                notify('❌', 'Google API 未就緒', '請稍後再試，或重新載入頁面');
+            }
+        } catch (error) {
+            console.error('顯示登入提示錯誤:', error);
+            notify('❌', 'Google 登入錯誤', error.message || '無法啟動登入流程');
+        }
     });
 }
     
@@ -4122,3 +4138,73 @@ function downloadData() {
         URL.revokeObjectURL(url);
     }, 0);
 }
+// 添加到腳本末尾
+function diagnoseGoogleApi() {
+    console.log('Google API 診斷開始...');
+    
+    // 檢查 google 對象是否存在
+    if (typeof google === 'undefined') {
+        console.error('google 對象不存在，API 腳本未載入或載入失敗');
+        return;
+    }
+    
+    console.log('google 對象已存在');
+    
+    // 檢查 google.accounts 是否存在
+    if (!google.accounts) {
+        console.error('google.accounts 不存在，Identity Services 未載入');
+        return;
+    }
+    
+    console.log('google.accounts 已存在');
+    
+    // 檢查 google.accounts.id 是否存在
+    if (!google.accounts.id) {
+        console.error('google.accounts.id 不存在，無法進行 OAuth 流程');
+        return;
+    }
+    
+    console.log('google.accounts.id 已存在');
+    
+    // 檢查 gapi 對象
+    if (typeof gapi === 'undefined') {
+        console.error('gapi 對象不存在，API 腳本未載入');
+        return;
+    }
+    
+    console.log('gapi 對象已存在');
+    
+    // 檢查 gapi.client
+    if (!gapi.client) {
+        console.error('gapi.client 不存在，client 庫未初始化');
+        return;
+    }
+    
+    console.log('gapi.client 已存在');
+    
+    // 檢查 gapi.client.drive
+    if (!gapi.client.drive) {
+        console.error('gapi.client.drive 不存在，Drive API 未載入');
+        return;
+    }
+    
+    console.log('gapi.client.drive 已存在');
+    
+    // 檢查用戶狀態
+    console.log('googleUser 狀態:', googleUser);
+    console.log('googleApiInitialized 狀態:', googleApiInitialized);
+    
+    console.log('Google API 診斷完成');
+}
+
+// 將此診斷函數添加到登入按鈕上的右鍵菜單
+document.addEventListener('DOMContentLoaded', function() {
+    const googleSignInBtn = document.getElementById('googleSignInBtn');
+    if (googleSignInBtn) {
+        googleSignInBtn.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            diagnoseGoogleApi();
+            return false;
+        });
+    }
+});
