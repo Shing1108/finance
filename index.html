@@ -416,6 +416,10 @@
         import { getDatabase } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-database.js";
         import { getAuth } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js";
 
+        // 更新這部分導入，添加必要的函數
+        import { GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js";
+        import { ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-database.js";
+
         // 您需要從Firebase控制台獲取這些配置信息
         const firebaseConfig = {
             apiKey: "AIzaSyAaqadmDSgQ-huvY7uNNrPtjFSOl93jVEE",
@@ -436,6 +440,18 @@
         window.firebaseApp = app;
         window.firebaseDb = db;
         window.firebaseAuth = auth;
+        window.firebase = {
+            auth: {
+                GoogleAuthProvider,
+                signInWithPopup
+            },
+            database: {
+                ref,
+                set,
+                get,
+                onValue
+            }
+        };
     </script>
     
     <!-- 引入 Chart.js 用於數據可視化 -->
