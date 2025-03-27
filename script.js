@@ -1374,7 +1374,6 @@ function saveFileToDrive() {
     attemptSave();
 }
 
-// 3. 替換現有的 loadFromGoogleDrive 函數
 function loadFromGoogleDrive() {
     if (!googleUser) {
         notify('❌', '尚未登入', '請先登入 Google 帳戶');
@@ -1382,74 +1381,293 @@ function loadFromGoogleDrive() {
     }
     
     if (!googleUser.accessToken) {
-        notify('❌', '授權不足', '無法訪問 Google Drive');
-        return;
+        if (tokenClient) {
+            // 請求權限並繼續下載
+            requestDriveAccess()
+                .then(() => {
+                    // 給 OAuth 流程一點時間設置 token
+                    setTimeout(() => {
+                        if (googleUser.accessToken) {
+                            performDriveDownload();
+                        } else {
+                            updateGoogleSigninStatus('error', '無法獲取存取權限');
+                            notify('❌', '同步失敗', '無法獲取 Google Drive 存取權限');
+                        }
+                    }, 1000);
+                })
+                .catch(error => {
+                    console.error('獲取 Drive 權限錯誤:', error);
+                    updateGoogleSigninStatus('error', '無法獲取 Google Drive 權限');
+                    notify('❌', '同步失敗', '無法獲取 Google Drive 權限');
+                });
+            return;
+        } else {
+            notify('❌', '授權不足', '無法訪問 Google Drive');
+            return;
+        }
     }
     
-    updateGoogleSigninStatus('pending', '正在從 Google Drive 載入數據...');
+    performDriveDownload();
     
-    // 確保 gapi 已載入
-    if (!window.gapi || !window.gapi.client) {
-        notify('❌', 'API 未載入', '正在載入 Google API，請稍後再試');
-        loadGapiAndAuthorize().then(() => {
-            notify('✅', 'API 已載入', '現在可以嘗試從 Google Drive 載入');
-        });
-        return;
-    }
-    
-    // 設置授權令牌
-    gapi.client.setToken({ access_token: googleUser.accessToken });
-    
-    // 檢查 Drive API 是否已載入
-    if (!gapi.client.drive) {
-        gapi.client.load('drive', 'v3').then(function() {
-            loadFileFromDrive();
-        }).catch(function(error) {
-            console.error('載入 Drive API 失敗:', error);
-            updateGoogleSigninStatus('error', '無法載入 Drive API');
-            notify('❌', '同步失敗', '無法載入 Google Drive API');
-        });
-    } else {
-        loadFileFromDrive();
+    // 實際執行下載的函數
+    function performDriveDownload() {
+        updateGoogleSigninStatus('pending', '正在從 Google Drive 載入數據...');
+        
+        // 確保 gapi 已載入
+        if (!window.gapi || !window.gapi.client) {
+            notify('❌', 'API 未載入', '正在載入 Google API，請稍後再試');
+            loadGapiAndAuthorize().then(() => {
+                notify('✅', 'API 已載入', '現在可以嘗試從 Google Drive 載入');
+            });
+            return;
+        }
+        
+        loadFileFromDrive()
+            .then(data => {
+                console.log("從 Google Drive 獲取的數據:", data.substring(0, 100) + "..."); // 只顯示開頭部分做日誌
+                
+                // 關鍵修改：確保正確解析 JSON 數據
+                try {
+                    // 嘗試解析 JSON 數據
+                    const parsedData = JSON.parse(data);
+                    
+                    // 數據有效性檢查
+                    if (!parsedData || typeof parsedData !== 'object') {
+                        throw new Error('下載的數據格式不正確');
+                    }
+                    
+                    // 使用匯入函數處理數據
+                    const importSuccessful = processImportedData(parsedData);
+                    
+                    if (importSuccessful) {
+                        updateGoogleSigninStatus('success', '數據已成功從 Google Drive 載入');
+                        notify('✅', '同步成功', '數據已成功從 Google Drive 載入');
+                        
+                        // 更新所有 UI 元素以反映新數據
+                        updateUI();
+                    } else {
+                        updateGoogleSigninStatus('error', '載入的數據格式不正確');
+                        notify('❌', '同步失敗', '無法解析 Google Drive 中的數據');
+                    }
+                } catch (error) {
+                    console.error('解析 Google Drive 數據時出錯:', error);
+                    updateGoogleSigninStatus('error', '解析數據失敗: ' + error.message);
+                    notify('❌', '同步失敗', '無法解析從 Google Drive 載入的數據');
+                }
+            })
+            .catch(error => {
+                console.error('從 Google Drive 載入數據失敗:', error);
+                updateGoogleSigninStatus('error', '載入失敗: ' + error.message);
+                notify('❌', '同步失敗', '無法從 Google Drive 載入數據');
+            });
     }
 }
 
-// 4. 在 loadFromGoogleDrive 函數後添加這個新函數
-function loadFileFromDrive() {
-    // 檢查是否有保存的檔案 ID
-    const fileId = appSettings.googleSync?.fileId;
+/**
+ * 處理從 Google Drive 或匯入的數據
+ * @param {Object} data - 已解析的 JSON 數據對象
+ * @returns {boolean} - 匯入是否成功
+ */
+function processImportedData(data) {
+    console.log('處理匯入的數據...');
     
-    if (fileId) {
-        // 直接獲取檔案
+    // 數據有效性檢查
+    if (!data) {
+        console.error('匯入數據為空');
+        return false;
+    }
+    
+    try {
+        // 檢查數據格式
+        let isValid = true;
+        let updateCounts = {};
+        
+        // 匯入戶口數據
+        if (Array.isArray(data.accounts)) {
+            accounts = data.accounts;
+            updateCounts.accounts = accounts.length;
+        } else {
+            console.warn('匯入數據中缺少有效的 accounts 數組');
+            isValid = false;
+        }
+        
+        // 匯入類別數據
+        if (data.categories && typeof data.categories === 'object') {
+            categories = data.categories;
+            updateCounts.categories = {
+                income: categories.income?.length || 0,
+                expense: categories.expense?.length || 0
+            };
+        } else {
+            console.warn('匯入數據中缺少有效的 categories 對象');
+            isValid = false;
+        }
+        
+        // 匯入交易數據
+        if (Array.isArray(data.transactions)) {
+            transactions = data.transactions;
+            updateCounts.transactions = transactions.length;
+        } else {
+            console.warn('匯入數據中缺少有效的 transactions 數組');
+            isValid = false;
+        }
+        
+        // 匯入預算數據
+        if (data.budget && typeof data.budget === 'object') {
+            budget = data.budget;
+            updateCounts.budget = 'updated';
+        } else {
+            console.warn('匯入數據中缺少有效的 budget 對象');
+        }
+        
+        // 匯入類別預算數據
+        if (Array.isArray(data.categoryBudgets)) {
+            categoryBudgets = data.categoryBudgets;
+            updateCounts.categoryBudgets = categoryBudgets.length;
+        }
+        
+        // 匯入新一天狀態
+        if (data.newDayStatus && typeof data.newDayStatus === 'object') {
+            newDayStatus = data.newDayStatus;
+        }
+        
+        // 匯入應用設置
+        if (data.appSettings && typeof data.appSettings === 'object') {
+            // 合併設置，保留當前的 Google 同步設置
+            const currentGoogleSync = appSettings.googleSync || {};
+            appSettings = data.appSettings;
+            appSettings.googleSync = currentGoogleSync;
+            updateCounts.appSettings = 'updated';
+        }
+        
+        // 匯入匯率數據
+        if (data.exchangeRates && typeof data.exchangeRates === 'object') {
+            exchangeRates = data.exchangeRates;
+            updateCounts.exchangeRates = 'updated';
+        }
+        
+        // 保存所有數據到 localStorage
+        saveData();
+        
+        // 顯示匯入信息
+        console.log('數據匯入成功:', updateCounts);
+        
+        return isValid;
+    } catch (error) {
+        console.error('處理匯入數據時出錯:', error);
+        return false;
+    }
+}
+
+function loadFileFromDrive() {
+    return new Promise((resolve, reject) => {
+        // 檢查是否有保存的檔案 ID
+        const fileId = appSettings.googleSync?.fileId;
+        
+        if (!fileId) {
+            reject(new Error('尚未保存文件到 Google Drive'));
+            return;
+        }
+        
+        console.log('嘗試從 Google Drive 加載文件, ID:', fileId);
+        
+        // 設置訪問令牌
+        gapi.client.setToken({ access_token: googleUser.accessToken });
+        
+        // 獲取文件內容
         gapi.client.drive.files.get({
             fileId: fileId,
             alt: 'media'
         }).then(response => {
-            // 檔案內容在 response.body
-            const data = response.body;
-            
-            // 匯入數據
-            if (importData(data)) {
-                updateGoogleSigninStatus('success', '數據已成功從 Google Drive 載入');
-                notify('✅', '同步成功', '數據已成功從 Google Drive 載入');
-            } else {
-                updateGoogleSigninStatus('error', '載入的數據格式不正確');
-                notify('❌', '同步失敗', '無法解析 Google Drive 中的數據');
-            }
+            // 成功獲取文件內容
+            console.log('成功從 Google Drive 獲取文件');
+            resolve(response.body);
         }).catch(error => {
-            console.error('獲取檔案失敗:', error);
+            console.error('從 Google Drive 獲取檔案失敗:', error);
             
-            // 檔案可能已刪除或移動，清除保存的 ID
-            delete appSettings.googleSync.fileId;
+            // 如果找不到文件，清除保存的 ID 並嘗試搜索
+            if (error.status === 404) {
+                console.log('文件不存在或已被刪除，嘗試搜索...');
+                
+                // 清除保存的 ID
+                appSettings.googleSync.fileId = null;
+                saveData('appSettings');
+                
+                // 搜索文件
+                searchForLatestFile().then(fileContent => {
+                    resolve(fileContent);
+                }).catch(searchError => {
+                    reject(searchError);
+                });
+            } else {
+                reject(error);
+            }
+        });
+    });
+}
+
+// 搜索最新文件
+function searchForLatestFile() {
+    return new Promise((resolve, reject) => {
+        const folderName = GOOGLE_API_CONFIG.appFolderName || '進階財務追蹤器';
+        const fileName = GOOGLE_API_CONFIG.dataFileName || 'finance_data.json';
+        
+        console.log(`搜索資料夾 "${folderName}" 中的文件 "${fileName}"...`);
+        
+        // 先搜索資料夾
+        gapi.client.drive.files.list({
+            q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            spaces: 'drive',
+            fields: 'files(id, name)'
+        }).then(folderResponse => {
+            const folders = folderResponse.result.files;
+            
+            if (!folders || folders.length === 0) {
+                reject(new Error('在 Google Drive 中找不到應用程式資料夾'));
+                return;
+            }
+            
+            const folderId = folders[0].id;
+            console.log('找到資料夾, ID:', folderId);
+            
+            // 然後在資料夾中搜索文件
+            return gapi.client.drive.files.list({
+                q: `name='${fileName}' and '${folderId}' in parents and trashed=false`,
+                spaces: 'drive',
+                fields: 'files(id, name, modifiedTime)',
+                orderBy: 'modifiedTime desc'
+            });
+        }).then(fileResponse => {
+            const files = fileResponse.result.files;
+            
+            if (!files || files.length === 0) {
+                reject(new Error('在應用程式資料夾中找不到數據文件'));
+                return;
+            }
+            
+            // 使用最新的文件
+            const latestFile = files[0];
+            console.log('找到最新文件, ID:', latestFile.id);
+            
+            // 保存文件 ID
+            appSettings.googleSync = appSettings.googleSync || {};
+            appSettings.googleSync.fileId = latestFile.id;
             saveData('appSettings');
             
-            // 搜索檔案
-            searchForFile();
+            // 獲取文件內容
+            return gapi.client.drive.files.get({
+                fileId: latestFile.id,
+                alt: 'media'
+            });
+        }).then(contentResponse => {
+            // 成功獲取文件內容
+            resolve(contentResponse.body);
+        }).catch(error => {
+            console.error('搜索或獲取檔案時出錯:', error);
+            reject(error);
         });
-    } else {
-        // 搜索檔案
-        searchForFile();
-    }
+    });
+}
     
     // 搜索檔案
     function searchForFile() {
@@ -4081,9 +4299,19 @@ function exportData() {
 
 function importData(jsonString) {
     try {
+        // 解析 JSON 字符串
         const data = JSON.parse(jsonString);
-        // 進行數據驗證和匯入...
-        return true;
+        
+        // 使用通用的處理函數來處理數據
+        const importSuccessful = processImportedData(data);
+        
+        if (importSuccessful) {
+            notify('✅', '匯入成功', '數據已成功匯入');
+            return true;
+        } else {
+            notify('⚠️', '部分匯入', '部分數據格式不正確，請檢查');
+            return false;
+        }
     } catch (error) {
         console.error('Import error:', error);
         notify('❌', '匯入失敗', '匯入的數據格式不正確');
