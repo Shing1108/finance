@@ -275,6 +275,51 @@ function initGoogleApi() {
     initGoogleApiAfterLoad();
 }
 
+function initGoogleApi() {
+    console.log('開始初始化 Google API...');
+    
+    // 檢查 google 對象是否已載入
+    if (typeof google === 'undefined') {
+        console.log('Google API 尚未載入，正在嘗試動態載入...');
+        
+        // 動態載入 Google Identity Services
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = function() {
+            console.log('Google API 已動態載入，正在初始化...');
+            initGoogleApiAfterLoad();
+        };
+        script.onerror = function(error) {
+            console.error('載入 Google API 失敗:', error);
+            updateGoogleSigninStatus('error', '無法載入 Google API，請確保您的網絡連接正常');
+            
+            // 啟用重試按鈕
+            const googleSignInBtn = document.getElementById('googleSignInBtn');
+            if (googleSignInBtn) {
+                googleSignInBtn.disabled = false;
+                googleSignInBtn.innerHTML = '<i class="fas fa-sync mr-2"></i> 重試載入';
+            }
+        };
+        
+        document.head.appendChild(script);
+        
+        // 更新按鈕狀態
+        const googleSignInBtn = document.getElementById('googleSignInBtn');
+        if (googleSignInBtn) {
+            googleSignInBtn.disabled = true;
+            googleSignInBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 載入中...';
+        }
+        
+        updateGoogleSigninStatus('pending', 'Google API 正在載入...');
+        return;
+    }
+    
+    // Google API 已載入，直接進行初始化
+    initGoogleApiAfterLoad();
+}
+
 // 在 Google API 載入後進行初始化
 function initGoogleApiAfterLoad() {
     // 重置按鈕狀態和顯示加載中
@@ -2318,7 +2363,7 @@ function setupEventListeners() {
         });
     }
 
-    // Google Sign-in button
+// Google Sign-in button
 const googleSignInBtn = document.getElementById('googleSignInBtn');
 if (googleSignInBtn) {
     googleSignInBtn.addEventListener('click', function() {
