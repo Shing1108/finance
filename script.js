@@ -98,8 +98,8 @@ function saveToFirebase() {
     };
     
     // 保存到Firebase
-    const userRef = firebase.database().ref('users/' + userId);
-    userRef.set(userData)
+    const userRef = window.firebase.database.ref(db, 'users/' + userId);
+    window.firebase.database.set(userRef, userData)
         .then(() => {
             console.log("數據已同步到Firebase");
             lastSyncTime = new Date();
@@ -109,17 +109,17 @@ function saveToFirebase() {
             console.error("同步失敗:", error);
             alert("同步失敗，請稍後再試");
         });
-}
+}   
 
 function loadUserData() {
     if (!isLoggedIn || !currentUser) return;
     
     const db = window.firebaseDb;
     const userId = currentUser.uid;
-    const userRef = firebase.database().ref('users/' + userId);
+    const userRef = window.firebase.database.ref(db, 'users/' + userId);
     
     // 一次性讀取當前數據
-    userRef.once('value')
+    window.firebase.database.get(userRef)
         .then((snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
@@ -150,7 +150,7 @@ function loadUserData() {
         .catch((error) => {
             console.error("載入數據失敗:", error);
         });
-        
+    
     // 如果啟用了自動同步，設置實時監聽
     if (settings.autoSync) {
         setupRealtimeSync(userRef);
@@ -158,7 +158,7 @@ function loadUserData() {
 }
 
 function setupRealtimeSync(userRef) {
-    userRef.on('value', (snapshot) => {
+    window.firebase.database.onValue(userRef, (snapshot) => {
         if (snapshot.exists()) {
             const data = snapshot.val();
             // 檢查數據時間戳，避免覆蓋更新的本地數據
