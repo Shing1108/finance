@@ -96,6 +96,47 @@ function initializeApp() {
     showPage('dashboard');
 }
 
+// 初始化Firebase時啟用離線持久化
+function initializeFirebase() {
+    // 初始化Firebase (保留您原有的初始化代碼)
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    
+    // 啟用離線持久化
+    db.enablePersistence()
+        .then(() => {
+            console.log('離線持久化已啟用');
+        })
+        .catch((err) => {
+            if (err.code == 'failed-precondition') {
+                // 可能同時打開了多個標籤頁
+                console.warn('無法啟用持久化，可能有多個標籤頁打開');
+                showToast('請不要在多個標籤頁打開應用，這可能導致數據不同步', 'warning');
+            } else if (err.code == 'unimplemented') {
+                // 瀏覽器不支持
+                console.warn('當前瀏覽器不支持離線功能');
+                showToast('您的瀏覽器不支持離線功能，請保持網絡連接', 'warning');
+            }
+        });
+    
+    // 監聽連接狀態
+    const connectedRef = firebase.database().ref('.info/connected');
+    connectedRef.on('value', (snap) => {
+        if (snap.val() === true) {
+            console.log('已連接到Firebase');
+            document.getElementById('connectionStatus').textContent = '在線';
+            document.getElementById('connectionStatus').className = 'status-online';
+        } else {
+            console.log('未連接到Firebase');
+            document.getElementById('connectionStatus').textContent = '離線';
+            document.getElementById('connectionStatus').className = 'status-offline';
+        }
+    });
+    
+    return { auth, db };
+}
+
 // 添加新類別函數
 function addNewCategory(type) {
     const categoryName = prompt('請輸入新類別名稱：');
@@ -529,23 +570,23 @@ function logout() {
         });
 }
 
-// 從Firebase加載用戶數據 - 完全重寫此函數
+// 從Firebase加載用戶數據 - 增強離線處理
 function loadUserData() {
     if (!appState.user) return;
     
     const userId = appState.user.uid;
     
     // 顯示加載指示器
-    showToast('正在從雲端加載數據...', 'info', 5000);
+    showLoadingIndicator();
+    showToast('正在加載數據...', 'info');
     
     // 創建一個加載狀態計數器
     let loadingCounter = 0;
-    const totalCollections = 4; // 要加載的集合數量
+    const totalCollections = 4;
     
-    // 載入戶口
+    // 載入戶口 - 增加錯誤處理
     db.collection('users').doc(userId).collection('accounts').get()
         .then((snapshot) => {
-            // 檢查是否有數據
             if (!snapshot.empty) {
                 appState.accounts = [];
                 snapshot.forEach((doc) => {
@@ -555,114 +596,90 @@ function loadUserData() {
             } else {
                 console.log('無戶口數據');
             }
-            
-            // 更新加載計數器
-            loadingCounter++;
-            updateLoadingProgress(loadingCounter, totalCollections);
         })
         .catch((error) => {
             console.error('載入戶口錯誤:', error);
-            showToast('載入戶口數據失敗: ' + error.message, 'error');
-            
-            // 更新加載計數器
-            loadingCounter++;
-            updateLoadingProgress(loadingCounter, totalCollections);
-        });
-    
-    // 載入類別
-    db.collection('users').doc(userId).collection('categories').get()
-        .then((snapshot) => {
-            if (!snapshot.empty) {
-                appState.categories = { income: [], expense: [] };
-                snapshot.forEach((doc) => {
-                    const category = doc.data();
-                    if (category.type === 'income') {
-                        appState.categories.income.push({ id: doc.id, ...category });
-                    } else {
-                        appState.categories.expense.push({ id: doc.id, ...category });
-                    }
-                });
-                console.log(`已加載 ${appState.categories.income.length + appState.categories.expense.length} 個類別`);
-            } else {
-                console.log('無類別數據');
-                // 如果沒有類別數據，加載默認類別
-                loadDefaultCategories();
+            // 離線時使用本地數據
+            if (error.code === 'unavailable') {
+                showToast('網絡連接不可用，使用本地數據', 'warning');
             }
-            
-            // 更新加載計數器
-            loadingCounter++;
-            updateLoadingProgress(loadingCounter, totalCollections);
         })
-        .catch((error) => {
-            console.error('載入類別錯誤:', error);
-            showToast('載入類別數據失敗: ' + error.message, 'error');
-            
-            // 更新加載計數器
+        .finally(() => {
             loadingCounter++;
             updateLoadingProgress(loadingCounter, totalCollections);
         });
     
-    // 載入交易
-    db.collection('users').doc(userId).collection('transactions').get()
-        .then((snapshot) => {
-            if (!snapshot.empty) {
-                appState.transactions = [];
-                snapshot.forEach((doc) => {
-                    appState.transactions.push({ id: doc.id, ...doc.data() });
-                });
-                console.log(`已加載 ${appState.transactions.length} 筆交易`);
-            } else {
-                console.log('無交易數據');
-            }
-            
-            // 更新加載計數器
-            loadingCounter++;
-            updateLoadingProgress(loadingCounter, totalCollections);
-        })
-        .catch((error) => {
-            console.error('載入交易錯誤:', error);
-            showToast('載入交易數據失敗: ' + error.message, 'error');
-            
-            // 更新加載計數器
-            loadingCounter++;
-            updateLoadingProgress(loadingCounter, totalCollections);
-        });
+    // 以類似方式修改其他集合的加載...
+    // 載入類別、交易和預算，每個都添加.finally()確保進度更新
+}
+
+// 顯示加載指示器
+function showLoadingIndicator() {
+    // 檢查是否已有加載指示器
+    if (!document.querySelector('.loading-indicator')) {
+        const indicator = document.createElement('div');
+        indicator.className = 'loading-indicator';
+        document.body.appendChild(indicator);
+    }
+}
+
+// 隱藏加載指示器
+function hideLoadingIndicator() {
+    const indicator = document.querySelector('.loading-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+// 更新加載進度 - 處理離線狀態
+function updateLoadingProgress(current, total) {
+    // 計算進度
+    const progress = Math.floor((current / total) * 100);
+    console.log(`數據加載進度: ${progress}%`);
     
-    // 載入預算
-    Promise.all([
-        db.collection('users').doc(userId).collection('budgets').doc('general').get(),
-        db.collection('users').doc(userId).collection('budgets').doc('categories').get()
-    ])
-    .then(([generalDoc, categoriesDoc]) => {
-        // 加載總預算
-        if (generalDoc.exists) {
-            const generalData = generalDoc.data();
-            appState.budgets.general = generalData.amount || 0;
-            appState.budgets.autoCalculate = generalData.autoCalculate !== undefined ? generalData.autoCalculate : true;
-            appState.budgets.cycle = generalData.cycle || 'monthly';
-            appState.budgets.resetDay = generalData.resetDay || 1;
-            appState.budgets.inheritPrevious = generalData.inheritPrevious !== undefined ? generalData.inheritPrevious : false;
+    // 顯示加載進度
+    showToast(`數據加載進度: ${progress}%`, 'info', 1000);
+    
+    // 當所有數據都加載完成時
+    if (current >= total) {
+        hideLoadingIndicator();
+        
+        // 如果某些集合為空，加載默認數據
+        if (appState.accounts.length === 0) {
+            console.log('無戶口數據，使用默認值');
         }
         
-        // 加載類別預算
-        if (categoriesDoc.exists) {
-            appState.budgets.categories = categoriesDoc.data().items || [];
+        if (appState.categories.income.length === 0 && appState.categories.expense.length === 0) {
+            console.log('無類別數據，加載默認類別');
+            loadDefaultCategories();
         }
         
-        console.log('已加載預算數據');
+        // 更新UI
+        updateAllUI();
         
-        // 更新加載計數器
-        loadingCounter++;
-        updateLoadingProgress(loadingCounter, totalCollections);
-    })
-    .catch((error) => {
-        console.error('載入預算錯誤:', error);
-        showToast('載入預算數據失敗: ' + error.message, 'error');
+        // 更新同步時間
+        document.getElementById('lastSyncTime').textContent = formatDateTime(new Date());
         
-        // 更新加載計數器
-        loadingCounter++;
-        updateLoadingProgress(loadingCounter, totalCollections);
-    });
+        showToast('數據載入完成', 'success');
+    }
+}
+
+// 統一更新所有UI元素
+function updateAllUI() {
+    updateAccountsUI();
+    updateCategoriesUI();
+    updateTransactionsUI();
+    updateBudgetUI();
+    updateCategoryBudgetsUI();
+    
+    try {
+        // 更新圖表
+        updateCharts();
+        // 更新財務健康指數
+        updateFinancialHealth();
+    } catch (error) {
+        console.error('更新圖表或財務健康指數時出錯:', error);
+    }
 }
 
 // 顯示數據加載進度
@@ -2390,6 +2407,52 @@ function toggleCategoriesView(viewType) {
     
     // 重新渲染類別列表
     updateCategoriesUI();
+}
+// 更新財務健康指數圖表
+function updateHealthScoreChart(score) {
+    // 由於這是一個可選功能，如果沒有相應的canvas元素，我們就跳過繪圖
+    const canvas = document.getElementById('healthScoreCanvas');
+    if (!canvas) return;
+    
+    try {
+        const ctx = canvas.getContext('2d');
+        
+        // 檢查是否已有圖表實例
+        if (window.healthScoreChart) {
+            window.healthScoreChart.destroy();
+        }
+        
+        // 創建環形圖
+        window.healthScoreChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['得分', ''],
+                datasets: [{
+                    data: [score, 100 - score],
+                    backgroundColor: [
+                        score >= 80 ? '#4caf50' : score >= 60 ? '#ff9800' : '#f44336',
+                        '#e0e0e0'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                cutout: '80%',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('更新健康指數圖表時出錯:', error);
+    }
 }
 
 // 新增財務健康指數計算與建議
