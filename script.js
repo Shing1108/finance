@@ -100,45 +100,80 @@ function initializeApp() {
     showPage('dashboard');
 }
 
-// 初始化Firebase時啟用離線持久化
-function initializeFirebase() {
-    // 初始化Firebase (保留您原有的初始化代碼)
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    
-    // 啟用離線持久化
-    db.enablePersistence()
+// 在Firebase初始化期間設置離線持久化
+function setupOfflinePersistence(db) {
+    // 使用推薦的方法設置持久化
+    db.enablePersistence({ synchronizeTabs: true })
         .then(() => {
             console.log('離線持久化已啟用');
         })
         .catch((err) => {
-            if (err.code == 'failed-precondition') {
+            if (err.code === 'failed-precondition') {
                 // 可能同時打開了多個標籤頁
-                console.warn('無法啟用持久化，可能有多個標籤頁打開');
-                showToast('請不要在多個標籤頁打開應用，這可能導致數據不同步', 'warning');
-            } else if (err.code == 'unimplemented') {
-                // 瀏覽器不支持
-                console.warn('當前瀏覽器不支持離線功能');
-                showToast('您的瀏覽器不支持離線功能，請保持網絡連接', 'warning');
+                console.warn('無法啟用完整離線功能，可能有多個標籤頁打開');
+                showToast('為確保數據一致性，請不要在多個標籤頁打開應用', 'warning');
+            } else if (err.code === 'unimplemented') {
+                // 當前瀏覽器不支持所需功能
+                console.warn('當前瀏覽器不支持離線持久化');
+                showToast('您的瀏覽器不支持離線功能，應用需要保持網絡連接', 'warning');
             }
         });
+}
+
+// 初始化Firebase
+function initializeFirebase() {
+    try {
+        // 初始化Firebase (您原有的配置)
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        // 啟用離線持久化
+        setupOfflinePersistence(db);
+        
+        // 設置網絡狀態監聽
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+        updateConnectionStatus();
+        
+        return { auth, db };
+    } catch (error) {
+        console.error('初始化Firebase時出錯:', error);
+        
+        // 顯示友好的錯誤消息
+        showToast('應用初始化時發生錯誤，部分功能可能無法使用', 'error');
+        
+        // 返回空對象以避免進一步的錯誤
+        return { 
+            auth: { onAuthStateChanged: (callback) => callback(null) },
+            db: { collection: () => ({ doc: () => ({ collection: () => ({ get: () => Promise.resolve({ empty: true }) }) }) }) }
+        };
+    }
+}
+
+// 更新連接狀態
+function updateConnectionStatus() {
+    const isOnline = navigator.onLine;
+    const connectionStatusElement = document.getElementById('connectionStatus');
     
-    // 監聽連接狀態
-    const connectedRef = firebase.database().ref('.info/connected');
-    connectedRef.on('value', (snap) => {
-        if (snap.val() === true) {
-            console.log('已連接到Firebase');
-            document.getElementById('connectionStatus').textContent = '在線';
-            document.getElementById('connectionStatus').className = 'status-online';
+    if (connectionStatusElement) {
+        if (isOnline) {
+            connectionStatusElement.textContent = '在線';
+            connectionStatusElement.className = 'status-online';
+            console.log('網絡連接已恢復');
         } else {
-            console.log('未連接到Firebase');
-            document.getElementById('connectionStatus').textContent = '離線';
-            document.getElementById('connectionStatus').className = 'status-offline';
+            connectionStatusElement.textContent = '離線';
+            connectionStatusElement.className = 'status-offline';
+            console.log('網絡連接已斷開');
+            showToast('網絡連接已斷開，應用將使用本地數據', 'warning');
         }
-    });
+    }
     
-    return { auth, db };
+    // 如果重新上線且用戶已登入，嘗試同步數據
+    if (isOnline && appState.user && document.getElementById('autoSync').checked) {
+        console.log('網絡已恢復，嘗試同步數據');
+        syncData();
+    }
 }
 
 // 添加新類別函數
@@ -2412,13 +2447,13 @@ function toggleCategoriesView(viewType) {
     // 重新渲染類別列表
     updateCategoriesUI();
 }
-// 更新財務健康指數圖表
+// 更新財務健康指數圖表 - 安全版本
 function updateHealthScoreChart(score) {
-    // 由於這是一個可選功能，如果沒有相應的canvas元素，我們就跳過繪圖
-    const canvas = document.getElementById('healthScoreCanvas');
-    if (!canvas) return;
-    
-    try {
+    safelyUseChart(() => {
+        // 由於這是一個可選功能，如果沒有相應的canvas元素，我們就跳過繪圖
+        const canvas = document.getElementById('healthScoreCanvas');
+        if (!canvas) return;
+        
         const ctx = canvas.getContext('2d');
         
         // 檢查是否已有圖表實例
@@ -2454,10 +2489,9 @@ function updateHealthScoreChart(score) {
                 }
             }
         });
-    } catch (error) {
-        console.error('更新健康指數圖表時出錯:', error);
-    }
+    });
 }
+
 
 // 新增財務健康指數計算與建議
 function updateFinancialHealth() {
@@ -2546,6 +2580,12 @@ function updateFinancialHealth() {
     
     // 更新財務健康指數圖表
     updateHealthScoreChart(score);
+
+    try {
+        updateHealthScoreChart(score);
+    } catch (error) {
+        console.error('更新健康指數圖表時出錯:', error);
+    }
 }
 // 計算每月收入
 function calculateMonthlyIncome() {
@@ -2750,11 +2790,52 @@ function generateFinancialAdvice(
     
     return advice;
 }
+// 檢查並動態載入Chart.js
+function ensureChartJsLoaded() {
+    return new Promise((resolve, reject) => {
+        if (window.Chart) {
+            resolve(window.Chart);
+            return;
+        }
+        
+        // 動態載入Chart.js
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.onload = () => resolve(window.Chart);
+        script.onerror = () => {
+            console.error('無法載入Chart.js');
+            reject(new Error('無法載入Chart.js'));
+        };
+        document.head.appendChild(script);
+    });
+}
 
-// 收入與支出圖表更新
+// 檢查Chart.js是否可用並安全地使用它
+function safelyUseChart(callback) {
+    // 檢查全局Chart對象是否存在
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js 未載入，跳過圖表渲染');
+        return false;
+    }
+    
+    try {
+        callback();
+        return true;
+    } catch (error) {
+        console.error('使用Chart.js時出錯:', error);
+        return false;
+    }
+}
+
+
+// 類似地修改updateCharts函數
 function updateCharts() {
-    updateIncomeChart();
-    updateExpenseChart();
+    try {
+        updateIncomeChart();
+        updateExpenseChart();
+    } catch (error) {
+        console.error('更新圖表時出錯:', error);
+    }
 }
 
 // 更新收入圖表
