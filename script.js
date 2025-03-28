@@ -126,85 +126,215 @@ function setupOfflinePersistence(db) {
         });
 }
 
-// 初始化Firebase時增加額外的錯誤處理
+// Firebase 初始化與配置
 function initializeFirebase() {
+    console.log('初始化Firebase...');
+    
     try {
-        // 檢查Firebase是否已經初始化
+        // 檢查是否已初始化
         if (firebase.apps.length) {
             console.log('Firebase已經初始化');
-            const auth = firebase.auth();
-            const db = firebase.firestore();
-            return { auth, db };
+            return {
+                auth: firebase.auth(),
+                db: firebase.firestore()
+            };
         }
         
-        // 初始化Firebase
+        // 初始化Firebase，使用您的配置
         firebase.initializeApp(firebaseConfig);
         
         const auth = firebase.auth();
         const db = firebase.firestore();
         
-        // 設置連接超時
+        // 配置Firestore
         db.settings({
-            cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
-            ignoreUndefinedProperties: true // 忽略未定義的屬性，避免一些序列化錯誤
+            cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
         });
         
-        // 啟用離線持久化
-        setupOfflinePersistence(db);
+        // 啟用離線持久性
+        enableOfflineCapabilities(db);
         
-        // 監聽網絡狀態變化
-        window.addEventListener('online', updateConnectionStatus);
-        window.addEventListener('offline', updateConnectionStatus);
+        // 監聽網絡狀態
+        setupNetworkListeners();
         
-        // 初始檢查連接狀態
-        updateConnectionStatus();
+        console.log('Firebase初始化成功');
         
         return { auth, db };
     } catch (error) {
-        console.error('初始化Firebase時出錯:', error);
-        showToast('初始化應用時發生錯誤，請刷新頁面重試', 'error');
+        console.error('Firebase初始化失敗:', error);
+        showToast('連接服務時發生錯誤', 'error');
         
-        // 返回一個模擬的對象以避免進一步的錯誤
-        return createMockFirebaseServices();
+        // 返回模擬服務，避免應用崩潰
+        return createOfflineServices();
     }
 }
 
-// 創建模擬的Firebase服務，防止應用崩潰
-function createMockFirebaseServices() {
-    console.warn('使用模擬的Firebase服務');
+// 啟用離線功能
+function enableOfflineCapabilities(db) {
+    // 注意：這可能在多個選項卡環境中失敗
+    db.enablePersistence({ synchronizeTabs: true })
+        .then(() => {
+            console.log('離線持久化已啟用');
+        })
+        .catch((err) => {
+            console.warn('無法啟用離線持久化:', err);
+            
+            // 即使失敗，我們也繼續，因為基本的離線功能仍然可用
+            if (err.code == 'failed-precondition') {
+                showToast('請不要在多個標籤頁打開應用', 'warning');
+            } else if (err.code == 'unimplemented') {
+                showToast('您的瀏覽器不支持完整的離線功能', 'warning');
+            }
+        });
+}
+
+// 創建離線服務
+function createOfflineServices() {
+    console.log('創建離線服務模式');
     
-    // 創建模擬的Firebase服務
-    const mockGet = () => Promise.resolve({ empty: true, docs: [], forEach: () => {} });
-    const mockCollection = () => ({ 
-        doc: () => ({ 
-            collection: () => ({ 
-                get: mockGet,
-                add: () => Promise.resolve({ id: 'mock-id' }),
-                doc: () => ({
-                    set: () => Promise.resolve(),
-                    delete: () => Promise.resolve()
-                })
-            }),
-            get: () => Promise.resolve({ exists: false, data: () => ({}) }),
-            set: () => Promise.resolve(),
-            update: () => Promise.resolve(),
-            delete: () => Promise.resolve()
-        }),
-        get: mockGet
-    });
+    // 從本地存儲加載數據
+    loadFromLocalStorage();
     
+    // 返回模擬服務
     return {
-        auth: { 
-            onAuthStateChanged: (callback) => { callback(null); return () => {}; },
-            signInWithPopup: () => Promise.reject(new Error('模擬登入：無法連接到身份驗證服務')),
+        auth: {
+            onAuthStateChanged: (callback) => {
+                // 模擬未登入狀態
+                setTimeout(() => callback(null), 0);
+                return () => {};
+            },
+            signInWithPopup: () => Promise.reject(new Error('無法在離線模式下登入')),
             signOut: () => Promise.resolve()
         },
-        db: { 
-            collection: mockCollection,
-            settings: () => {},
-            enablePersistence: () => Promise.resolve()
-        }
+        db: createMockDbService()
     };
+}
+
+// 創建模擬數據庫服務
+function createMockDbService() {
+    return {
+        collection: () => ({
+            doc: () => ({
+                collection: () => ({
+                    get: () => Promise.resolve({
+                        empty: true,
+                        docs: [],
+                        forEach: () => {}
+                    }),
+                    add: (data) => {
+                        // 保存到本地
+                        saveToLocalStorage(data);
+                        return Promise.resolve({ id: 'local-' + Date.now() });
+                    }
+                }),
+                get: () => Promise.resolve({
+                    exists: false,
+                    data: () => null
+                }),
+                set: (data) => {
+                    saveToLocalStorage(data);
+                    return Promise.resolve();
+                }
+            })
+        }),
+        enablePersistence: () => Promise.resolve(),
+        settings: () => {}
+    };
+}
+
+// 設置網絡監聽器
+function setupNetworkListeners() {
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // 初始檢查網絡狀態
+    updateNetworkStatus();
+}
+
+// 處理設備上線
+function handleOnline() {
+    console.log('網絡連接已恢復');
+    updateNetworkStatus();
+    
+    // 如果已登入，嘗試同步
+    if (appState.user && appState.settings && appState.settings.autoSync) {
+        setTimeout(() => {
+            syncData();
+        }, 2000); // 延遲2秒後嘗試同步
+    }
+}
+
+// 處理設備離線
+function handleOffline() {
+    console.log('網絡連接已斷開');
+    updateNetworkStatus();
+    showToast('網絡連接已斷開，切換到離線模式', 'warning');
+}
+
+// 更新網絡狀態UI
+function updateNetworkStatus() {
+    const isOnline = navigator.onLine;
+    const statusEl = document.getElementById('connectionStatus');
+    
+    if (statusEl) {
+        statusEl.textContent = isOnline ? '在線' : '離線';
+        statusEl.className = isOnline ? 'status-online' : 'status-offline';
+    }
+}
+
+// 從本地存儲加載數據
+function loadFromLocalStorage() {
+    try {
+        // 加載戶口
+        const accountsJson = localStorage.getItem('accounts');
+        if (accountsJson) {
+            appState.accounts = JSON.parse(accountsJson);
+        }
+        
+        // 加載類別
+        const categoriesJson = localStorage.getItem('categories');
+        if (categoriesJson) {
+            appState.categories = JSON.parse(categoriesJson);
+        } else {
+            // 如果沒有類別，加載默認類別
+            loadDefaultCategories();
+        }
+        
+        // 加載交易
+        const transactionsJson = localStorage.getItem('transactions');
+        if (transactionsJson) {
+            appState.transactions = JSON.parse(transactionsJson);
+        }
+        
+        // 加載預算
+        const budgetsJson = localStorage.getItem('budgets');
+        if (budgetsJson) {
+            appState.budgets = JSON.parse(budgetsJson);
+        }
+        
+        console.log('從本地存儲加載了數據');
+    } catch (error) {
+        console.error('從本地存儲加載數據失敗:', error);
+    }
+}
+
+// 保存數據到本地存儲
+function saveToLocalStorage(data) {
+    try {
+        // 保存各種數據到localStorage
+        localStorage.setItem('accounts', JSON.stringify(appState.accounts));
+        localStorage.setItem('categories', JSON.stringify(appState.categories));
+        localStorage.setItem('transactions', JSON.stringify(appState.transactions));
+        localStorage.setItem('budgets', JSON.stringify(appState.budgets));
+        
+        // 保存上次更新時間
+        localStorage.setItem('lastUpdated', new Date().toISOString());
+        
+        console.log('數據已保存到本地存儲');
+    } catch (error) {
+        console.error('保存數據到本地存儲失敗:', error);
+        showToast('無法保存數據到本地存儲', 'error');
+    }
 }
 
 // 改進的網絡連接狀態管理
@@ -675,104 +805,259 @@ function logout() {
         });
 }
 
-// 從Firebase加載用戶數據 - 增強版
+// 從Firebase加載用戶數據
 function loadUserData() {
-    if (!appState.user) return;
+    if (!appState.user) {
+        console.log('未登入，無法加載用戶數據');
+        return;
+    }
     
     const userId = appState.user.uid;
+    console.log(`嘗試加載用戶 ${userId} 的數據`);
     
     // 顯示加載指示器
     showLoadingIndicator();
-    showToast('正在加載數據...', 'info');
     
-    // 創建一個加載狀態計數器
-    let loadingCounter = 0;
-    let errorCounter = 0;
-    const totalCollections = 4;
+    // 創建一個標誌，表示是否已完成初始數據加載
+    let isDataLoaded = false;
     
-    // 載入戶口
-    loadCollection(
-        db.collection('users').doc(userId).collection('accounts'),
-        (accounts) => {
-            appState.accounts = accounts;
-            console.log(`已加載 ${accounts.length} 個戶口`);
-            loadingCounter++;
-            updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
-        },
-        (error) => {
-            console.error('載入戶口錯誤:', error);
-            errorCounter++;
-            updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
-        }
-    );
-    
-    // 載入類別
-    loadCollection(
-        db.collection('users').doc(userId).collection('categories'),
-        (categories) => {
-            appState.categories = { income: [], expense: [] };
-            categories.forEach(category => {
-                if (category.type === 'income') {
-                    appState.categories.income.push(category);
-                } else {
-                    appState.categories.expense.push(category);
+    // 首先嘗試從緩存加載以快速顯示內容
+    loadAllCollectionsFromCache(userId)
+        .then((cachedData) => {
+            if (cachedData.hasData) {
+                console.log('已從緩存加載數據');
+                updateAppStateWithData(cachedData);
+                updateAllUI();
+                
+                // 如果在線，繼續嘗試從服務器獲取最新數據
+                if (navigator.onLine) {
+                    return loadAllCollectionsFromServer(userId);
                 }
-            });
-            console.log(`已加載 ${categories.length} 個類別`);
-            loadingCounter++;
-            updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
-        },
-        (error) => {
-            console.error('載入類別錯誤:', error);
-            errorCounter++;
-            updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
-        }
-    );
+            } else if (navigator.onLine) {
+                // 緩存中沒有數據，直接從服務器加載
+                return loadAllCollectionsFromServer(userId);
+            } else {
+                // 離線且無緩存數據
+                console.log('離線且無緩存數據，使用本地存儲');
+                loadFromLocalStorage();
+            }
+        })
+        .then((serverData) => {
+            if (serverData) {
+                console.log('已從服務器加載最新數據');
+                updateAppStateWithData(serverData);
+                updateAllUI();
+                
+                // 保存到本地存儲作為備份
+                saveToLocalStorage();
+            }
+        })
+        .catch((error) => {
+            console.error('加載數據時出錯:', error);
+            
+            // 如果還沒有加載數據，從本地存儲加載
+            if (!isDataLoaded) {
+                console.log('嘗試從本地存儲恢復');
+                loadFromLocalStorage();
+                updateAllUI();
+            }
+            
+            showToast('無法從雲端加載數據，使用本地數據', 'warning');
+        })
+        .finally(() => {
+            hideLoadingIndicator();
+            console.log('數據加載過程完成');
+        });
+}
+
+// 從緩存加載所有集合
+function loadAllCollectionsFromCache(userId) {
+    console.log('從緩存加載數據...');
     
-    // 載入交易
-    loadCollection(
-        db.collection('users').doc(userId).collection('transactions'),
-        (transactions) => {
-            appState.transactions = transactions;
-            console.log(`已加載 ${transactions.length} 筆交易`);
-            loadingCounter++;
-            updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
-        },
-        (error) => {
-            console.error('載入交易錯誤:', error);
-            errorCounter++;
-            updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
-        }
-    );
-    
-    // 載入預算
-    Promise.all([
-        safeGet(db.collection('users').doc(userId).collection('budgets').doc('general')),
-        safeGet(db.collection('users').doc(userId).collection('budgets').doc('categories'))
+    return Promise.all([
+        loadCollectionFromCache('accounts', userId),
+        loadCollectionFromCache('categories', userId),
+        loadCollectionFromCache('transactions', userId),
+        loadBudgetsFromCache(userId)
     ])
-    .then(([generalDoc, categoriesDoc]) => {
-        if (generalDoc && generalDoc.exists) {
-            const data = generalDoc.data();
-            appState.budgets.general = data.amount || 0;
-            appState.budgets.autoCalculate = data.autoCalculate !== undefined ? data.autoCalculate : true;
-            appState.budgets.cycle = data.cycle || 'monthly';
-            appState.budgets.resetDay = data.resetDay || 1;
-            appState.budgets.inheritPrevious = data.inheritPrevious !== undefined ? data.inheritPrevious : false;
-        }
+    .then(([accounts, categories, transactions, budgets]) => {
+        const hasData = accounts.length > 0 || categories.income.length > 0 || 
+                        categories.expense.length > 0 || transactions.length > 0;
         
-        if (categoriesDoc && categoriesDoc.exists) {
-            appState.budgets.categories = categoriesDoc.data().items || [];
-        }
-        
-        console.log('已加載預算數據');
-        loadingCounter++;
-        updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
+        return {
+            accounts,
+            categories,
+            transactions,
+            budgets,
+            hasData
+        };
     })
     .catch((error) => {
-        console.error('載入預算錯誤:', error);
-        errorCounter++;
-        updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
+        console.error('從緩存加載數據時出錯:', error);
+        return { hasData: false };
     });
+}
+
+// 從服務器加載所有集合
+function loadAllCollectionsFromServer(userId) {
+    console.log('從服務器加載數據...');
+    showToast('正在從雲端獲取最新數據...', 'info');
+    
+    return Promise.all([
+        loadCollectionFromServer('accounts', userId),
+        loadCollectionFromServer('categories', userId),
+        loadCollectionFromServer('transactions', userId),
+        loadBudgetsFromServer(userId)
+    ])
+    .then(([accounts, categories, transactions, budgets]) => {
+        return {
+            accounts,
+            categories,
+            transactions,
+            budgets,
+            hasData: true
+        };
+    });
+}
+
+// 從緩存加載集合
+function loadCollectionFromCache(collectionName, userId) {
+    return db.collection('users').doc(userId).collection(collectionName)
+        .get({ source: 'cache' })
+        .then((snapshot) => {
+            const items = [];
+            snapshot.forEach((doc) => {
+                items.push({ id: doc.id, ...doc.data() });
+            });
+            return items;
+        })
+        .catch((error) => {
+            console.warn(`從緩存加載${collectionName}失敗:`, error);
+            return [];
+        });
+}
+
+// 從服務器加載集合
+function loadCollectionFromServer(collectionName, userId) {
+    return db.collection('users').doc(userId).collection(collectionName)
+        .get({ source: 'server' })
+        .then((snapshot) => {
+            const items = [];
+            snapshot.forEach((doc) => {
+                items.push({ id: doc.id, ...doc.data() });
+            });
+            return items;
+        })
+        .catch((error) => {
+            console.error(`從服務器加載${collectionName}失敗:`, error);
+            throw error;
+        });
+}
+
+// 從緩存加載預算
+function loadBudgetsFromCache(userId) {
+    return Promise.all([
+        db.collection('users').doc(userId).collection('budgets').doc('general').get({ source: 'cache' }),
+        db.collection('users').doc(userId).collection('budgets').doc('categories').get({ source: 'cache' })
+    ])
+    .then(([generalDoc, categoriesDoc]) => {
+        const budgets = {
+            general: 0,
+            autoCalculate: true,
+            cycle: 'monthly',
+            resetDay: 1,
+            inheritPrevious: false,
+            categories: []
+        };
+        
+        if (generalDoc.exists) {
+            const data = generalDoc.data();
+            budgets.general = data.amount || 0;
+            budgets.autoCalculate = data.autoCalculate !== undefined ? data.autoCalculate : true;
+            budgets.cycle = data.cycle || 'monthly';
+            budgets.resetDay = data.resetDay || 1;
+            budgets.inheritPrevious = data.inheritPrevious !== undefined ? data.inheritPrevious : false;
+        }
+        
+        if (categoriesDoc.exists) {
+            budgets.categories = categoriesDoc.data().items || [];
+        }
+        
+        return budgets;
+    })
+    .catch((error) => {
+        console.warn('從緩存加載預算失敗:', error);
+        return {
+            general: 0,
+            autoCalculate: true,
+            cycle: 'monthly',
+            resetDay: 1,
+            inheritPrevious: false,
+            categories: []
+        };
+    });
+}
+
+// 從服務器加載預算
+function loadBudgetsFromServer(userId) {
+    return Promise.all([
+        db.collection('users').doc(userId).collection('budgets').doc('general').get({ source: 'server' }),
+        db.collection('users').doc(userId).collection('budgets').doc('categories').get({ source: 'server' })
+    ])
+    .then(([generalDoc, categoriesDoc]) => {
+        const budgets = {
+            general: 0,
+            autoCalculate: true,
+            cycle: 'monthly',
+            resetDay: 1,
+            inheritPrevious: false,
+            categories: []
+        };
+        
+        if (generalDoc.exists) {
+            const data = generalDoc.data();
+            budgets.general = data.amount || 0;
+            budgets.autoCalculate = data.autoCalculate !== undefined ? data.autoCalculate : true;
+            budgets.cycle = data.cycle || 'monthly';
+            budgets.resetDay = data.resetDay || 1;
+            budgets.inheritPrevious = data.inheritPrevious !== undefined ? data.inheritPrevious : false;
+        }
+        
+        if (categoriesDoc.exists) {
+            budgets.categories = categoriesDoc.data().items || [];
+        }
+        
+        return budgets;
+    })
+    .catch((error) => {
+        console.error('從服務器加載預算失敗:', error);
+        throw error;
+    });
+}
+
+// 使用加載的數據更新應用狀態
+function updateAppStateWithData(data) {
+    if (data.accounts && data.accounts.length > 0) {
+        appState.accounts = data.accounts;
+    }
+    
+    if (data.categories) {
+        // 只有當至少有一個類別時才更新
+        if (data.categories.income.length > 0 || data.categories.expense.length > 0) {
+            appState.categories = data.categories;
+        } else if (appState.categories.income.length === 0 && appState.categories.expense.length === 0) {
+            // 如果沒有類別，加載默認類別
+            loadDefaultCategories();
+        }
+    }
+    
+    if (data.transactions && data.transactions.length > 0) {
+        appState.transactions = data.transactions;
+    }
+    
+    if (data.budgets) {
+        appState.budgets = data.budgets;
+    }
 }
 
 // 安全地獲取文檔
@@ -830,14 +1115,33 @@ function loadCollection(collectionRef, onSuccess, onError) {
         });
 }
 
-// 顯示加載指示器
-function showLoadingIndicator() {
-    // 檢查是否已有加載指示器
-    if (!document.querySelector('.loading-indicator')) {
-        const indicator = document.createElement('div');
-        indicator.className = 'loading-indicator';
-        document.body.appendChild(indicator);
-    }
+// 修復進度計算問題
+function showLoadingIndicator(message = '加載中...') {
+    // 移除現有的加載指示器
+    hideLoadingIndicator();
+    
+    // 創建新的加載指示器
+    const indicator = document.createElement('div');
+    indicator.className = 'loading-indicator';
+    
+    // 添加文本
+    const textEl = document.createElement('span');
+    textEl.textContent = message;
+    textEl.className = 'loading-text';
+    indicator.appendChild(textEl);
+    
+    // 添加進度條
+    const progressBar = document.createElement('div');
+    progressBar.className = 'progress-bar';
+    
+    const progressInner = document.createElement('div');
+    progressInner.className = 'progress-inner';
+    progressBar.appendChild(progressInner);
+    
+    indicator.appendChild(progressBar);
+    
+    // 添加到頁面
+    document.body.appendChild(indicator);
 }
 
 // 隱藏加載指示器
@@ -905,32 +1209,17 @@ function updateAllUI() {
     }
 }
 
-// 顯示數據加載進度
+// 更新加載進度
 function updateLoadingProgress(current, total) {
-    // 計算加載進度
-    const progress = Math.floor((current / total) * 100);
-    console.log(`數據加載進度: ${progress}%`);
-    
-    // 當所有數據都加載完成時
-    if (current >= total) {
-        // 更新所有UI組件
-        updateAccountsUI();
-        updateCategoriesUI();
-        updateTransactionsUI();
-        updateBudgetUI();
-        updateCategoryBudgetsUI();
+    const progressInner = document.querySelector('.progress-inner');
+    if (progressInner && total > 0) { // 防止除以零
+        const percent = Math.min((current / total) * 100, 100); // 防止超過100%
+        progressInner.style.width = `${percent}%`;
         
-        // 更新圖表和財務健康指數
-        updateCharts();
-        updateFinancialHealth();
-        
-        // 更新同步時間
-        document.getElementById('lastSyncTime').textContent = formatDateTime(new Date());
-        
-        showToast('數據載入完成', 'success');
-        
-        // 儲存同步時間
-        saveLastSyncTime(new Date());
+        const loadingText = document.querySelector('.loading-text');
+        if (loadingText) {
+            loadingText.textContent = `加載中... ${Math.round(percent)}%`;
+        }
     }
 }
 
