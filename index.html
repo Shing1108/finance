@@ -1,463 +1,550 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>進階個人財務追蹤器</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body>
-    <div class="header">
-        <div class="container header-content">
-            <div class="logo">
-                💰 <span>進階個人財務追蹤器</span>
-            </div>
+<body class="light-mode">
+    <header>
+        <div class="logo-container">
+            <h1>💰 進階個人財務追蹤器</h1>
             <div class="user-status">
-                <div id="login-status">未登入</div>
-                <button id="settings-btn" class="btn">⚙️ 設定</button>
+                <span id="loginStatus">未登入</span>
             </div>
+        </div>
+        <nav class="main-nav">
+            <button id="settingsBtn" class="icon-btn"><i class="fas fa-cog"></i> 設定</button>
+        </nav>
+    </header>
+
+    <div class="overview-cards">
+        <div class="card">
+            <h3>總資產</h3>
+            <p class="amount">$ <span id="totalAssets">0.00</span></p>
+        </div>
+        <div class="card">
+            <h3>今日收入</h3>
+            <p class="amount income">$ <span id="todayIncome">0.00</span></p>
+        </div>
+        <div class="card">
+            <h3>今日支出</h3>
+            <p class="amount expense">$ <span id="todayExpense">0.00</span></p>
         </div>
     </div>
 
     <div class="container">
-        <div class="dashboard">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">總資產</div>
-                </div>
-                <div class="card-body">
-                    <h2 id="total-assets">$ 0.00</h2>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">今日收入</div>
-                </div>
-                <div class="card-body">
-                    <h2 id="today-income" class="positive">$ 0.00</h2>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">今日支出</div>
-                </div>
-                <div class="card-body">
-                    <h2 id="today-expense" class="negative">$ 0.00</h2>
-                </div>
-            </div>
-        </div>
+        <aside class="sidebar">
+            <ul>
+                <li class="active"><a href="#dashboard"><i class="fas fa-chart-line"></i> 儀表板</a></li>
+                <li><a href="#accounts"><i class="fas fa-credit-card"></i> 戶口管理</a></li>
+                <li><a href="#transactions"><i class="fas fa-pencil-alt"></i> 記賬</a></li>
+                <li><a href="#budget"><i class="fas fa-cog"></i> 預算設定</a></li>
+                <li><a href="#categories"><i class="fas fa-tags"></i> 類別管理</a></li>
+                <li><a href="#statistics"><i class="fas fa-chart-bar"></i> 統計分析</a></li>
+                <li><a href="#sync"><i class="fas fa-sync"></i> 同步</a></li>
+            </ul>
+        </aside>
 
-        <div class="tabs">
-            <div class="tab active" data-tab="dashboard">📊 儀表板</div>
-            <div class="tab" data-tab="accounts">💳 戶口管理</div>
-            <div class="tab" data-tab="transactions">📝 記賬</div>
-            <div class="tab" data-tab="budgets">⚙️ 預算設定</div>
-            <div class="tab" data-tab="categories">🏷️ 類別管理</div>
-            <div class="tab" data-tab="statistics">📈 統計分析</div>
-            <div class="tab" data-tab="sync">🔄 同步</div>
-        </div>
+        <main>
+            <!-- 儀表板部分 -->
+            <section id="dashboard" class="page active">
+                <div class="dashboard-grid">
+                    <div class="dashboard-item">
+                        <h2>📅 今日交易</h2>
+                        <div id="todayTransactions" class="transaction-list">
+                            <p class="no-data">今日尚無交易記錄</p>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-item">
+                        <h2>📊 預算狀態</h2>
+                        <div id="budgetStatus">
+                            <p class="no-data">尚未設定預算</p>
+                            <button class="btn primary" id="setBudgetBtn">設定預算</button>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-item full-width">
+                        <div class="header-with-link">
+                            <h2>🕒 近期交易</h2>
+                            <a href="#all-transactions" class="view-all">查看全部交易</a>
+                        </div>
+                        <div id="recentTransactions" class="transaction-list">
+                            <p class="no-data">尚無交易記錄</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <!-- 儀表板 -->
-        <div id="dashboard" class="tab-content active">
-            <div class="row">
-                <div class="col">
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title">📅 今日交易</div>
-                        </div>
-                        <div class="card-body">
-                            <div id="today-transactions" class="transaction-list">
-                                <div class="empty-state">今日尚無交易記錄</div>
-                            </div>
-                        </div>
+            <!-- 戶口管理部分 -->
+            <section id="accounts" class="page">
+                <h2>戶口管理</h2>
+                <button class="btn primary" id="addAccountBtn">+ 新增戶口</button>
+                
+                <div class="accounts-container">
+                    <h3>我的戶口</h3>
+                    <div id="accountsList" class="accounts-list">
+                        <p class="no-data">尚未設置任何戶口</p>
                     </div>
                 </div>
-                <div class="col">
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title">📊 預算狀態</div>
-                        </div>
-                        <div class="card-body">
-                            <div id="budget-status">
-                                <div class="empty-state">尚未設定預算</div>
-                                <button id="setup-budget-btn" class="btn btn-primary">設定預算</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title">🕒 近期交易</div>
-                            <a href="#" id="view-all-transactions" class="link">查看全部交易</a>
-                        </div>
-                        <div class="card-body">
-                            <div id="recent-transactions" class="transaction-list">
-                                <div class="empty-state">尚無交易記錄</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 戶口管理 -->
-        <div id="accounts" class="tab-content">
-            <div class="action-bar">
-                <button id="add-account-btn" class="btn btn-primary">+ 新增戶口</button>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">我的戶口</div>
-                </div>
-                <div class="card-body">
-                    <div id="accounts-list">
-                        <div class="empty-state">尚未設置任何戶口</div>
-                    </div>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">🔄 轉賬</div>
-                </div>
-                <div class="card-body">
-                    <form id="transfer-form">
+                
+                <div class="transfer-section">
+                    <h3>🔄 轉賬</h3>
+                    <form id="transferForm">
                         <div class="form-group">
-                            <label for="from-account">從戶口</label>
-                            <select id="from-account" required>
+                            <label for="fromAccount">從戶口</label>
+                            <select id="fromAccount" required>
                                 <option value="">選擇戶口</option>
                             </select>
                         </div>
+                        
                         <div class="form-group">
-                            <label for="to-account">至戶口</label>
-                            <select id="to-account" required>
+                            <label for="toAccount">至戶口</label>
+                            <select id="toAccount" required>
                                 <option value="">選擇戶口</option>
                             </select>
                         </div>
+                        
                         <div class="form-group">
-                            <label for="transfer-amount">金額</label>
-                            <div class="currency-input">
-                                <input type="number" id="transfer-amount" min="0" step="0.01" required>
-                            </div>
+                            <label for="transferAmount">金額</label>
+                            <input type="number" id="transferAmount" min="0" step="0.01" required>
                         </div>
-                        <button type="submit" class="btn btn-primary">確認轉賬</button>
+                        
+                        <button type="submit" class="btn primary">確認轉賬</button>
                     </form>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <!-- 記賬 -->
-        <div id="transactions" class="tab-content">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">📝 記錄收入/支出</div>
-                </div>
-                <div class="card-body">
-                    <div class="tabs transaction-tabs">
-                        <div class="tab active" data-tab="income">💹 收入</div>
-                        <div class="tab" data-tab="expense">💸 支出</div>
+            <!-- 記賬部分 -->
+            <section id="transactions" class="page">
+                <h2>📝 記錄收入/支出</h2>
+                
+                <div class="tab-container">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="income">💹 收入</button>
+                        <button class="tab-btn" data-tab="expense">💸 支出</button>
                     </div>
-                    <form id="transaction-form">
-                        <input type="hidden" id="transaction-type" value="income">
-                        <div class="form-group">
-                            <label for="transaction-account">選擇戶口</label>
-                            <select id="transaction-account" required>
-                                <option value="">選擇戶口</option>
-                            </select>
+                    
+                    <div class="tab-content">
+                        <div id="income" class="tab-pane active">
+                            <form id="incomeForm">
+                                <div class="form-group">
+                                    <label for="incomeAccount">選擇戶口</label>
+                                    <select id="incomeAccount" required>
+                                        <option value="">選擇戶口</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="incomeCategory">選擇類別</label>
+                                    <select id="incomeCategory" required>
+                                        <option value="">選擇類別</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="incomeAmount">金額</label>
+                                    <input type="number" id="incomeAmount" min="0" step="0.01" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="incomeDate">日期</label>
+                                    <input type="date" id="incomeDate" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="incomeNotes">備註 (可選)</label>
+                                    <textarea id="incomeNotes"></textarea>
+                                </div>
+                                
+                                <button type="submit" class="btn primary">✅ 保存</button>
+                            </form>
                         </div>
-                        <div class="form-group">
-                            <label for="transaction-category">選擇類別</label>
-                            <select id="transaction-category" required>
-                                <option value="">選擇類別</option>
-                            </select>
+                        
+                        <div id="expense" class="tab-pane">
+                            <form id="expenseForm">
+                                <div class="form-group">
+                                    <label for="expenseAccount">選擇戶口</label>
+                                    <select id="expenseAccount" required>
+                                        <option value="">選擇戶口</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="expenseCategory">選擇類別</label>
+                                    <select id="expenseCategory" required>
+                                        <option value="">選擇類別</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="expenseAmount">金額</label>
+                                    <input type="number" id="expenseAmount" min="0" step="0.01" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="expenseDate">日期</label>
+                                    <input type="date" id="expenseDate" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="expenseNotes">備註 (可選)</label>
+                                    <textarea id="expenseNotes"></textarea>
+                                </div>
+                                
+                                <button type="submit" class="btn primary">✅ 保存</button>
+                            </form>
                         </div>
-                        <div class="form-group">
-                            <label for="transaction-amount">金額</label>
-                            <div class="currency-input">
-                                <input type="number" id="transaction-amount" min="0" step="0.01" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="transaction-date">日期</label>
-                            <input type="date" id="transaction-date" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="transaction-notes">備註 (可選)</label>
-                            <textarea id="transaction-notes"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">✅ 保存</button>
-                    </form>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">📋 交易記錄</div>
-                </div>
-                <div class="card-body">
-                    <div class="filter-bar">
-                        <div class="form-group">
-                            <label for="filter-date-from">日期範圍</label>
-                            <div class="date-range">
-                                <input type="date" id="filter-date-from">
-                                <span>至</span>
-                                <input type="date" id="filter-date-to">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="filter-type">類型</label>
-                            <select id="filter-type">
-                                <option value="all">全部</option>
-                                <option value="income">收入</option>
-                                <option value="expense">支出</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="filter-category">類別</label>
-                            <select id="filter-category">
-                                <option value="all">全部類別</option>
-                            </select>
-                        </div>
-                        <button id="filter-submit" class="btn btn-primary">🔍 搜尋</button>
                     </div>
-                    <div id="transactions-list" class="transaction-list">
-                        <div class="empty-state">無符合條件的交易記錄</div>
-                    </div>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <!-- 預算設定 -->
-        <div id="budgets" class="tab-content">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">⚙️ 總預算設定</div>
-                </div>
-                <div class="card-body">
-                    <form id="main-budget-form">
-                        <div class="form-group">
-                            <label for="budget-amount">預算金額</label>
-                            <div class="currency-input">
-                                <input type="number" id="budget-amount" min="0" step="0.01" required>
-                            </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="auto-calculate">
-                                <label for="auto-calculate">自動計算 (類別預算總和)</label>
-                            </div>
+            <!-- 交易記錄部分 -->
+            <section id="all-transactions" class="page">
+                <h2>📋 交易記錄</h2>
+                
+                <div class="filters-container">
+                    <div class="form-group">
+                        <label>日期範圍</label>
+                        <div class="date-range">
+                            <input type="date" id="startDate">
+                            <span>至</span>
+                            <input type="date" id="endDate">
                         </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transactionType">類型</label>
+                        <select id="transactionType">
+                            <option value="all">全部</option>
+                            <option value="income">收入</option>
+                            <option value="expense">支出</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transactionCategory">類別</label>
+                        <select id="transactionCategory">
+                            <option value="all">全部類別</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn primary" id="searchTransactionsBtn">🔍 搜尋</button>
+                </div>
+                
+                <div id="transactionsList" class="transactions-list">
+                    <p class="no-data">無符合條件的交易記錄</p>
+                </div>
+            </section>
+
+            <!-- 預算設定部分 -->
+            <section id="budget" class="page">
+                <h2>預算設定</h2>
+                
+                <div class="budget-container">
+                    <h3>⚙️ 總預算設定</h3>
+                    <form id="generalBudgetForm">
+                        <div class="form-group">
+                            <label for="budgetAmount">預算金額</label>
+                            <input type="number" id="budgetAmount" min="0" step="0.01">
+                        </div>
+                        
+                        <div class="form-check">
+                            <input type="checkbox" id="autoCalculate">
+                            <label for="autoCalculate">自動計算 (類別預算總和)</label>
+                        </div>
+                        
                         <div class="form-group">
                             <label>重設週期</label>
                             <div class="radio-group">
-                                <div class="radio-item">
-                                    <input type="radio" id="cycle-daily" name="budget-cycle" value="daily">
-                                    <label for="cycle-daily">每日</label>
-                                </div>
-                                <div class="radio-item">
-                                    <input type="radio" id="cycle-weekly" name="budget-cycle" value="weekly">
-                                    <label for="cycle-weekly">每週</label>
-                                </div>
-                                <div class="radio-item">
-                                    <input type="radio" id="cycle-monthly" name="budget-cycle" value="monthly" checked>
-                                    <label for="cycle-monthly">每月</label>
-                                </div>
+                                <label class="radio">
+                                    <input type="radio" name="budgetCycle" value="daily" checked>
+                                    <span>每日</span>
+                                </label>
+                                <label class="radio">
+                                    <input type="radio" name="budgetCycle" value="weekly">
+                                    <span>每週</span>
+                                </label>
+                                <label class="radio">
+                                    <input type="radio" name="budgetCycle" value="monthly">
+                                    <span>每月</span>
+                                </label>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary">✅ 保存設定</button>
+                        
+                        <button type="submit" class="btn primary">✅ 保存設定</button>
                     </form>
                 </div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">📊 類別預算設定</div>
-                </div>
-                <div class="card-body">
-                    <div class="form-group">
-                        <label for="budget-category">選擇類別</label>
-                        <div class="input-with-button">
-                            <select id="budget-category">
-                                <option value="">選擇類別</option>
-                            </select>
-                            <button id="add-category-budget" class="btn">添加</button>
-                        </div>
+                
+                <div class="category-budget-container">
+                    <h3>📊 類別預算設定</h3>
+                    <div class="add-category-budget">
+                        <select id="budgetCategory">
+                            <option value="">選擇類別</option>
+                        </select>
+                        <button class="btn" id="addCategoryBudgetBtn">添加</button>
                     </div>
-                    <div id="category-budgets">
-                        <div class="empty-state">尚未設置類別預算</div>
+                    
+                    <div id="categoryBudgetsList" class="category-budgets-list">
+                        <p class="no-data">尚未設置類別預算</p>
                     </div>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <!-- 類別管理 -->
-        <div id="categories" class="tab-content">
-            <div class="tabs category-tabs">
-                <div class="tab active" data-tab="income-categories">💹 收入類別</div>
-                <div class="tab" data-tab="expense-categories">💸 支出類別</div>
-            </div>
-            <div class="action-bar">
-                <button id="add-category-btn" class="btn btn-primary">+ 新增</button>
-            </div>
-            <div id="income-categories" class="category-content active">
-                <div id="income-categories-list" class="categories-list">
-                    <div class="empty-state">尚未設置收入類別</div>
-                </div>
-            </div>
-            <div id="expense-categories" class="category-content">
-                <div id="expense-categories-list" class="categories-list">
-                    <div class="empty-state">尚未設置支出類別</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 統計分析 -->
-        <div id="statistics" class="tab-content">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">📈 每月收支統計</div>
-                </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="monthly-chart"></canvas>
+            <!-- 類別管理部分 -->
+            <section id="categories" class="page">
+                <h2>🏷️ 類別管理</h2>
+                
+                <div class="tab-container">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="incomeCategories">💹 收入類別</button>
+                        <button class="tab-btn" data-tab="expenseCategories">💸 支出類別</button>
                     </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col">
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title">收入分佈</div>
+                    
+                    <div class="tab-content">
+                        <div id="incomeCategories" class="tab-pane active">
+                            <button class="btn primary add-category-btn">+ 新增</button>
+                            <div id="incomeCategoriesList" class="categories-list">
+                                <p class="no-data">尚未設置收入類別</p>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="income-pie-chart"></canvas>
+                        
+                        <div id="expenseCategories" class="tab-pane">
+                            <button class="btn primary add-category-btn">+ 新增</button>
+                            <div id="expenseCategoriesList" class="categories-list">
+                                <p class="no-data">尚未設置支出類別</p>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col">
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title">支出分佈</div>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="expense-pie-chart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            </section>
 
-        <!-- 同步頁面 -->
-        <div id="sync" class="tab-content">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">🔄 數據同步</div>
-                </div>
-                <div class="card-body">
-                    <div class="sync-status">
-                        <div id="firebase-login-status" class="status-box">
-                            <h3>同步狀態</h3>
-                            <p id="sync-status-message">未登入</p>
-                        </div>
-                        <div class="login-buttons">
-                            <button id="firebase-login-btn" class="btn btn-primary">使用Google帳戶登入</button>
-                            <button id="firebase-logout-btn" class="btn btn-danger" style="display:none">登出</button>
+            <!-- 統計分析部分 -->
+            <section id="statistics" class="page">
+                <h2>📈 每月收支統計</h2>
+                
+                <div class="charts-container">
+                    <div class="chart-item">
+                        <h3>收入分佈</h3>
+                        <div class="chart-placeholder" id="incomeChart">
+                            <canvas id="incomeChartCanvas"></canvas>
                         </div>
                     </div>
-                    <div class="last-sync-info">
-                        <p>上次同步時間: <span id="last-sync-time">從未同步</span></p>
-                    </div>
-                    <div class="sync-controls">
-                        <button id="manual-sync" class="btn btn-primary" disabled>立即同步</button>
-                        <div class="form-group">
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="auto-sync" disabled>
-                                <label for="auto-sync">啟用自動同步 (每次數據變更時)</label>
-                            </div>
+                    
+                    <div class="chart-item">
+                        <h3>支出分佈</h3>
+                        <div class="chart-placeholder" id="expenseChart">
+                            <canvas id="expenseChartCanvas"></canvas>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">💾 數據備份與還原</div>
-                </div>
-                <div class="card-body">
-                    <div class="backup-controls">
-                        <button id="export-data" class="btn">匯出數據</button>
-                        <button id="download-data" class="btn">下載為文件</button>
+            </section>
+
+            <!-- 同步部分 -->
+            <section id="sync" class="page">
+                <h2>🔄 數據同步</h2>
+                
+                <div class="sync-container">
+                    <div class="sync-status-container">
+                        <h3>同步狀態</h3>
+                        <p id="syncStatus">未登入</p>
+                        <button id="googleLoginBtn" class="btn primary">使用Google帳戶登入</button>
+                        <button id="logoutBtn" class="btn" style="display: none;">登出</button>
                     </div>
-                    <div class="restore-controls">
-                        <div class="form-group">
-                            <label for="import-file">從文件上傳</label>
-                            <input type="file" id="import-file" accept=".json">
+                    
+                    <div class="last-sync-container">
+                        <p>上次同步時間: <span id="lastSyncTime">從未同步</span></p>
+                        <button id="syncNowBtn" class="btn primary" disabled>立即同步</button>
+                        
+                        <div class="form-check">
+                            <input type="checkbox" id="autoSync" disabled>
+                            <label for="autoSync">啟用自動同步 (每次數據變更時)</label>
                         </div>
-                        <div class="form-group">
-                            <label for="import-text">或貼上之前匯出的數據:</label>
-                            <textarea id="import-text" rows="5"></textarea>
-                        </div>
-                        <button id="import-data" class="btn btn-warning">匯入數據</button>
                     </div>
                 </div>
-            </div>
-        </div>
+                
+                <div class="backup-container">
+                    <h3>💾 數據備份與還原</h3>
+                    
+                    <div class="export-section">
+                        <h4>匯出數據</h4>
+                        <button id="exportDataBtn" class="btn">下載為文件</button>
+                    </div>
+                    
+                    <div class="import-section">
+                        <h4>從文件上傳</h4>
+                        <input type="file" id="importFile" accept=".json">
+                        
+                        <h4>或貼上之前匯出的數據:</h4>
+                        <textarea id="importData"></textarea>
+                        <button id="importDataBtn" class="btn primary">匯入數據</button>
+                    </div>
+                </div>
+            </section>
+        </main>
     </div>
 
-    <!-- 模態框 -->
-    <div id="modal" class="modal">
+    <!-- 設定彈窗 -->
+    <div id="settingsModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <div id="modal-content"></div>
+            <h2>應用設定</h2>
+            
+            <div class="settings-container">
+                <div class="setting-group">
+                    <h3>界面設定</h3>
+                    
+                    <div class="setting-item">
+                        <label for="darkModeToggle">深色模式</label>
+                        <label class="switch">
+                            <input type="checkbox" id="darkModeToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="fontSizeSelector">字體大小</label>
+                        <select id="fontSizeSelector">
+                            <option value="small">小</option>
+                            <option value="medium" selected>中</option>
+                            <option value="large">大</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="setting-group">
+                    <h3>貨幣設定</h3>
+                    
+                    <div class="setting-item">
+                        <label for="currencySelector">預設貨幣</label>
+                        <select id="currencySelector">
+                            <option value="HKD" selected>港幣 (HKD)</option>
+                            <option value="USD">美元 (USD)</option>
+                            <option value="CNY">人民幣 (CNY)</option>
+                            <option value="EUR">歐元 (EUR)</option>
+                            <option value="GBP">英鎊 (GBP)</option>
+                            <option value="JPY">日元 (JPY)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="decimalPlaces">小數點位數</label>
+                        <select id="decimalPlaces">
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2" selected>2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="setting-group">
+                    <h3>通知設定</h3>
+                    
+                    <div class="setting-item">
+                        <label for="enableNotifications">啟用預算提醒</label>
+                        <label class="switch">
+                            <input type="checkbox" id="enableNotifications" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="notificationThreshold">提醒閾值 (%)</label>
+                        <input type="number" id="notificationThreshold" min="1" max="100" value="80">
+                    </div>
+                </div>
+                
+                <div class="setting-group">
+                    <h3>數據管理</h3>
+                    
+                    <div class="setting-item">
+                        <button id="clearDataBtn" class="btn danger">清除所有數據</button>
+                        <p class="help-text">警告：此操作無法復原</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button id="saveSettingsBtn" class="btn primary">保存設定</button>
+                <button id="cancelSettingsBtn" class="btn">取消</button>
+            </div>
         </div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        // Import the functions you need from the SDKs
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js";
-        import { getDatabase } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-database.js";
-        import { getAuth } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js";
+    <!-- 新增/編輯戶口彈窗 -->
+    <div id="accountModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="accountModalTitle">新增戶口</h2>
+            
+            <form id="accountForm">
+                <div class="form-group">
+                    <label for="accountName">戶口名稱</label>
+                    <input type="text" id="accountName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="accountType">戶口類型</label>
+                    <select id="accountType" required>
+                        <option value="cash">現金</option>
+                        <option value="bank">銀行戶口</option>
+                        <option value="credit">信用卡</option>
+                        <option value="investment">投資</option>
+                        <option value="other">其他</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="initialBalance">初始餘額</label>
+                    <input type="number" id="initialBalance" min="0" step="0.01" value="0">
+                </div>
+                
+                <div class="form-group">
+                    <label for="accountCurrency">貨幣</label>
+                    <select id="accountCurrency">
+                        <option value="HKD" selected>港幣 (HKD)</option>
+                        <option value="USD">美元 (USD)</option>
+                        <option value="CNY">人民幣 (CNY)</option>
+                        <option value="EUR">歐元 (EUR)</option>
+                        <option value="GBP">英鎊 (GBP)</option>
+                        <option value="JPY">日元 (JPY)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="accountNotes">備註 (可選)</label>
+                    <textarea id="accountNotes"></textarea>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="submit" class="btn primary">保存</button>
+                    <button type="button" id="cancelAccountBtn" class="btn">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-        // 更新這部分導入，添加必要的函數
-        import { GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js";
-        import { ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-database.js";
+    <!-- 確認彈窗 -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h2>確認操作</h2>
+            <p id="confirmMessage">您確定要執行此操作嗎？</p>
+            
+            <div class="modal-footer">
+                <button id="confirmYesBtn" class="btn danger">確定</button>
+                <button id="confirmNoBtn" class="btn">取消</button>
+            </div>
+        </div>
+    </div>
 
-        // 您需要從Firebase控制台獲取這些配置信息
-        const firebaseConfig = {
-            apiKey: "AIzaSyAaqadmDSgQ-huvY7uNNrPtjFSOl93jVEE",
-            authDomain: "finance-d8f9e.firebaseapp.com",
-            projectId: "finance-d8f9e",
-            storageBucket: "finance-d8f9e.firebasestorage.app",
-            messagingSenderId: "122645255279",
-            appId: "1:122645255279:web:25d577b6365c819ffbe99a",
-            measurementId: "G-ZCGNG1DRJS"
-        };
-
-        // 初始化Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const auth = getAuth(app);
-        
-        // 將Firebase物件設為全域，以便在script.js中使用
-        window.firebaseApp = app;
-        window.firebaseDb = db;
-        window.firebaseAuth = auth;
-        window.firebase = {
-            auth: {
-                GoogleAuthProvider,
-                signInWithPopup
-            },
-            database: {
-                ref,
-                set,
-                get,
-                onValue
-            }
-        };
-    </script>
-    
-    <!-- 引入 Chart.js 用於數據可視化 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- 自訂腳本 -->
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
