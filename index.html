@@ -77,6 +77,24 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="dashboard-item full-width">
+                    <h2>💡 財務健康指數</h2>
+                    <div class="financial-health-container">
+                        <div class="financial-health-score">
+                            <div class="score-circle">
+                                <span id="healthScore">--</span>
+                            </div>
+                            <p id="healthStatus">計算中...</p>
+                        </div>
+                        <div class="financial-advice">
+                            <h3>個人化財務建議</h3>
+                            <ul id="financialAdvice">
+                                <li>載入中...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- 戶口管理部分 -->
@@ -115,6 +133,10 @@
                         
                         <button type="submit" class="btn primary">確認轉賬</button>
                     </form>
+                </div>
+                <div class="view-toggle">
+                    <button class="btn view-btn active" data-view="card">卡片視圖</button>
+                    <button class="btn view-btn" data-view="list">列表視圖</button>
                 </div>
             </section>
 
@@ -292,6 +314,19 @@
                         <p class="no-data">尚未設置類別預算</p>
                     </div>
                 </div>
+                <!-- 預算設定部分添加以下內容 -->
+                <div class="reset-settings">
+                    <h3>🗓️ 預算重設設定</h3>
+                    <div class="form-group">
+                        <label for="budgetResetDay">每月預算重設日</label>
+                        <input type="number" id="budgetResetDay" min="1" max="31" value="1">
+                        <p class="help-text">選擇每月哪一天重設預算 (1-31)</p>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="inheritPreviousBudget">
+                        <label for="inheritPreviousBudget">重設時繼承上月預算設定</label>
+                    </div>
+                </div>            
             </section>
 
             <!-- 類別管理部分 -->
@@ -319,6 +354,10 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                <div class="view-toggle">
+                    <button class="btn view-btn active" data-view="card">卡片視圖</button>
+                    <button class="btn view-btn" data-view="list">列表視圖</button>
                 </div>
             </section>
 
