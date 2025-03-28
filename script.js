@@ -90,6 +90,8 @@ function initializeApp() {
             document.getElementById('autoSync').disabled = true;
         }
     });
+
+    setupConnectionRetryMechanism();
     
     // 初始化當前日期
     const today = new Date();
@@ -100,58 +102,112 @@ function initializeApp() {
     showPage('dashboard');
 }
 
-// 在Firebase初始化期間設置離線持久化
+// 正確設置離線持久化，避免使用即將棄用的方法
 function setupOfflinePersistence(db) {
-    // 使用推薦的方法設置持久化
+    // 使用最新的推薦 API
+    db.settings({
+        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+    });
+    
     db.enablePersistence({ synchronizeTabs: true })
         .then(() => {
             console.log('離線持久化已啟用');
         })
         .catch((err) => {
             if (err.code === 'failed-precondition') {
-                // 可能同時打開了多個標籤頁
                 console.warn('無法啟用完整離線功能，可能有多個標籤頁打開');
                 showToast('為確保數據一致性，請不要在多個標籤頁打開應用', 'warning');
             } else if (err.code === 'unimplemented') {
-                // 當前瀏覽器不支持所需功能
                 console.warn('當前瀏覽器不支持離線持久化');
                 showToast('您的瀏覽器不支持離線功能，應用需要保持網絡連接', 'warning');
+            } else {
+                console.error('啟用離線持久化時出錯:', err);
             }
         });
 }
 
-// 初始化Firebase
+// 初始化Firebase時增加額外的錯誤處理
 function initializeFirebase() {
     try {
-        // 初始化Firebase (您原有的配置)
+        // 檢查Firebase是否已經初始化
+        if (firebase.apps.length) {
+            console.log('Firebase已經初始化');
+            const auth = firebase.auth();
+            const db = firebase.firestore();
+            return { auth, db };
+        }
+        
+        // 初始化Firebase
         firebase.initializeApp(firebaseConfig);
+        
         const auth = firebase.auth();
         const db = firebase.firestore();
+        
+        // 設置連接超時
+        db.settings({
+            cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+            ignoreUndefinedProperties: true // 忽略未定義的屬性，避免一些序列化錯誤
+        });
         
         // 啟用離線持久化
         setupOfflinePersistence(db);
         
-        // 設置網絡狀態監聽
+        // 監聽網絡狀態變化
         window.addEventListener('online', updateConnectionStatus);
         window.addEventListener('offline', updateConnectionStatus);
+        
+        // 初始檢查連接狀態
         updateConnectionStatus();
         
         return { auth, db };
     } catch (error) {
         console.error('初始化Firebase時出錯:', error);
+        showToast('初始化應用時發生錯誤，請刷新頁面重試', 'error');
         
-        // 顯示友好的錯誤消息
-        showToast('應用初始化時發生錯誤，部分功能可能無法使用', 'error');
-        
-        // 返回空對象以避免進一步的錯誤
-        return { 
-            auth: { onAuthStateChanged: (callback) => callback(null) },
-            db: { collection: () => ({ doc: () => ({ collection: () => ({ get: () => Promise.resolve({ empty: true }) }) }) }) }
-        };
+        // 返回一個模擬的對象以避免進一步的錯誤
+        return createMockFirebaseServices();
     }
 }
 
-// 更新連接狀態
+// 創建模擬的Firebase服務，防止應用崩潰
+function createMockFirebaseServices() {
+    console.warn('使用模擬的Firebase服務');
+    
+    // 創建模擬的Firebase服務
+    const mockGet = () => Promise.resolve({ empty: true, docs: [], forEach: () => {} });
+    const mockCollection = () => ({ 
+        doc: () => ({ 
+            collection: () => ({ 
+                get: mockGet,
+                add: () => Promise.resolve({ id: 'mock-id' }),
+                doc: () => ({
+                    set: () => Promise.resolve(),
+                    delete: () => Promise.resolve()
+                })
+            }),
+            get: () => Promise.resolve({ exists: false, data: () => ({}) }),
+            set: () => Promise.resolve(),
+            update: () => Promise.resolve(),
+            delete: () => Promise.resolve()
+        }),
+        get: mockGet
+    });
+    
+    return {
+        auth: { 
+            onAuthStateChanged: (callback) => { callback(null); return () => {}; },
+            signInWithPopup: () => Promise.reject(new Error('模擬登入：無法連接到身份驗證服務')),
+            signOut: () => Promise.resolve()
+        },
+        db: { 
+            collection: mockCollection,
+            settings: () => {},
+            enablePersistence: () => Promise.resolve()
+        }
+    };
+}
+
+// 改進的網絡連接狀態管理
 function updateConnectionStatus() {
     const isOnline = navigator.onLine;
     const connectionStatusElement = document.getElementById('connectionStatus');
@@ -161,18 +217,28 @@ function updateConnectionStatus() {
             connectionStatusElement.textContent = '在線';
             connectionStatusElement.className = 'status-online';
             console.log('網絡連接已恢復');
+            
+            // 嘗試重新連接到Firebase
+            firebase.firestore().terminate()
+                .then(() => {
+                    return firebase.firestore().clearPersistence();
+                })
+                .then(() => {
+                    console.log('成功重置Firebase連接');
+                    // 重新初始化 (可選，視情況而定)
+                    // 此時可能需要重新載入頁面以確保一切正常
+                    window.location.reload();
+                })
+                .catch(err => {
+                    console.error('重置Firebase連接時出錯:', err);
+                    // 輕度錯誤可能不需要重新加載
+                });
         } else {
             connectionStatusElement.textContent = '離線';
             connectionStatusElement.className = 'status-offline';
             console.log('網絡連接已斷開');
             showToast('網絡連接已斷開，應用將使用本地數據', 'warning');
         }
-    }
-    
-    // 如果重新上線且用戶已登入，嘗試同步數據
-    if (isOnline && appState.user && document.getElementById('autoSync').checked) {
-        console.log('網絡已恢復，嘗試同步數據');
-        syncData();
     }
 }
 
@@ -609,7 +675,7 @@ function logout() {
         });
 }
 
-// 從Firebase加載用戶數據 - 增強離線處理
+// 從Firebase加載用戶數據 - 增強版
 function loadUserData() {
     if (!appState.user) return;
     
@@ -621,35 +687,147 @@ function loadUserData() {
     
     // 創建一個加載狀態計數器
     let loadingCounter = 0;
+    let errorCounter = 0;
     const totalCollections = 4;
     
-    // 載入戶口 - 增加錯誤處理
-    db.collection('users').doc(userId).collection('accounts').get()
+    // 載入戶口
+    loadCollection(
+        db.collection('users').doc(userId).collection('accounts'),
+        (accounts) => {
+            appState.accounts = accounts;
+            console.log(`已加載 ${accounts.length} 個戶口`);
+            loadingCounter++;
+            updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
+        },
+        (error) => {
+            console.error('載入戶口錯誤:', error);
+            errorCounter++;
+            updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
+        }
+    );
+    
+    // 載入類別
+    loadCollection(
+        db.collection('users').doc(userId).collection('categories'),
+        (categories) => {
+            appState.categories = { income: [], expense: [] };
+            categories.forEach(category => {
+                if (category.type === 'income') {
+                    appState.categories.income.push(category);
+                } else {
+                    appState.categories.expense.push(category);
+                }
+            });
+            console.log(`已加載 ${categories.length} 個類別`);
+            loadingCounter++;
+            updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
+        },
+        (error) => {
+            console.error('載入類別錯誤:', error);
+            errorCounter++;
+            updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
+        }
+    );
+    
+    // 載入交易
+    loadCollection(
+        db.collection('users').doc(userId).collection('transactions'),
+        (transactions) => {
+            appState.transactions = transactions;
+            console.log(`已加載 ${transactions.length} 筆交易`);
+            loadingCounter++;
+            updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
+        },
+        (error) => {
+            console.error('載入交易錯誤:', error);
+            errorCounter++;
+            updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
+        }
+    );
+    
+    // 載入預算
+    Promise.all([
+        safeGet(db.collection('users').doc(userId).collection('budgets').doc('general')),
+        safeGet(db.collection('users').doc(userId).collection('budgets').doc('categories'))
+    ])
+    .then(([generalDoc, categoriesDoc]) => {
+        if (generalDoc && generalDoc.exists) {
+            const data = generalDoc.data();
+            appState.budgets.general = data.amount || 0;
+            appState.budgets.autoCalculate = data.autoCalculate !== undefined ? data.autoCalculate : true;
+            appState.budgets.cycle = data.cycle || 'monthly';
+            appState.budgets.resetDay = data.resetDay || 1;
+            appState.budgets.inheritPrevious = data.inheritPrevious !== undefined ? data.inheritPrevious : false;
+        }
+        
+        if (categoriesDoc && categoriesDoc.exists) {
+            appState.budgets.categories = categoriesDoc.data().items || [];
+        }
+        
+        console.log('已加載預算數據');
+        loadingCounter++;
+        updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
+    })
+    .catch((error) => {
+        console.error('載入預算錯誤:', error);
+        errorCounter++;
+        updateLoadingProgress(loadingCounter, errorCounter, totalCollections);
+    });
+}
+
+// 安全地獲取文檔
+function safeGet(docRef) {
+    return docRef.get()
+        .then(doc => doc)
+        .catch(error => {
+            console.error(`獲取文檔錯誤 (${docRef.path}):`, error);
+            return null;
+        });
+}
+
+// 加載集合
+function loadCollection(collectionRef, onSuccess, onError) {
+    collectionRef.get()
         .then((snapshot) => {
             if (!snapshot.empty) {
-                appState.accounts = [];
+                const items = [];
                 snapshot.forEach((doc) => {
-                    appState.accounts.push({ id: doc.id, ...doc.data() });
+                    items.push({ id: doc.id, ...doc.data() });
                 });
-                console.log(`已加載 ${appState.accounts.length} 個戶口`);
+                onSuccess(items);
             } else {
-                console.log('無戶口數據');
+                onSuccess([]);
             }
         })
         .catch((error) => {
-            console.error('載入戶口錯誤:', error);
-            // 離線時使用本地數據
+            onError(error);
+            
+            // 如果是網絡錯誤，嘗試使用緩存
             if (error.code === 'unavailable') {
-                showToast('網絡連接不可用，使用本地數據', 'warning');
+                console.log('嘗試從緩存獲取數據...');
+                
+                // 使用緩存數據
+                collectionRef.get({ source: 'cache' })
+                    .then((snapshot) => {
+                        if (!snapshot.empty) {
+                            const items = [];
+                            snapshot.forEach((doc) => {
+                                items.push({ id: doc.id, ...doc.data() });
+                            });
+                            console.log('成功從緩存獲取數據');
+                            onSuccess(items);
+                        } else {
+                            onSuccess([]);
+                        }
+                    })
+                    .catch((cacheError) => {
+                        console.error('從緩存獲取數據失敗:', cacheError);
+                        onSuccess([]);
+                    });
+            } else {
+                onSuccess([]);
             }
-        })
-        .finally(() => {
-            loadingCounter++;
-            updateLoadingProgress(loadingCounter, totalCollections);
         });
-    
-    // 以類似方式修改其他集合的加載...
-    // 載入類別、交易和預算，每個都添加.finally()確保進度更新
 }
 
 // 顯示加載指示器
@@ -670,22 +848,19 @@ function hideLoadingIndicator() {
     }
 }
 
-// 更新加載進度 - 處理離線狀態
-function updateLoadingProgress(current, total) {
+// 更新加載進度
+function updateLoadingProgress(loadingCounter, errorCounter, totalCollections) {
     // 計算進度
-    const progress = Math.floor((current / total) * 100);
+    const progress = Math.floor((loadingCounter / totalCollections) * 100);
     console.log(`數據加載進度: ${progress}%`);
     
-    // 顯示加載進度
-    showToast(`數據加載進度: ${progress}%`, 'info', 1000);
-    
-    // 當所有數據都加載完成時
-    if (current >= total) {
+    // 當所有集合都嘗試過加載後
+    if ((loadingCounter + errorCounter) >= totalCollections) {
         hideLoadingIndicator();
         
-        // 如果某些集合為空，加載默認數據
+        // 檢查是否需要使用默認數據
         if (appState.accounts.length === 0) {
-            console.log('無戶口數據，使用默認值');
+            console.log('無戶口數據');
         }
         
         if (appState.categories.income.length === 0 && appState.categories.expense.length === 0) {
@@ -693,13 +868,22 @@ function updateLoadingProgress(current, total) {
             loadDefaultCategories();
         }
         
-        // 更新UI
+        // 更新所有UI
         updateAllUI();
         
         // 更新同步時間
         document.getElementById('lastSyncTime').textContent = formatDateTime(new Date());
         
-        showToast('數據載入完成', 'success');
+        // 顯示適當的消息
+        if (errorCounter > 0) {
+            if (loadingCounter === 0) {
+                showToast('無法加載數據，請檢查網絡連接', 'error');
+            } else {
+                showToast(`數據部分加載完成，有${errorCounter}項加載失敗`, 'warning');
+            }
+        } else {
+            showToast('數據載入完成', 'success');
+        }
     }
 }
 
@@ -3116,3 +3300,86 @@ function afterDataLoaded() {
     }, 500);
 }
 
+// 定期檢查Firebase連接狀態
+function setupConnectionRetryMechanism() {
+    // 每30秒檢查一次連接狀態
+    const checkInterval = 30000; // 30秒
+    
+    // 保存interval ID以便在需要時清除
+    window.connectionCheckInterval = setInterval(() => {
+        if (navigator.onLine) {
+            // 設備在線，檢查Firebase是否連接
+            testFirebaseConnection()
+                .then(isConnected => {
+                    if (!isConnected) {
+                        console.log('檢測到Firebase未連接，嘗試重新連接...');
+                        // 嘗試重新連接
+                        tryReconnectFirebase();
+                    }
+                })
+                .catch(err => {
+                    console.error('檢查Firebase連接時出錯:', err);
+                });
+        }
+    }, checkInterval);
+    
+    // 頁面卸載時清除interval
+    window.addEventListener('beforeunload', () => {
+        if (window.connectionCheckInterval) {
+            clearInterval(window.connectionCheckInterval);
+        }
+    });
+}
+
+// 測試Firebase連接
+function testFirebaseConnection() {
+    return new Promise((resolve) => {
+        // 嘗試獲取一個小文檔以測試連接
+        const db = firebase.firestore();
+        const testRef = db.collection('connectionTest').doc('testDoc');
+        
+        // 設置超時以處理長時間無響應的情況
+        const timeout = setTimeout(() => {
+            resolve(false); // 假設連接失敗
+        }, 5000);
+        
+        testRef.get()
+            .then(() => {
+                clearTimeout(timeout);
+                resolve(true); // 連接成功
+            })
+            .catch(err => {
+                clearTimeout(timeout);
+                console.warn('Firebase連接測試失敗:', err);
+                resolve(false); // 連接失敗
+            });
+    });
+}
+
+// 嘗試重新連接Firebase
+function tryReconnectFirebase() {
+    showToast('嘗試重新連接到雲端服務...', 'info');
+    
+    // 首先終止當前連接
+    firebase.firestore().terminate()
+        .then(() => {
+            console.log('已終止現有連接');
+            
+            // 短暫延遲後重新初始化
+            setTimeout(() => {
+                // 重新載入Firebase (作為一個選項)
+                // 注意：這會重置整個頁面，可能不是最佳選擇
+                // window.location.reload();
+                
+                // 替代方案：重新初始化Firebase並刷新數據
+                if (appState.user) {
+                    loadUserData();
+                    showToast('已重新連接', 'success');
+                }
+            }, 1000);
+        })
+        .catch(err => {
+            console.error('重新連接Firebase時出錯:', err);
+            showToast('無法重新連接，請稍後再試', 'error');
+        });
+}
