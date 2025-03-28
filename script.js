@@ -89,6 +89,34 @@ function initializeApp() {
     showPage('dashboard');
 }
 
+// 添加新類別函數
+function addNewCategory(type) {
+    const categoryName = prompt('請輸入新類別名稱：');
+    
+    if (categoryName !== null && categoryName.trim() !== '') {
+        const newCategory = {
+            id: 'cat_' + Date.now(), // 生成臨時ID
+            name: categoryName.trim(),
+            type: type,
+            icon: type === 'income' ? 'fa-arrow-down' : 'fa-arrow-up',
+            createdAt: new Date().toISOString()
+        };
+        
+        // 添加到相應數組
+        appState.categories[type].push(newCategory);
+        
+        // 更新UI
+        updateCategoriesUI();
+        
+        // 如果用戶已登入，則同步到Firebase
+        if (appState.user && document.getElementById('autoSync') && document.getElementById('autoSync').checked) {
+            syncData();
+        }
+        
+        showToast('新類別已創建');
+    }
+}
+
 // 設置事件監聽器
 function setupEventListeners() {
     // 側邊欄導航
@@ -97,6 +125,15 @@ function setupEventListeners() {
             e.preventDefault();
             const target = e.currentTarget.getAttribute('href').substring(1);
             showPage(target);
+        });
+    });
+
+    // 新增類別按鈕
+    document.querySelectorAll('.add-category-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tabId = this.closest('.tab-pane').id;
+            const type = tabId === 'incomeCategories' ? 'income' : 'expense';
+            addNewCategory(type);
         });
     });
     
@@ -347,20 +384,38 @@ function saveSettings() {
     }
 }
 
-// 使用Google帳戶登入
+// 使用Google帳戶登入 (修改此函數)
 function loginWithGoogle() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider)
-        .then((result) => {
-            // 登入成功
-            appState.user = result.user;
-            showToast('登入成功！');
-            loadUserData();
-        })
-        .catch((error) => {
-            console.error('登入錯誤:', error);
-            showToast('登入失敗，請重試');
-        });
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider)
+            .then((result) => {
+                // 登入成功
+                appState.user = result.user;
+                showToast('登入成功！');
+                loadUserData();
+            })
+            .catch((error) => {
+                console.error('登入錯誤:', error);
+                
+                // 提供更具體的錯誤消息
+                let errorMessage = '登入失敗，請重試';
+                if (error.code === 'auth/popup-blocked') {
+                    errorMessage = '瀏覽器阻止了彈出窗口，請允許彈出窗口後重試';
+                } else if (error.code === 'auth/popup-closed-by-user') {
+                    errorMessage = '登入窗口被關閉，請重試';
+                } else if (error.code === 'auth/cancelled-popup-request') {
+                    errorMessage = '登入請求已取消，請重試';
+                } else if (error.code === 'auth/network-request-failed') {
+                    errorMessage = '網絡連接失敗，請檢查您的網絡連接';
+                }
+                
+                showToast(errorMessage);
+            });
+    } catch (error) {
+        console.error('登入過程中發生錯誤:', error);
+        showToast('登入過程中發生錯誤，請重試');
+    }
 }
 
 // 登出
@@ -550,7 +605,7 @@ function syncData() {
     setTimeout(() => showToast('數據同步完成'), 1000);
 }
 
-// 保存戶口
+// 保存戶口 (修改此函數)
 function saveAccount() {
     const accountName = document.getElementById('accountName').value;
     const accountType = document.getElementById('accountType').value;
@@ -558,14 +613,11 @@ function saveAccount() {
     const accountCurrency = document.getElementById('accountCurrency').value;
     const accountNotes = document.getElementById('accountNotes').value;
     
-    const account = {
-        name: accountName,
-        type: accountType,
-        balance: initialBalance,
-        currency: accountCurrency,
-        notes: accountNotes,
-        createdAt: new Date().toISOString()
-    };
+    // 檢查名稱是否為空
+    if (!accountName.trim()) {
+        showToast('請輸入戶口名稱');
+        return;
+    }
     
     // 檢查是否為編輯模式
     const editAccountId = document.getElementById('accountForm').getAttribute('data-edit-id');
@@ -574,19 +626,39 @@ function saveAccount() {
         // 更新現有戶口
         const index = appState.accounts.findIndex(a => a.id === editAccountId);
         if (index !== -1) {
-            account.id = editAccountId;
-            appState.accounts[index] = account;
+            appState.accounts[index].name = accountName;
+            appState.accounts[index].type = accountType;
+            appState.accounts[index].balance = initialBalance;
+            appState.accounts[index].currency = accountCurrency;
+            appState.accounts[index].notes = accountNotes;
+            // 不更新 createdAt
+        } else {
+            showToast('找不到該戶口');
+            return;
         }
     } else {
         // 添加新戶口
-        appState.accounts.push(account);
+        const newAccount = {
+            id: 'acc_' + Date.now(), // 生成臨時ID
+            name: accountName,
+            type: accountType,
+            balance: initialBalance,
+            currency: accountCurrency,
+            notes: accountNotes,
+            createdAt: new Date().toISOString()
+        };
+        appState.accounts.push(newAccount);
     }
+    
+    // 重置表單
+    document.getElementById('accountForm').reset();
+    document.getElementById('accountForm').removeAttribute('data-edit-id');
     
     // 更新UI
     updateAccountsUI();
     
     // 如果用戶已登入，則同步到Firebase
-    if (appState.user && document.getElementById('autoSync').checked) {
+    if (appState.user && document.getElementById('autoSync') && document.getElementById('autoSync').checked) {
         syncData();
     }
     
@@ -830,7 +902,7 @@ function updateAccountBalance(accountId, amount) {
     }
 }
 
-// 更新戶口UI
+// 更新戶口UI (修改此函數)
 function updateAccountsUI() {
     // 更新戶口列表
     const accountsList = document.getElementById('accountsList');
@@ -850,14 +922,29 @@ function updateAccountsUI() {
                 </h4>
                 <p class="account-balance">${formatCurrency(account.balance, account.currency)}</p>
                 <div class="account-actions">
-                    <button class="btn" onclick="editAccount('${account.id}')">編輯</button>
-                    <button class="btn danger" onclick="deleteAccount('${account.id}')">刪除</button>
+                    <button class="btn edit-account-btn" data-id="${account.id}">編輯</button>
+                    <button class="btn danger delete-account-btn" data-id="${account.id}">刪除</button>
                 </div>
             `;
             accountsList.appendChild(accountCard);
         });
+        
+        // 為新添加的按鈕綁定事件
+        document.querySelectorAll('.edit-account-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const accountId = this.getAttribute('data-id');
+                editAccount(accountId);
+            });
+        });
+        
+        document.querySelectorAll('.delete-account-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const accountId = this.getAttribute('data-id');
+                deleteAccount(accountId);
+            });
+        });
     }
-    
+
     // 更新戶口選擇框
     const accountSelects = [
         'fromAccount', 'toAccount', 
@@ -892,7 +979,7 @@ function updateAccountsUI() {
     updateTotalAssets();
 }
 
-// 更新類別UI
+// 更新類別UI (修改此函數)
 function updateCategoriesUI() {
     // 更新收入類別列表
     const incomeCategoriesList = document.getElementById('incomeCategoriesList');
@@ -908,8 +995,8 @@ function updateCategoriesUI() {
             categoryItem.innerHTML = `
                 <span><i class="fas ${category.icon || 'fa-tag'}"></i> ${category.name}</span>
                 <div class="category-actions">
-                    <button class="btn" onclick="editCategory('${category.id}')">編輯</button>
-                    <button class="btn danger" onclick="deleteCategory('${category.id}')">刪除</button>
+                    <button class="btn edit-category-btn" data-id="${category.id}">編輯</button>
+                    <button class="btn danger delete-category-btn" data-id="${category.id}">刪除</button>
                 </div>
             `;
             incomeCategoriesList.appendChild(categoryItem);
@@ -930,13 +1017,28 @@ function updateCategoriesUI() {
             categoryItem.innerHTML = `
                 <span><i class="fas ${category.icon || 'fa-tag'}"></i> ${category.name}</span>
                 <div class="category-actions">
-                    <button class="btn" onclick="editCategory('${category.id}')">編輯</button>
-                    <button class="btn danger" onclick="deleteCategory('${category.id}')">刪除</button>
+                    <button class="btn edit-category-btn" data-id="${category.id}">編輯</button>
+                    <button class="btn danger delete-category-btn" data-id="${category.id}">刪除</button>
                 </div>
             `;
             expenseCategoriesList.appendChild(categoryItem);
         });
     }
+    
+    // 綁定類別按鈕事件
+    document.querySelectorAll('.edit-category-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const categoryId = this.getAttribute('data-id');
+            editCategory(categoryId);
+        });
+    });
+    
+    document.querySelectorAll('.delete-category-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const categoryId = this.getAttribute('data-id');
+            deleteCategory(categoryId);
+        });
+    });
     
     // 更新類別選擇框
     updateCategorySelectOptions('incomeCategory', 'income');
@@ -1376,10 +1478,13 @@ function deleteCategoryBudget(categoryId) {
     });
 }
 
-// 編輯戶口
+// 編輯戶口 (修改此函數)
 function editAccount(accountId) {
     const account = appState.accounts.find(a => a.id === accountId);
-    if (!account) return;
+    if (!account) {
+        showToast('找不到該戶口');
+        return;
+    }
     
     // 設置表單數據
     document.getElementById('accountModalTitle').textContent = '編輯戶口';
@@ -1396,35 +1501,67 @@ function editAccount(accountId) {
     accountModal.style.display = 'block';
 }
 
-// 刪除戶口
+// 刪除戶口 (修改此函數)
 function deleteAccount(accountId) {
     showConfirmDialog('確定要刪除此戶口嗎？相關的交易記錄也將被刪除。', () => {
         // 刪除相關交易
-        appState.transactions = appState.transactions.filter(t => t.accountId !== accountId);
+        appState.transactions = appState.transactions.filter(t => t.accountId !== accountId && t.linkedAccountId !== accountId);
         
         // 刪除戶口
         const index = appState.accounts.findIndex(a => a.id === accountId);
         if (index !== -1) {
             appState.accounts.splice(index, 1);
+            
+            // 更新UI
+            updateAccountsUI();
+            updateTransactionsUI();
+            
+            // 如果用戶已登入，則同步到Firebase
+            if (appState.user && document.getElementById('autoSync') && document.getElementById('autoSync').checked) {
+                syncData();
+            }
+            
+            // 顯示成功消息
+            showToast('戶口已刪除');
+        } else {
+            showToast('找不到該戶口');
         }
-        
-        // 更新UI
-        updateAccountsUI();
-        updateTransactionsUI();
-        
-        // 如果用戶已登入，則同步到Firebase
-        if (appState.user && document.getElementById('autoSync').checked) {
-            syncData();
-        }
-        
-        // 顯示成功消息
-        showToast('戶口已刪除');
     });
 }
 
-// 編輯類別
+// 編輯類別 (實現此函數)
 function editCategory(categoryId) {
-    // 實現編輯類別功能
+    // 首先查找類別
+    let category = appState.categories.income.find(c => c.id === categoryId);
+    let type = 'income';
+    
+    if (!category) {
+        category = appState.categories.expense.find(c => c.id === categoryId);
+        type = 'expense';
+    }
+    
+    if (!category) {
+        showToast('找不到該類別');
+        return;
+    }
+    
+    // 顯示新增/編輯類別模態窗口
+    let categoryName = prompt('請輸入類別名稱：', category.name);
+    
+    if (categoryName !== null && categoryName.trim() !== '') {
+        // 更新類別名稱
+        category.name = categoryName.trim();
+        
+        // 更新UI
+        updateCategoriesUI();
+        
+        // 如果用戶已登入，則同步到Firebase
+        if (appState.user && document.getElementById('autoSync') && document.getElementById('autoSync').checked) {
+            syncData();
+        }
+        
+        showToast('類別已更新');
+    }
 }
 
 // 刪除類別
@@ -1766,3 +1903,5 @@ style.textContent = `
 }
 `;
 document.head.appendChild(style);
+
+
