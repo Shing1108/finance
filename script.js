@@ -28,12 +28,14 @@ const appState = {
 
 // Firebase 配置
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
+    apiKey: "AIzaSyAaqadmDSgQ-huvY7uNNrPtjFSOl93jVEE",
     authDomain: "finance-d8f9e.firebaseapp.com",
+    databaseURL: "https://finance-d8f9e-default-rtdb.firebaseio.com",
     projectId: "finance-d8f9e",
-    storageBucket: "finance-d8f9e.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    storageBucket: "finance-d8f9e.firebasestorage.app",
+    messagingSenderId: "122645255279",
+    appId: "1:122645255279:web:25d577b6365c819ffbe99a",
+    measurementId: "G-ZCGNG1DRJS"
 };
 
 // 初始化 Firebase
