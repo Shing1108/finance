@@ -28,7 +28,7 @@ const loginStatus = document.getElementById('loginStatus');
 const googleLoginBtn = document.getElementById('googleLoginBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 
-// 應用狀態
+// 擴展應用狀態，增加新設置
 let appState = {
     darkMode: false,
     fontSize: 'medium',
@@ -46,10 +46,17 @@ let appState = {
         general: 0,
         autoCalculate: true,
         cycle: 'monthly',
-        categories: []
+        categories: [],
+        resetDay: 1, // 新增：預算重設日
+        inheritPrevious: false // 新增：是否繼承上月預算
+    },
+    viewPreferences: {
+        accounts: 'card',
+        categories: 'card'
     },
     user: null
 };
+
 
 // 頁面初始化
 document.addEventListener('DOMContentLoaded', () => {
@@ -126,6 +133,45 @@ function setupEventListeners() {
             const target = e.currentTarget.getAttribute('href').substring(1);
             showPage(target);
         });
+    });
+
+    // 視圖切換按鈕
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const viewType = this.getAttribute('data-view');
+            const container = this.closest('section');
+            
+            // 更新按鈕狀態
+            container.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // 確定是哪個容器
+            if (container.id === 'accounts') {
+                appState.viewPreferences.accounts = viewType;
+                toggleAccountsView(viewType);
+            } else if (container.id === 'categories') {
+                appState.viewPreferences.categories = viewType;
+                toggleCategoriesView(viewType);
+            }
+            
+            // 保存視圖偏好設置
+            saveSettings();
+        });
+    });
+    
+    // 預算重設日變更
+    document.getElementById('budgetResetDay').addEventListener('change', function() {
+        const day = parseInt(this.value);
+        if (day >= 1 && day <= 31) {
+            appState.budgets.resetDay = day;
+            saveSettings();
+        }
+    });
+    
+    // 繼承上月預算設置變更
+    document.getElementById('inheritPreviousBudget').addEventListener('change', function() {
+        appState.budgets.inheritPrevious = this.checked;
+        saveSettings();
     });
 
     // 新增類別按鈕
@@ -338,14 +384,61 @@ function activateTab(tabsContainer, tabId) {
     }
 }
 
-// 載入用戶設定
+// 載入用戶設定 - 修改以包含新設置
 function loadUserSettings() {
     try {
         const savedSettings = localStorage.getItem('financeTrackerSettings');
         if (savedSettings) {
             const settings = JSON.parse(savedSettings);
-            appState = { ...appState, ...settings };
+            
+            // 合併設定，確保新增的屬性也能被加載
+            if (settings.darkMode !== undefined) appState.darkMode = settings.darkMode;
+            if (settings.fontSize !== undefined) appState.fontSize = settings.fontSize;
+            if (settings.currency !== undefined) appState.currency = settings.currency;
+            if (settings.decimalPlaces !== undefined) appState.decimalPlaces = settings.decimalPlaces;
+            if (settings.notifications !== undefined) appState.notifications = settings.notifications;
+            if (settings.notificationThreshold !== undefined) appState.notificationThreshold = settings.notificationThreshold;
+            
+            // 新設定
+            if (settings.budgets && settings.budgets.resetDay !== undefined) {
+                appState.budgets.resetDay = settings.budgets.resetDay;
+            }
+            if (settings.budgets && settings.budgets.inheritPrevious !== undefined) {
+                appState.budgets.inheritPrevious = settings.budgets.inheritPrevious;
+            }
+            if (settings.viewPreferences) {
+                appState.viewPreferences = settings.viewPreferences;
+            }
+            
+            // 應用設定
             applySettings();
+            
+            // 設置UI元素值
+            if (document.getElementById('budgetResetDay')) {
+                document.getElementById('budgetResetDay').value = appState.budgets.resetDay;
+            }
+            if (document.getElementById('inheritPreviousBudget')) {
+                document.getElementById('inheritPreviousBudget').checked = appState.budgets.inheritPrevious;
+            }
+            
+            // 應用視圖偏好
+            if (appState.viewPreferences.accounts) {
+                toggleAccountsView(appState.viewPreferences.accounts);
+                const accountsSection = document.getElementById('accounts');
+                if (accountsSection) {
+                    const btn = accountsSection.querySelector(`.view-btn[data-view="${appState.viewPreferences.accounts}"]`);
+                    if (btn) btn.classList.add('active');
+                }
+            }
+            
+            if (appState.viewPreferences.categories) {
+                toggleCategoriesView(appState.viewPreferences.categories);
+                const categoriesSection = document.getElementById('categories');
+                if (categoriesSection) {
+                    const btn = categoriesSection.querySelector(`.view-btn[data-view="${appState.viewPreferences.categories}"]`);
+                    if (btn) btn.classList.add('active');
+                }
+            }
         }
     } catch (error) {
         console.error('載入設定時發生錯誤:', error);
@@ -366,7 +459,7 @@ function applySettings() {
     document.body.classList.add(`font-${appState.fontSize}`);
 }
 
-// 保存設定
+// 保存設定 - 修改以包含新設置
 function saveSettings() {
     try {
         const settingsToSave = {
@@ -375,7 +468,12 @@ function saveSettings() {
             currency: appState.currency,
             decimalPlaces: appState.decimalPlaces,
             notifications: appState.notifications,
-            notificationThreshold: appState.notificationThreshold
+            notificationThreshold: appState.notificationThreshold,
+            budgets: {
+                resetDay: appState.budgets.resetDay,
+                inheritPrevious: appState.budgets.inheritPrevious
+            },
+            viewPreferences: appState.viewPreferences
         };
         localStorage.setItem('financeTrackerSettings', JSON.stringify(settingsToSave));
     } catch (error) {
@@ -810,6 +908,8 @@ function saveTransfer() {
     // 更新UI
     updateTransactionsUI();
     updateAccountsUI();
+    updateCharts();
+    updateFinancialHealth();
     
     // 如果用戶已登入，則同步到Firebase
     if (appState.user && document.getElementById('autoSync').checked) {
@@ -1141,7 +1241,7 @@ function updateTransactionsUI() {
     updateTodayFinancialSummary();
 }
 
-// 更新預算UI
+// 更新預算UI - 修改以修復預算扣減問題
 function updateBudgetUI() {
     // 更新預算表單
     document.getElementById('budgetAmount').value = appState.budgets.general;
@@ -1177,22 +1277,23 @@ function updateBudgetUI() {
         // 計算使用百分比
         const usedPercentage = totalBudget > 0 ? (currentPeriodExpenses / totalBudget) * 100 : 0;
         
-        // 決定預算狀態顏色
-        let statusColor = '#4caf50'; // 綠色
+        // 決定預算狀態顏色和類別
+        let statusClass = '';
         if (usedPercentage >= 90) {
-            statusColor = '#f44336'; // 紅色
+            statusClass = 'danger';
         } else if (usedPercentage >= 70) {
-            statusColor = '#ff9800'; // 橙色
+            statusClass = 'warning';
         }
         
         budgetStatus.innerHTML = `
             <div class="budget-progress">
                 <div class="budget-info">
                     <span>週期: ${getBudgetCycleLabel(appState.budgets.cycle)}</span>
+                    <span>重設日: 每月${appState.budgets.resetDay}日</span>
                     <span>預算: ${formatCurrency(totalBudget)}</span>
                 </div>
                 <div class="progress-bar-container">
-                    <div class="progress-bar" style="width: ${Math.min(usedPercentage, 100)}%; background-color: ${statusColor};"></div>
+                    <div class="progress-bar ${statusClass}" style="width: ${Math.min(usedPercentage, 100)}%;"></div>
                 </div>
                 <div class="budget-summary">
                     <span>已使用: ${formatCurrency(currentPeriodExpenses)} (${usedPercentage.toFixed(1)}%)</span>
@@ -1202,8 +1303,10 @@ function updateBudgetUI() {
         `;
         
         // 如果預算即將超過，顯示通知
-        if (appState.notifications && usedPercentage >= appState.notificationThreshold) {
+        if (appState.notifications && usedPercentage >= appState.notificationThreshold && usedPercentage < 100) {
             showToast(`警告：預算已使用 ${usedPercentage.toFixed(1)}%`);
+        } else if (appState.notifications && usedPercentage >= 100) {
+            showToast(`警告：預算已超支！`, 'error');
         }
     }
 }
@@ -1381,7 +1484,7 @@ function findCategoryById(categoryId) {
     return [...appState.categories.income, ...appState.categories.expense].find(c => c.id === categoryId);
 }
 
-// 計算當前週期的支出
+// 計算當前週期的支出 - 修改以考慮自定義重設日
 function calculateCurrentPeriodExpenses() {
     const now = new Date();
     let startDate;
@@ -1393,7 +1496,17 @@ function calculateCurrentPeriodExpenses() {
         const day = now.getDay();
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
     } else if (appState.budgets.cycle === 'monthly') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        // 使用自定義重設日
+        const resetDay = appState.budgets.resetDay || 1;
+        const currentDay = now.getDate();
+        
+        if (currentDay >= resetDay) {
+            // 當前月份的重設日
+            startDate = new Date(now.getFullYear(), now.getMonth(), resetDay);
+        } else {
+            // 上個月的重設日
+            startDate = new Date(now.getFullYear(), now.getMonth() - 1, resetDay);
+        }
     }
     
     // 格式化日期範圍
@@ -1406,7 +1519,7 @@ function calculateCurrentPeriodExpenses() {
         .reduce((sum, t) => sum + t.amount, 0);
 }
 
-// 計算當前週期特定類別的支出
+// 計算當前週期特定類別的支出 - 同樣修改
 function calculateCurrentPeriodCategoryExpenses(categoryId) {
     const now = new Date();
     let startDate;
@@ -1418,7 +1531,17 @@ function calculateCurrentPeriodCategoryExpenses(categoryId) {
         const day = now.getDay();
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
     } else if (appState.budgets.cycle === 'monthly') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        // 使用自定義重設日
+        const resetDay = appState.budgets.resetDay || 1;
+        const currentDay = now.getDate();
+        
+        if (currentDay >= resetDay) {
+            // 當前月份的重設日
+            startDate = new Date(now.getFullYear(), now.getMonth(), resetDay);
+        } else {
+            // 上個月的重設日
+            startDate = new Date(now.getFullYear(), now.getMonth() - 1, resetDay);
+        }
     }
     
     // 格式化日期範圍
@@ -1904,4 +2027,612 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// 切換戶口視圖模式
+function toggleAccountsView(viewType) {
+    const accountsList = document.getElementById('accountsList');
+    
+    if (viewType === 'list') {
+        accountsList.classList.add('list-view');
+    } else {
+        accountsList.classList.remove('list-view');
+    }
+    
+    // 重新渲染戶口列表
+    updateAccountsUI();
+}
+
+// 切換類別視圖模式
+function toggleCategoriesView(viewType) {
+    const categoriesContainers = [
+        document.getElementById('incomeCategoriesList'),
+        document.getElementById('expenseCategoriesList')
+    ];
+    
+    categoriesContainers.forEach(container => {
+        if (viewType === 'list') {
+            container.classList.add('list-view');
+        } else {
+            container.classList.remove('list-view');
+        }
+    });
+    
+    // 重新渲染類別列表
+    updateCategoriesUI();
+}
+
+// 新增財務健康指數計算與建議
+function updateFinancialHealth() {
+    // 獲取需要的DOM元素
+    const healthScoreEl = document.getElementById('healthScore');
+    const healthStatusEl = document.getElementById('healthStatus');
+    const adviceListEl = document.getElementById('financialAdvice');
+    
+    if (!healthScoreEl || !healthStatusEl || !adviceListEl) return;
+    
+    // 收集數據
+    const totalAssets = appState.accounts.reduce((sum, account) => sum + account.balance, 0);
+    const monthlyIncome = calculateMonthlyIncome();
+    const monthlyExpenses = calculateMonthlyExpenses();
+    const savingsRate = monthlyIncome > 0 ? (monthlyIncome - monthlyExpenses) / monthlyIncome * 100 : 0;
+    const budgetAdherence = calculateBudgetAdherence();
+    const expensesByCategory = calculateExpensesByCategory();
+    const hasBudget = appState.budgets.general > 0 || appState.budgets.categories.length > 0;
+    const hasEmergencyFund = checkEmergencyFund(monthlyExpenses);
+    
+    // 計算健康得分 (0-100)
+    let score = 0;
+    
+    // 基礎得分 (20分)
+    score += Math.min(20, appState.accounts.length * 5); // 戶口多樣性
+    
+    // 存款比例 (30分)
+    if (monthlyIncome > 0) {
+        if (savingsRate >= 20) score += 30;
+        else if (savingsRate >= 15) score += 25;
+        else if (savingsRate >= 10) score += 20;
+        else if (savingsRate >= 5) score += 15;
+        else if (savingsRate > 0) score += 10;
+    }
+    
+    // 預算遵守度 (25分)
+    if (hasBudget) {
+        if (budgetAdherence >= 90) score += 25;
+        else if (budgetAdherence >= 80) score += 20;
+        else if (budgetAdherence >= 70) score += 15;
+        else if (budgetAdherence >= 60) score += 10;
+        else score += 5;
+    }
+    
+    // 應急資金 (15分)
+    if (hasEmergencyFund >= 6) score += 15;
+    else if (hasEmergencyFund >= 3) score += 10;
+    else if (hasEmergencyFund >= 1) score += 5;
+    
+    // 收支分類完整性 (10分)
+    const categoryCompleteness = calculateCategoryCompleteness();
+    score += Math.round(categoryCompleteness * 10);
+    
+    // 更新UI
+    healthScoreEl.textContent = Math.round(score);
+    
+    // 設置狀態描述
+    let status;
+    if (score >= 90) status = "非常優秀";
+    else if (score >= 80) status = "優秀";
+    else if (score >= 70) status = "良好";
+    else if (score >= 60) status = "一般";
+    else if (score >= 50) status = "需要改善";
+    else status = "需要注意";
+    
+    healthStatusEl.textContent = status;
+    
+    // 產生財務建議
+    const advice = generateFinancialAdvice(
+        totalAssets, 
+        monthlyIncome, 
+        monthlyExpenses, 
+        savingsRate, 
+        budgetAdherence, 
+        hasEmergencyFund, 
+        expensesByCategory
+    );
+    
+    // 更新建議列表
+    adviceListEl.innerHTML = '';
+    advice.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        adviceListEl.appendChild(li);
+    });
+    
+    // 更新財務健康指數圖表
+    updateHealthScoreChart(score);
+}
+// 計算每月收入
+function calculateMonthlyIncome() {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    // 獲取本月所有收入
+    const monthlyIncome = appState.transactions
+        .filter(t => {
+            const transDate = new Date(t.date);
+            return t.type === 'income' && 
+                   transDate.getMonth() === currentMonth && 
+                   transDate.getFullYear() === currentYear;
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+    
+    return monthlyIncome;
+}
+
+// 計算每月支出
+function calculateMonthlyExpenses() {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    // 獲取本月所有支出
+    const monthlyExpenses = appState.transactions
+        .filter(t => {
+            const transDate = new Date(t.date);
+            return t.type === 'expense' && 
+                   transDate.getMonth() === currentMonth && 
+                   transDate.getFullYear() === currentYear;
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+    
+    return monthlyExpenses;
+}
+
+// 計算預算遵守度 (0-100%)
+function calculateBudgetAdherence() {
+    if (!appState.budgets.general && appState.budgets.categories.length === 0) return 100;
+    
+    const currentPeriodExpenses = calculateCurrentPeriodExpenses();
+    
+    // 計算總預算
+    let totalBudget = appState.budgets.general;
+    if (appState.budgets.autoCalculate) {
+        totalBudget = appState.budgets.categories.reduce((sum, budget) => sum + budget.amount, 0);
+    }
+    
+    if (totalBudget === 0) return 100;
+    
+    // 如果花費低於或等於預算，則遵守度為100%
+    if (currentPeriodExpenses <= totalBudget) return 100;
+    
+    // 否則，計算超支的百分比，並轉換為遵守度
+    const overBudgetPercent = (currentPeriodExpenses / totalBudget) * 100 - 100;
+    const adherence = Math.max(0, 100 - overBudgetPercent);
+    
+    return adherence;
+}
+
+// 檢查應急資金 (返回可支撐的月數)
+function checkEmergencyFund(monthlyExpenses) {
+    if (monthlyExpenses <= 0) return 0;
+    
+    // 計算流動資產總額 (現金和銀行戶口)
+    const liquidAssets = appState.accounts
+        .filter(a => a.type === 'cash' || a.type === 'bank')
+        .reduce((sum, account) => sum + account.balance, 0);
+    
+    // 計算可支撐的月數
+    return liquidAssets / monthlyExpenses;
+}
+
+// 計算各類別支出佔比
+function calculateExpensesByCategory() {
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+    
+    // 獲取最近三個月的支出交易
+    const recentExpenses = appState.transactions.filter(t => {
+        return t.type === 'expense' && new Date(t.date) >= threeMonthsAgo;
+    });
+    
+    // 按類別分組
+    const expensesByCategory = {};
+    let totalExpenses = 0;
+    
+    recentExpenses.forEach(transaction => {
+        const categoryId = transaction.categoryId;
+        if (!categoryId) return;
+        
+        if (!expensesByCategory[categoryId]) {
+            expensesByCategory[categoryId] = 0;
+        }
+        
+        expensesByCategory[categoryId] += transaction.amount;
+        totalExpenses += transaction.amount;
+    });
+    
+    // 計算每個類別的百分比
+    const result = [];
+    
+    for (const categoryId in expensesByCategory) {
+        const category = findCategoryById(categoryId);
+        if (category) {
+            result.push({
+                category: category.name,
+                amount: expensesByCategory[categoryId],
+                percentage: totalExpenses > 0 ? (expensesByCategory[categoryId] / totalExpenses) * 100 : 0
+            });
+        }
+    }
+    
+    // 按金額從大到小排序
+    result.sort((a, b) => b.amount - a.amount);
+    
+    return result;
+}
+
+// 計算類別完整性 (0-1)
+function calculateCategoryCompleteness() {
+    // 檢查是否有基本類別設置
+    if (appState.categories.income.length === 0 || appState.categories.expense.length === 0) {
+        return 0;
+    }
+    
+    // 檢查未分類交易的比例
+    const totalTransactions = appState.transactions.length;
+    if (totalTransactions === 0) return 0;
+    
+    const categorizedTransactions = appState.transactions.filter(t => t.categoryId).length;
+    return categorizedTransactions / totalTransactions;
+}
+
+// 產生財務建議
+function generateFinancialAdvice(
+    totalAssets,
+    monthlyIncome, 
+    monthlyExpenses, 
+    savingsRate, 
+    budgetAdherence, 
+    emergencyFundMonths, 
+    expensesByCategory
+) {
+    const advice = [];
+    
+    // 基於儲蓄率的建議
+    if (savingsRate < 10) {
+        advice.push("考慮增加儲蓄率至少達到收入的10%，這是建立財務安全的基礎。");
+    } else if (savingsRate >= 20) {
+        advice.push("您的儲蓄率非常優秀！考慮將部分儲蓄投資以獲得更好的長期回報。");
+    }
+    
+    // 基於預算遵守度的建議
+    if (budgetAdherence < 70) {
+        advice.push("您經常超出預算，建議審查支出模式並調整預算以更符合實際情況。");
+    } else if (budgetAdherence >= 95) {
+        advice.push("您非常善於遵守預算！可以考慮進一步優化預算分配以提高財務效率。");
+    }
+    
+    // 基於應急資金的建議
+    if (emergencyFundMonths < 3) {
+        advice.push("您的應急資金不足，建議至少儲備3-6個月的生活費用作為緊急資金。");
+    } else if (emergencyFundMonths >= 6) {
+        advice.push("您的應急資金充足，可以考慮將超出6個月生活費的部分進行投資。");
+    }
+    
+    // 基於支出類別分析的建議
+    if (expensesByCategory.length > 0) {
+        const topExpenseCategory = expensesByCategory[0];
+        if (topExpenseCategory.percentage > 40) {
+            advice.push(`您在${topExpenseCategory.category}上的支出比例較高(${topExpenseCategory.percentage.toFixed(1)}%)，考慮檢視這一領域的支出習慣。`);
+        }
+    }
+    
+    // 基於基本財務習慣的建議
+    if (appState.categories.expense.length < 5) {
+        advice.push("建立更詳細的支出類別可以幫助您更好地追蹤和管理開支。");
+    }
+    
+    if (appState.accounts.length < 2) {
+        advice.push("考慮設置多個不同用途的戶口以更好地管理資金(如日常開支、儲蓄、投資等)。");
+    }
+    
+    if (appState.budgets.categories.length === 0) {
+        advice.push("為各主要支出類別設置單獨的預算可以提高資金管理的精確度。");
+    }
+    
+    // 如果沒有足夠數據提供具體建議
+    if (advice.length === 0) {
+        advice.push("繼續保持良好的財務習慣，定期審查您的財務目標和進展。");
+        advice.push("考慮設定長期財務目標，如退休計劃、購房或其他重大投資。");
+    }
+    
+    // 添加一些通用建議
+    if (advice.length < 3) {
+        advice.push("定期審查您的收入來源，並尋找增加收入的機會。");
+    }
+    
+    return advice;
+}
+
+// 收入與支出圖表更新
+function updateCharts() {
+    updateIncomeChart();
+    updateExpenseChart();
+}
+
+// 更新收入圖表
+function updateIncomeChart() {
+    // 獲取最近三個月的收入數據
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+    
+    // 按類別統計收入
+    const incomeByCategory = {};
+    let totalIncome = 0;
+    
+    appState.transactions.forEach(transaction => {
+        if (transaction.type !== 'income') return;
+        if (new Date(transaction.date) < threeMonthsAgo) return;
+        
+        const categoryId = transaction.categoryId;
+        if (!categoryId) return;
+        
+        const category = findCategoryById(categoryId);
+        if (!category) return;
+        
+        if (!incomeByCategory[category.name]) {
+            incomeByCategory[category.name] = 0;
+        }
+        
+        incomeByCategory[category.name] += transaction.amount;
+        totalIncome += transaction.amount;
+    });
+    
+    // 準備圖表數據
+    const labels = Object.keys(incomeByCategory);
+    const data = Object.values(incomeByCategory);
+    const backgroundColors = generateColors(labels.length);
+    
+    // 如果沒有數據，顯示提示
+    if (data.length === 0) {
+        document.getElementById('incomeChart').innerHTML = '<p class="no-data">暫無收入數據</p>';
+        return;
+    }
+    
+    // 繪製圖表
+    const ctx = document.getElementById('incomeChartCanvas').getContext('2d');
+    
+    // 檢查是否已有圖表實例
+    if (window.incomeChart) {
+        window.incomeChart.destroy();
+    }
+    
+    window.incomeChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: backgroundColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary')
+                    }
+                },
+                title: {
+                    display: true,
+                    text: '最近三個月收入分佈',
+                    color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary'),
+                    font: {
+                        size: 16
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw;
+                            const percentage = (value / totalIncome * 100).toFixed(1);
+                            return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 更新支出圖表
+function updateExpenseChart() {
+    // 獲取最近三個月的支出數據
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+    
+    // 按類別統計支出
+    const expenseByCategory = {};
+    let totalExpense = 0;
+    
+    appState.transactions.forEach(transaction => {
+        if (transaction.type !== 'expense') return;
+        if (new Date(transaction.date) < threeMonthsAgo) return;
+        
+        const categoryId = transaction.categoryId;
+        if (!categoryId) return;
+        
+        const category = findCategoryById(categoryId);
+        if (!category) return;
+        
+        if (!expenseByCategory[category.name]) {
+            expenseByCategory[category.name] = 0;
+        }
+        
+        expenseByCategory[category.name] += transaction.amount;
+        totalExpense += transaction.amount;
+    });
+    
+    // 準備圖表數據
+    const labels = Object.keys(expenseByCategory);
+    const data = Object.values(expenseByCategory);
+    const backgroundColors = generateColors(labels.length, true); // 使用不同的顏色方案
+    
+    // 如果沒有數據，顯示提示
+    if (data.length === 0) {
+        document.getElementById('expenseChart').innerHTML = '<p class="no-data">暫無支出數據</p>';
+        return;
+    }
+    
+    // 繪製圖表
+    const ctx = document.getElementById('expenseChartCanvas').getContext('2d');
+    
+    // 檢查是否已有圖表實例
+    if (window.expenseChart) {
+        window.expenseChart.destroy();
+    }
+    
+    window.expenseChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: backgroundColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary')
+                    }
+                },
+                title: {
+                    display: true,
+                    text: '最近三個月支出分佈',
+                    color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary'),
+                    font: {
+                        size: 16
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw;
+                            const percentage = (value / totalExpense * 100).toFixed(1);
+                            return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 生成圖表顏色
+function generateColors(count, isExpense = false) {
+    const colors = [];
+    
+    // 收入使用綠色系列，支出使用紅色系列
+    const baseHue = isExpense ? 0 : 120; // 紅色=0, 綠色=120
+    
+    for (let i = 0; i < count; i++) {
+        const hue = (baseHue + i * 30) % 360;
+        const saturation = 65 + Math.random() * 20;
+        const lightness = 45 + Math.random() * 10;
+        colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+    }
+    
+    return colors;
+}
+
+// 載入預設數據（如果用戶沒有任何數據）
+function loadDefaultData() {
+    // 如果還沒有設置類別，添加一些常用類別
+    if (appState.categories.income.length === 0) {
+        const defaultIncomeCategories = [
+            { id: 'inc_salary', name: '薪資收入', icon: 'fa-money-bill', type: 'income' },
+            { id: 'inc_bonus', name: '獎金', icon: 'fa-gift', type: 'income' },
+            { id: 'inc_investment', name: '投資收益', icon: 'fa-chart-line', type: 'income' },
+            { id: 'inc_other', name: '其他收入', icon: 'fa-plus-circle', type: 'income' }
+        ];
+        
+        appState.categories.income = defaultIncomeCategories;
+    }
+    
+    if (appState.categories.expense.length === 0) {
+        const defaultExpenseCategories = [
+            { id: 'exp_food', name: '餐飲', icon: 'fa-utensils', type: 'expense' },
+            { id: 'exp_transport', name: '交通', icon: 'fa-bus', type: 'expense' },
+            { id: 'exp_shopping', name: '購物', icon: 'fa-shopping-bag', type: 'expense' },
+            { id: 'exp_housing', name: '住宿', icon: 'fa-home', type: 'expense' },
+            { id: 'exp_utilities', name: '水電', icon: 'fa-bolt', type: 'expense' },
+            { id: 'exp_entertainment', name: '娛樂', icon: 'fa-film', type: 'expense' },
+            { id: 'exp_health', name: '醫療健康', icon: 'fa-heartbeat', type: 'expense' },
+            { id: 'exp_education', name: '教育', icon: 'fa-graduation-cap', type: 'expense' },
+            { id: 'exp_other', name: '其他支出', icon: 'fa-minus-circle', type: 'expense' }
+        ];
+        
+        appState.categories.expense = defaultExpenseCategories;
+    }
+    
+    // 更新UI
+    updateCategoriesUI();
+}
+
+// 初始化應用程序 - 修改以包含圖表和財務健康指數更新
+function initializeApp() {
+    // 檢查認證狀態
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            appState.user = user;
+            loginStatus.textContent = user.displayName || user.email;
+            googleLoginBtn.style.display = 'none';
+            logoutBtn.style.display = 'inline-block';
+            document.getElementById('syncNowBtn').disabled = false;
+            document.getElementById('autoSync').disabled = false;
+            loadUserData();
+        } else {
+            appState.user = null;
+            loginStatus.textContent = '未登入';
+            googleLoginBtn.style.display = 'inline-block';
+            logoutBtn.style.display = 'none';
+            document.getElementById('syncNowBtn').disabled = true;
+            document.getElementById('autoSync').disabled = true;
+        }
+    });
+
+    // 在初始化完數據後，添加這些調用
+function afterDataLoaded() {
+    updateCharts();
+    updateFinancialHealth();
+    
+    // 綁定圖表相關事件 (如有需要)
+    setupChartEvents();
+}
+    
+    // 初始化當前日期
+    const today = new Date();
+    document.getElementById('incomeDate').value = formatDate(today);
+    document.getElementById('expenseDate').value = formatDate(today);
+    
+    // 設置默認頁面
+    showPage('dashboard');
+    
+    // 加載預設數據（如果需要）
+    loadDefaultData();
+    
+    // 更新圖表
+    setTimeout(() => {
+        updateCharts();
+        updateFinancialHealth();
+    }, 500);
+}
 
