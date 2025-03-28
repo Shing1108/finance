@@ -874,3 +874,242 @@ input:checked + .slider:before {
 .pulse {
     animation: pulse 2s infinite;
 }
+
+/* 視圖切換按鈕 */
+.view-toggle {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.view-btn {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    opacity: 0.6;
+}
+
+.view-btn.active {
+    background-color: var(--primary-light);
+    color: var(--primary-dark);
+    opacity: 1;
+}
+
+/* 列表視圖樣式 */
+.list-view .accounts-list,
+.list-view .categories-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.list-view .account-card,
+.list-view .category-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-radius: var(--radius);
+    border-left: 4px solid var(--primary-color);
+    transition: transform 0.2s ease;
+}
+
+.list-view .account-card:hover,
+.list-view .category-item:hover {
+    transform: translateX(5px);
+}
+
+.list-view .account-card h4 {
+    flex: 1;
+    margin: 0;
+}
+
+.list-view .account-balance {
+    margin: 0 15px;
+    font-weight: bold;
+    min-width: 100px;
+    text-align: right;
+}
+
+.list-view .category-item span {
+    flex: 1;
+}
+
+/* 財務健康指數樣式 */
+.financial-health-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+@media (min-width: 768px) {
+    .financial-health-container {
+        flex-direction: row;
+    }
+}
+
+.financial-health-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    background-color: var(--bg-color);
+    border-radius: var(--radius);
+    flex: 1;
+}
+
+.score-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: conic-gradient(var(--primary-color) 0%, var(--primary-light) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 15px;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.score-circle::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    background-color: var(--card-bg);
+    border-radius: 50%;
+}
+
+.score-circle span {
+    position: relative;
+    z-index: 1;
+    font-size: 28px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+#healthStatus {
+    font-size: 18px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.financial-advice {
+    flex: 2;
+    background-color: var(--bg-color);
+    border-radius: var(--radius);
+    padding: 20px;
+}
+
+.financial-advice h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+}
+
+.financial-advice ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.financial-advice li {
+    margin-bottom: 10px;
+    padding-left: 25px;
+    position: relative;
+}
+
+.financial-advice li::before {
+    content: '✦';
+    position: absolute;
+    left: 0;
+    color: var(--primary-color);
+}
+
+/* 圖表容器優化 */
+.chart-placeholder {
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.chart-placeholder canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* 預算進度條樣式優化 */
+.progress-bar-container {
+    width: 100%;
+    height: 12px;
+    background-color: var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: var(--primary-color);
+    transition: width 0.5s ease-out;
+    position: relative;
+}
+
+.progress-bar.warning {
+    background-color: #ff9800;
+}
+
+.progress-bar.danger {
+    background-color: #f44336;
+}
+
+.progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.15) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(255, 255, 255, 0.15) 75%,
+        transparent 75%
+    );
+    background-size: 20px 20px;
+    z-index: 1;
+    animation: progress-animation 1s linear infinite;
+}
+
+@keyframes progress-animation {
+    0% {
+        background-position: 0 0;
+    }
+    100% {
+        background-position: 20px 0;
+    }
+}
+
+/* 預算重設設定樣式 */
+.reset-settings {
+    background-color: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.reset-settings .form-group {
+    margin-bottom: 15px;
+}
+
+.reset-settings input[type="number"] {
+    width: 80px;
+}
