@@ -1052,11 +1052,19 @@ input:checked + .slider:before {
     margin: 10px 0;
 }
 
-.progress-bar {
+.progress-inner {
     height: 100%;
     background-color: var(--primary-color);
-    transition: width 0.5s ease-out;
-    position: relative;
+    width: 0;
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+
+.progress-bar {
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
 }
 
 .progress-bar.warning {
@@ -1186,16 +1194,20 @@ input:checked + .slider:before {
     height: 200px;
 }
 
-/* 數據加載指示器 */
+/* 改進的加載指示器樣式 */
 .loading-indicator {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
-    background-color: var(--primary-light);
-    z-index: 1000;
-    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 15px;
+    text-align: center;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .loading-indicator::after {
@@ -1207,6 +1219,11 @@ input:checked + .slider:before {
     width: 50%;
     background-color: var(--primary-color);
     animation: loading 1.5s infinite ease-in-out;
+}
+
+.loading-text {
+    font-size: 14px;
+    font-weight: 500;
 }
 
 @keyframes loading {
@@ -1223,7 +1240,7 @@ input:checked + .slider:before {
 }
 
 .status-online {
-    color: var(--primary-color);
+    color: #4caf50;
     display: inline-flex;
     align-items: center;
 }
@@ -1245,7 +1262,7 @@ input:checked + .slider:before {
 }
 
 .status-online::before {
-    background-color: var(--primary-color);
+    background-color: #4caf50;
 }
 
 .status-offline::before {
