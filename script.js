@@ -58,8 +58,12 @@ let appState = {
 };
 
 
-// 頁面初始化
+ // 在頁面加載時初始化Firebase
 document.addEventListener('DOMContentLoaded', () => {
+    const { auth, db } = initializeFirebase();
+    window.auth = auth;
+    window.db = db;
+    
     initializeApp();
     setupEventListeners();
     loadUserSettings();
