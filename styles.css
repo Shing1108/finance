@@ -465,20 +465,23 @@ textarea {
     display: block;
 }
 
-/* Buttons */
+/* 美化按鈕效果 */
 .btn {
-    padding: 10px 15px;
+    padding: 10px 18px;
     border: none;
     border-radius: var(--radius);
     background-color: var(--bg-color);
     color: var(--text-primary);
     font-size: 1rem;
     cursor: pointer;
-    transition: var(--transition);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
 
 .btn:hover {
     background-color: var(--hover-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.16);
 }
 
 .primary {
@@ -503,7 +506,31 @@ textarea {
     display: flex;
     align-items: center;
     gap: 5px;
+    padding: 8px 15px;
+    border-radius: var(--radius);
+    background-color: transparent;
+    color: var(--text-primary);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border: 1px solid var(--border-color);
 }
+
+.icon-btn:hover {
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.icon-btn i {
+    transition: transform 0.3s ease;
+}
+
+.icon-btn:hover i {
+    transform: rotate(30deg);
+}
+
 
 /* Filters */
 .filters-container {
@@ -629,16 +656,17 @@ textarea {
 .modal-content {
     background-color: var(--card-bg);
     margin: 5% auto;
-    padding: 20px;
+    padding: 25px;
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     max-width: 600px;
     position: relative;
-    animation: slideIn 0.3s ease;
+    animation: slideIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+    border: 1px solid var(--border-color);
 }
 
 @keyframes slideIn {
-    from { transform: translateY(-50px); opacity: 0; }
+    from { transform: translateY(-70px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
 }
 
