@@ -1236,6 +1236,16 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById(tabId).classList.add('active');
         });
     });
+
+    document.getElementById('settings-btn').addEventListener('click', function() {
+showSettingsModal();
+});
+
+function showSettingsModal() {
+// 顯示設定模態框的代碼
+const content =         <h2>應用設定</h2>         <form id="settings-form">             <!-- 設定選項 -->         </form>    ;
+showModal(content);
+}
     
     // 添加戶口按鈕事件
     document.getElementById('add-account-btn').addEventListener('click', function() {
