@@ -1213,3 +1213,41 @@ input:checked + .slider:before {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(200%); }
 }
+
+/* 連接狀態指示器 */
+.connection-status {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 15px;
+    font-size: 0.85rem;
+}
+
+.status-online {
+    color: var(--primary-color);
+    display: inline-flex;
+    align-items: center;
+}
+
+.status-offline {
+    color: #f44336;
+    display: inline-flex;
+    align-items: center;
+}
+
+.status-online::before,
+.status-offline::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.status-online::before {
+    background-color: var(--primary-color);
+}
+
+.status-offline::before {
+    background-color: #f44336;
+}
