@@ -529,178 +529,464 @@ function logout() {
         });
 }
 
-// 從Firebase加載用戶數據
+// 從Firebase加載用戶數據 - 完全重寫此函數
 function loadUserData() {
     if (!appState.user) return;
     
     const userId = appState.user.uid;
     
     // 顯示加載指示器
-    showToast('正在加載數據...');
+    showToast('正在從雲端加載數據...', 'info', 5000);
+    
+    // 創建一個加載狀態計數器
+    let loadingCounter = 0;
+    const totalCollections = 4; // 要加載的集合數量
     
     // 載入戶口
     db.collection('users').doc(userId).collection('accounts').get()
         .then((snapshot) => {
-            appState.accounts = [];
-            snapshot.forEach((doc) => {
-                appState.accounts.push({ id: doc.id, ...doc.data() });
-            });
-            updateAccountsUI();
+            // 檢查是否有數據
+            if (!snapshot.empty) {
+                appState.accounts = [];
+                snapshot.forEach((doc) => {
+                    appState.accounts.push({ id: doc.id, ...doc.data() });
+                });
+                console.log(`已加載 ${appState.accounts.length} 個戶口`);
+            } else {
+                console.log('無戶口數據');
+            }
+            
+            // 更新加載計數器
+            loadingCounter++;
+            updateLoadingProgress(loadingCounter, totalCollections);
         })
         .catch((error) => {
             console.error('載入戶口錯誤:', error);
+            showToast('載入戶口數據失敗: ' + error.message, 'error');
+            
+            // 更新加載計數器
+            loadingCounter++;
+            updateLoadingProgress(loadingCounter, totalCollections);
         });
     
     // 載入類別
     db.collection('users').doc(userId).collection('categories').get()
         .then((snapshot) => {
-            appState.categories = { income: [], expense: [] };
-            snapshot.forEach((doc) => {
-                const category = doc.data();
-                if (category.type === 'income') {
-                    appState.categories.income.push({ id: doc.id, ...category });
-                } else {
-                    appState.categories.expense.push({ id: doc.id, ...category });
-                }
-            });
-            updateCategoriesUI();
+            if (!snapshot.empty) {
+                appState.categories = { income: [], expense: [] };
+                snapshot.forEach((doc) => {
+                    const category = doc.data();
+                    if (category.type === 'income') {
+                        appState.categories.income.push({ id: doc.id, ...category });
+                    } else {
+                        appState.categories.expense.push({ id: doc.id, ...category });
+                    }
+                });
+                console.log(`已加載 ${appState.categories.income.length + appState.categories.expense.length} 個類別`);
+            } else {
+                console.log('無類別數據');
+                // 如果沒有類別數據，加載默認類別
+                loadDefaultCategories();
+            }
+            
+            // 更新加載計數器
+            loadingCounter++;
+            updateLoadingProgress(loadingCounter, totalCollections);
         })
         .catch((error) => {
             console.error('載入類別錯誤:', error);
+            showToast('載入類別數據失敗: ' + error.message, 'error');
+            
+            // 更新加載計數器
+            loadingCounter++;
+            updateLoadingProgress(loadingCounter, totalCollections);
         });
     
     // 載入交易
     db.collection('users').doc(userId).collection('transactions').get()
         .then((snapshot) => {
-            appState.transactions = [];
-            snapshot.forEach((doc) => {
-                appState.transactions.push({ id: doc.id, ...doc.data() });
-            });
-            updateTransactionsUI();
+            if (!snapshot.empty) {
+                appState.transactions = [];
+                snapshot.forEach((doc) => {
+                    appState.transactions.push({ id: doc.id, ...doc.data() });
+                });
+                console.log(`已加載 ${appState.transactions.length} 筆交易`);
+            } else {
+                console.log('無交易數據');
+            }
+            
+            // 更新加載計數器
+            loadingCounter++;
+            updateLoadingProgress(loadingCounter, totalCollections);
         })
         .catch((error) => {
             console.error('載入交易錯誤:', error);
+            showToast('載入交易數據失敗: ' + error.message, 'error');
+            
+            // 更新加載計數器
+            loadingCounter++;
+            updateLoadingProgress(loadingCounter, totalCollections);
         });
     
     // 載入預算
-    db.collection('users').doc(userId).collection('budgets').doc('general').get()
-        .then((doc) => {
-            if (doc.exists) {
-                appState.budgets.general = doc.data().amount || 0;
-                appState.budgets.autoCalculate = doc.data().autoCalculate || true;
-                appState.budgets.cycle = doc.data().cycle || 'monthly';
-            }
-            updateBudgetUI();
-        })
-        .catch((error) => {
-            console.error('載入預算錯誤:', error);
-        });
-    
-    // 載入類別預算
-    db.collection('users').doc(userId).collection('budgets').doc('categories').get()
-        .then((doc) => {
-            if (doc.exists) {
-                appState.budgets.categories = doc.data().items || [];
-            }
-            updateCategoryBudgetsUI();
-        })
-        .catch((error) => {
-            console.error('載入類別預算錯誤:', error);
-        });
-    
-    // 更新同步時間
-    document.getElementById('lastSyncTime').textContent = formatDateTime(new Date());
-    
-    // 隱藏加載指示器
-    setTimeout(() => showToast('數據載入完成'), 1000);
+    Promise.all([
+        db.collection('users').doc(userId).collection('budgets').doc('general').get(),
+        db.collection('users').doc(userId).collection('budgets').doc('categories').get()
+    ])
+    .then(([generalDoc, categoriesDoc]) => {
+        // 加載總預算
+        if (generalDoc.exists) {
+            const generalData = generalDoc.data();
+            appState.budgets.general = generalData.amount || 0;
+            appState.budgets.autoCalculate = generalData.autoCalculate !== undefined ? generalData.autoCalculate : true;
+            appState.budgets.cycle = generalData.cycle || 'monthly';
+            appState.budgets.resetDay = generalData.resetDay || 1;
+            appState.budgets.inheritPrevious = generalData.inheritPrevious !== undefined ? generalData.inheritPrevious : false;
+        }
+        
+        // 加載類別預算
+        if (categoriesDoc.exists) {
+            appState.budgets.categories = categoriesDoc.data().items || [];
+        }
+        
+        console.log('已加載預算數據');
+        
+        // 更新加載計數器
+        loadingCounter++;
+        updateLoadingProgress(loadingCounter, totalCollections);
+    })
+    .catch((error) => {
+        console.error('載入預算錯誤:', error);
+        showToast('載入預算數據失敗: ' + error.message, 'error');
+        
+        // 更新加載計數器
+        loadingCounter++;
+        updateLoadingProgress(loadingCounter, totalCollections);
+    });
 }
 
-// 同步數據到Firebase
+// 顯示數據加載進度
+function updateLoadingProgress(current, total) {
+    // 計算加載進度
+    const progress = Math.floor((current / total) * 100);
+    console.log(`數據加載進度: ${progress}%`);
+    
+    // 當所有數據都加載完成時
+    if (current >= total) {
+        // 更新所有UI組件
+        updateAccountsUI();
+        updateCategoriesUI();
+        updateTransactionsUI();
+        updateBudgetUI();
+        updateCategoryBudgetsUI();
+        
+        // 更新圖表和財務健康指數
+        updateCharts();
+        updateFinancialHealth();
+        
+        // 更新同步時間
+        document.getElementById('lastSyncTime').textContent = formatDateTime(new Date());
+        
+        showToast('數據載入完成', 'success');
+        
+        // 儲存同步時間
+        saveLastSyncTime(new Date());
+    }
+}
+
+// 保存最後同步時間
+function saveLastSyncTime(time) {
+    try {
+        localStorage.setItem('lastSyncTime', time.toISOString());
+    } catch (error) {
+        console.error('保存同步時間錯誤:', error);
+    }
+}
+
+
+// 同步數據到Firebase - 重寫此函數以更可靠
 function syncData() {
     if (!appState.user) {
-        showToast('請先登入');
+        showToast('請先登入', 'warning');
         return;
     }
     
     const userId = appState.user.uid;
     
     // 顯示同步指示器
-    showToast('正在同步數據...');
+    showToast('正在同步數據...', 'info', 10000);
+    
+    // 將本地數據上傳到Firebase
+    const syncPromises = [];
     
     // 同步戶口
-    appState.accounts.forEach(account => {
-        const accountData = { ...account };
-        delete accountData.id; // 不保存ID到Firebase
-        
-        if (account.id) {
-            // 更新現有戶口
-            db.collection('users').doc(userId).collection('accounts').doc(account.id).set(accountData);
-        } else {
-            // 新增戶口
-            db.collection('users').doc(userId).collection('accounts').add(accountData)
-                .then((docRef) => {
-                    account.id = docRef.id;
-                });
-        }
-    });
+    const accountsPromise = syncAccounts(userId);
+    syncPromises.push(accountsPromise);
     
     // 同步類別
-    [...appState.categories.income, ...appState.categories.expense].forEach(category => {
-        const categoryData = { ...category };
-        delete categoryData.id;
-        
-        if (category.id) {
-            // 更新現有類別
-            db.collection('users').doc(userId).collection('categories').doc(category.id).set(categoryData);
-        } else {
-            // 新增類別
-            db.collection('users').doc(userId).collection('categories').add(categoryData)
-                .then((docRef) => {
-                    category.id = docRef.id;
-                });
-        }
-    });
+    const categoriesPromise = syncCategories(userId);
+    syncPromises.push(categoriesPromise);
     
     // 同步交易
-    appState.transactions.forEach(transaction => {
-        const transactionData = { ...transaction };
-        delete transactionData.id;
-        
-        if (transaction.id) {
-            // 更新現有交易
-            db.collection('users').doc(userId).collection('transactions').doc(transaction.id).set(transactionData);
-        } else {
-            // 新增交易
-            db.collection('users').doc(userId).collection('transactions').add(transactionData)
-                .then((docRef) => {
-                    transaction.id = docRef.id;
-                });
-        }
-    });
+    const transactionsPromise = syncTransactions(userId);
+    syncPromises.push(transactionsPromise);
     
     // 同步預算
-    db.collection('users').doc(userId).collection('budgets').doc('general').set({
-        amount: appState.budgets.general,
-        autoCalculate: appState.budgets.autoCalculate,
-        cycle: appState.budgets.cycle
+    const budgetsPromise = syncBudgets(userId);
+    syncPromises.push(budgetsPromise);
+    
+    // 等待所有同步操作完成
+    Promise.all(syncPromises)
+        .then(() => {
+            // 更新同步時間
+            const now = new Date();
+            document.getElementById('lastSyncTime').textContent = formatDateTime(now);
+            
+            // 保存同步時間到本地存儲
+            saveLastSyncTime(now);
+            
+            // 隱藏同步指示器
+            showToast('數據同步完成', 'success');
+        })
+        .catch((error) => {
+            console.error('同步數據錯誤:', error);
+            showToast('數據同步失敗: ' + error.message, 'error');
+        });
+}
+
+// 同步戶口數據
+function syncAccounts(userId) {
+    return new Promise((resolve, reject) => {
+        try {
+            const batch = db.batch();
+            const accountsRef = db.collection('users').doc(userId).collection('accounts');
+            
+            // 獲取當前雲端戶口列表
+            accountsRef.get()
+                .then((snapshot) => {
+                    // 建立雲端戶口ID映射，用於檢查哪些需要刪除
+                    const cloudAccountIds = new Set();
+                    snapshot.forEach(doc => cloudAccountIds.add(doc.id));
+                    
+                    // 處理本地戶口列表
+                    const localAccountIds = new Set();
+                    
+                    // 更新或添加戶口
+                    const accountPromises = appState.accounts.map(account => {
+                        const accountData = { ...account };
+                        delete accountData.id; // 不保存ID到Firebase
+                        
+                        if (account.id && account.id.startsWith('acc_')) {
+                            // 這是一個本地生成的臨時ID，需要在雲端創建新文檔
+                            return accountsRef.add(accountData)
+                                .then((docRef) => {
+                                    account.id = docRef.id; // 更新本地ID為雲端ID
+                                    localAccountIds.add(docRef.id);
+                                });
+                        } else if (account.id) {
+                            // 已有雲端ID，更新現有戶口
+                            localAccountIds.add(account.id);
+                            return accountsRef.doc(account.id).set(accountData);
+                        } else {
+                            // 沒有ID的情況，創建新戶口
+                            return accountsRef.add(accountData)
+                                .then((docRef) => {
+                                    account.id = docRef.id; // 更新本地ID為雲端ID
+                                    localAccountIds.add(docRef.id);
+                                });
+                        }
+                    });
+                    
+                    // 執行所有戶口更新
+                    Promise.all(accountPromises)
+                        .then(() => {
+                            // 找出雲端有但本地沒有的戶口（需要刪除的）
+                            const toDeleteIds = [...cloudAccountIds].filter(id => !localAccountIds.has(id));
+                            
+                            // 刪除這些戶口
+                            const deletePromises = toDeleteIds.map(id => accountsRef.doc(id).delete());
+                            
+                            return Promise.all(deletePromises);
+                        })
+                        .then(() => {
+                            console.log('戶口同步完成');
+                            resolve();
+                        })
+                        .catch(reject);
+                })
+                .catch(reject);
+        } catch (error) {
+            reject(error);
+        }
     });
-    
-    // 同步類別預算
-    db.collection('users').doc(userId).collection('budgets').doc('categories').set({
-        items: appState.budgets.categories
+}
+
+// 同步類別數據 - 類似邏輯
+function syncCategories(userId) {
+    return new Promise((resolve, reject) => {
+        try {
+            const categoriesRef = db.collection('users').doc(userId).collection('categories');
+            
+            // 獲取當前雲端類別列表
+            categoriesRef.get()
+                .then((snapshot) => {
+                    // 建立雲端類別ID映射，用於檢查哪些需要刪除
+                    const cloudCategoryIds = new Set();
+                    snapshot.forEach(doc => cloudCategoryIds.add(doc.id));
+                    
+                    // 處理本地類別列表
+                    const localCategoryIds = new Set();
+                    const allCategories = [...appState.categories.income, ...appState.categories.expense];
+                    
+                    // 更新或添加類別
+                    const categoryPromises = allCategories.map(category => {
+                        const categoryData = { ...category };
+                        delete categoryData.id; // 不保存ID到Firebase
+                        
+                        if (category.id && category.id.startsWith('cat_')) {
+                            // 這是一個本地生成的臨時ID，需要在雲端創建新文檔
+                            return categoriesRef.add(categoryData)
+                                .then((docRef) => {
+                                    category.id = docRef.id; // 更新本地ID為雲端ID
+                                    localCategoryIds.add(docRef.id);
+                                });
+                        } else if (category.id) {
+                            // 已有雲端ID，更新現有類別
+                            localCategoryIds.add(category.id);
+                            return categoriesRef.doc(category.id).set(categoryData);
+                        } else {
+                            // 沒有ID的情況，創建新類別
+                            return categoriesRef.add(categoryData)
+                                .then((docRef) => {
+                                    category.id = docRef.id; // 更新本地ID為雲端ID
+                                    localCategoryIds.add(docRef.id);
+                                });
+                        }
+                    });
+                    
+                    // 執行所有類別更新
+                    Promise.all(categoryPromises)
+                        .then(() => {
+                            // 找出雲端有但本地沒有的類別（需要刪除的）
+                            const toDeleteIds = [...cloudCategoryIds].filter(id => !localCategoryIds.has(id));
+                            
+                            // 刪除這些類別
+                            const deletePromises = toDeleteIds.map(id => categoriesRef.doc(id).delete());
+                            
+                            return Promise.all(deletePromises);
+                        })
+                        .then(() => {
+                            console.log('類別同步完成');
+                            resolve();
+                        })
+                        .catch(reject);
+                })
+                .catch(reject);
+        } catch (error) {
+            reject(error);
+        }
     });
-    
-    // 更新同步時間
-    const now = new Date();
-    document.getElementById('lastSyncTime').textContent = formatDateTime(now);
-    
-    // 保存同步時間到本地存儲
-    const settings = JSON.parse(localStorage.getItem('financeTrackerSettings') || '{}');
-    settings.lastSyncTime = now.toISOString();
-    localStorage.setItem('financeTrackerSettings', JSON.stringify(settings));
-    
-    // 隱藏同步指示器
-    setTimeout(() => showToast('數據同步完成'), 1000);
+}
+
+// 同步交易數據
+function syncTransactions(userId) {
+    return new Promise((resolve, reject) => {
+        try {
+            const transactionsRef = db.collection('users').doc(userId).collection('transactions');
+            
+            // 獲取當前雲端交易列表
+            transactionsRef.get()
+                .then((snapshot) => {
+                    // 建立雲端交易ID映射，用於檢查哪些需要刪除
+                    const cloudTransactionIds = new Set();
+                    snapshot.forEach(doc => cloudTransactionIds.add(doc.id));
+                    
+                    // 處理本地交易列表
+                    const localTransactionIds = new Set();
+                    
+                    // 更新或添加交易
+                    const transactionPromises = appState.transactions.map(transaction => {
+                        const transactionData = { ...transaction };
+                        delete transactionData.id; // 不保存ID到Firebase
+                        
+                        if (transaction.id && (transaction.id.startsWith('trans_') || transaction.id.startsWith('temp_'))) {
+                            // 這是一個本地生成的臨時ID，需要在雲端創建新文檔
+                            return transactionsRef.add(transactionData)
+                                .then((docRef) => {
+                                    transaction.id = docRef.id; // 更新本地ID為雲端ID
+                                    localTransactionIds.add(docRef.id);
+                                });
+                        } else if (transaction.id) {
+                            // 已有雲端ID，更新現有交易
+                            localTransactionIds.add(transaction.id);
+                            return transactionsRef.doc(transaction.id).set(transactionData);
+                        } else {
+                            // 沒有ID的情況，創建新交易
+                            return transactionsRef.add(transactionData)
+                                .then((docRef) => {
+                                    transaction.id = docRef.id; // 更新本地ID為雲端ID
+                                    localTransactionIds.add(docRef.id);
+                                });
+                        }
+                    });
+                    
+                    // 執行所有交易更新
+                    Promise.all(transactionPromises)
+                        .then(() => {
+                            // 找出雲端有但本地沒有的交易（需要刪除的）
+                            const toDeleteIds = [...cloudTransactionIds].filter(id => !localTransactionIds.has(id));
+                            
+                            // 刪除這些交易
+                            const deletePromises = toDeleteIds.map(id => transactionsRef.doc(id).delete());
+                            
+                            return Promise.all(deletePromises);
+                        })
+                        .then(() => {
+                            console.log('交易同步完成');
+                            resolve();
+                        })
+                        .catch(reject);
+                })
+                .catch(reject);
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// 同步預算數據
+function syncBudgets(userId) {
+    return new Promise((resolve, reject) => {
+        try {
+            const budgetsRef = db.collection('users').doc(userId).collection('budgets');
+            
+            // 更新總預算
+            const generalData = {
+                amount: appState.budgets.general,
+                autoCalculate: appState.budgets.autoCalculate,
+                cycle: appState.budgets.cycle,
+                resetDay: appState.budgets.resetDay,
+                inheritPrevious: appState.budgets.inheritPrevious
+            };
+            
+            const categoriesData = {
+                items: appState.budgets.categories
+            };
+            
+            // 同時更新兩個文檔
+            Promise.all([
+                budgetsRef.doc('general').set(generalData),
+                budgetsRef.doc('categories').set(categoriesData)
+            ])
+            .then(() => {
+                console.log('預算同步完成');
+                resolve();
+            })
+            .catch(reject);
+        } catch (error) {
+            reject(error);
+        }
+    });
 }
 
 // 保存戶口 (修改此函數)
@@ -768,6 +1054,7 @@ function saveAccount() {
 }
 
 // 保存交易
+// 保存交易函數修改 - 確保同步
 function saveTransaction(type) {
     const form = document.getElementById(`${type}Form`);
     const accountId = document.getElementById(`${type}Account`).value;
@@ -778,17 +1065,17 @@ function saveTransaction(type) {
     
     // 驗證數據
     if (!accountId) {
-        showToast('請選擇戶口');
+        showToast('請選擇戶口', 'warning');
         return;
     }
     
     if (!categoryId) {
-        showToast('請選擇類別');
+        showToast('請選擇類別', 'warning');
         return;
     }
     
     if (amount <= 0) {
-        showToast('金額必須大於零');
+        showToast('金額必須大於零', 'warning');
         return;
     }
     
@@ -802,6 +1089,11 @@ function saveTransaction(type) {
         notes: notes,
         createdAt: new Date().toISOString()
     };
+    
+    // 生成臨時ID
+    if (!transaction.id) {
+        transaction.id = 'trans_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    }
     
     // 檢查是否為編輯模式
     const editTransactionId = form.getAttribute('data-edit-id');
@@ -828,9 +1120,13 @@ function saveTransaction(type) {
     // 更新UI
     updateTransactionsUI();
     updateAccountsUI();
+    updateBudgetUI();
+    updateCategoryBudgetsUI();
+    updateCharts();
+    updateFinancialHealth();
     
     // 如果用戶已登入，則同步到Firebase
-    if (appState.user && document.getElementById('autoSync').checked) {
+    if (appState.user && document.getElementById('autoSync') && document.getElementById('autoSync').checked) {
         syncData();
     }
     
@@ -841,7 +1137,7 @@ function saveTransaction(type) {
     document.getElementById(`${type}Date`).value = formatDate(new Date());
     
     // 顯示成功消息
-    showToast(editTransactionId ? '交易已更新' : '交易已記錄');
+    showToast(editTransactionId ? '交易已更新' : '交易已記錄', 'success');
 }
 
 // 保存轉賬
@@ -1874,7 +2170,8 @@ function clearAllData() {
 }
 
 // 顯示通知
-function showToast(message) {
+// 增強Toast通知，支持不同類型和自定義持續時間
+function showToast(message, type = 'info', duration = 3000) {
     // 檢查是否已存在toast
     let toast = document.querySelector('.toast');
     
@@ -1885,14 +2182,49 @@ function showToast(message) {
         document.body.appendChild(toast);
     }
     
+    // 清除可能的舊類別
+    toast.classList.remove('info', 'success', 'warning', 'error');
+    
+    // 添加類型類別
+    toast.classList.add(type);
+    
     // 設置消息
     toast.textContent = message;
     toast.classList.add('show');
     
+    // 清除任何現有的超時
+    if (toast.timeoutId) {
+        clearTimeout(toast.timeoutId);
+    }
+    
     // 定時隱藏
-    setTimeout(() => {
+    toast.timeoutId = setTimeout(() => {
         toast.classList.remove('show');
-    }, 3000);
+    }, duration);
+}
+
+// 加載默認類別
+function loadDefaultCategories() {
+    // 默認收入類別
+    appState.categories.income = [
+        { id: 'inc_salary', name: '薪資收入', icon: 'fa-money-bill', type: 'income' },
+        { id: 'inc_bonus', name: '獎金', icon: 'fa-gift', type: 'income' },
+        { id: 'inc_investment', name: '投資收益', icon: 'fa-chart-line', type: 'income' },
+        { id: 'inc_other', name: '其他收入', icon: 'fa-plus-circle', type: 'income' }
+    ];
+    
+    // 默認支出類別
+    appState.categories.expense = [
+        { id: 'exp_food', name: '餐飲', icon: 'fa-utensils', type: 'expense' },
+        { id: 'exp_transport', name: '交通', icon: 'fa-bus', type: 'expense' },
+        { id: 'exp_shopping', name: '購物', icon: 'fa-shopping-bag', type: 'expense' },
+        { id: 'exp_housing', name: '住宿', icon: 'fa-home', type: 'expense' },
+        { id: 'exp_utilities', name: '水電', icon: 'fa-bolt', type: 'expense' },
+        { id: 'exp_entertainment', name: '娛樂', icon: 'fa-film', type: 'expense' },
+        { id: 'exp_health', name: '醫療健康', icon: 'fa-heartbeat', type: 'expense' },
+        { id: 'exp_education', name: '教育', icon: 'fa-graduation-cap', type: 'expense' },
+        { id: 'exp_other', name: '其他支出', icon: 'fa-minus-circle', type: 'expense' }
+    ];
 }
 
 // 日期格式化為YYYY-MM-DD
