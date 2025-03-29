@@ -373,7 +373,7 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="categoryBudgetSelect">選擇類別</label>
-                                <select id="categoryBudgetSelect" class="form-control">
+                                <select id="categoryBudgetSelect" data-edit-id="">
                                     <option value="" disabled selected>選擇類別</option>
                                 </select>
                             </div>
@@ -538,6 +538,7 @@
                 <span class="close-button">&times;</span>
             </div>
             <div class="modal-body">
+                <input type="hidden" id="editAccountId" value="">
                 <div class="form-group">
                     <label for="accountName">戶口名稱</label>
                     <input type="text" id="accountName" class="form-control">
@@ -612,7 +613,7 @@
                     <label for="categoryOrder">排序 (數字越小優先顯示)</label>
                     <input type="number" id="categoryOrder" class="form-control" min="0" step="1" value="0">
                 </div>
-                <input type="hidden" id="categoryType" value="income">
+                <input type="hidden" id="categoryType" value="income" data-edit-id="">
             </div>
             <div class="modal-footer">
                 <button id="saveCategoryButton" class="btn btn-primary">保存</button>
