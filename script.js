@@ -168,6 +168,14 @@ function setupEventListeners() {
     const incomeCategoryListView = document.getElementById('incomeCategoryListView');
     const expenseCategoryCardView = document.getElementById('expenseCategoryCardView');
     const expenseCategoryListView = document.getElementById('expenseCategoryListView');
+
+    const mobileSettingsButton = document.getElementById('mobileSettingsButton');
+    if (mobileSettingsButton) {
+        mobileSettingsButton.addEventListener('click', function() {
+            loadSettingsToForm();
+            openModal('settingsModal');
+        });
+    }
     
     // 所有模態框的關閉按鈕
     document.querySelectorAll('.close-button, .modal-cancel').forEach(button => {
