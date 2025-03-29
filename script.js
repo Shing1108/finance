@@ -6771,3 +6771,4 @@ function formatDate(dateString) {
         return dateString;
     }
 }
+}
