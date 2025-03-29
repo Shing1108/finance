@@ -1014,3 +1014,47 @@ input:checked + .slider:before {
 .font-size-large {
     font-size: 1.125rem;
 }
+
+/* 匯率管理相關樣式 */
+.currency-list, .exchange-rates-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.currency-item, .exchange-rate-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.currency-info, .rate-pair {
+    display: flex;
+    flex-direction: column;
+}
+
+.currency-code {
+    font-weight: bold;
+}
+
+.currency-name {
+    font-size: var(--font-size-small);
+    color: var(--text-light);
+}
+
+.currency-actions, .rate-actions {
+    display: flex;
+}
+
+.rate-input {
+    width: 100px;
+    text-align: right;
+}
+
+.rate-value {
+    font-weight: bold;
+}
