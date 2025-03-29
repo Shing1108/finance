@@ -566,12 +566,17 @@ a:hover {
     gap: var(--spacing-m);
 }
 
-.accounts-list.card-view {
-    flex-direction: row;
+/* 戶口和類別列表視圖樣式 */
+.accounts-list.card-view, .categories-list.card-view {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-m);
 }
 
-.accounts-list.list-view {
+.accounts-list.list-view, .categories-list.list-view {
+    display: flex;
     flex-direction: column;
+    gap: var(--spacing-s);
 }
 
 .account-card {
@@ -621,11 +626,36 @@ a:hover {
     gap: var(--spacing-s);
 }
 
-.account-list-item {
+/* 確保列表視圖中項目正確顯示 */
+.account-list-item, .category-list-item {
+    width: 100%;
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    padding: var(--spacing-m);
     display: flex;
     align-items: center;
-    padding: var(--spacing-m);
-    border-bottom: 1px solid var(--border-color);
+    justify-content: space-between;
+    margin-bottom: var(--spacing-s);
+}
+
+/* 確保卡片視圖下的卡片寬度正確 */
+.accounts-list.card-view .account-card {
+    width: calc(50% - var(--spacing-m));
+}
+
+.categories-list.card-view .category-card {
+    width: calc(33.333% - var(--spacing-m));
+}
+
+@media (max-width: 768px) {
+    .accounts-list.card-view .account-card {
+        width: 100%;
+    }
+    
+    .categories-list.card-view .category-card {
+        width: calc(50% - var(--spacing-m));
+    }
 }
 
 .account-list-item:last-child {
