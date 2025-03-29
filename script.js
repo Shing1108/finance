@@ -3908,18 +3908,23 @@ async function initFirebase() {
             return;
         }
         
-        // 如果已經初始化，則跳過
-        if (firebase && firebase.apps.length > 0) {
+        // 檢查Firebase SDK是否已正確加載
+        if (typeof firebase === 'undefined') {
+            throw new Error("Firebase SDK未加載，請確保在HTML中正確引入Firebase SDK");
+        }
+        
+        // 檢查是否已初始化
+        if (firebase.apps && firebase.apps.length > 0) {
             console.log("Firebase已初始化");
             return;
         }
         
-        // Firebase配置（這裡使用示例配置，實際應用中應使用自己的配置）
+        // Firebase配置
         const firebaseConfig = {
             apiKey: "AIzaSyAaqadmDSgQ-huvY7uNNrPtjFSOl93jVEE",
             authDomain: "finance-d8f9e.firebaseapp.com",
             projectId: "finance-d8f9e",
-            storageBucket: "finance-d8f9e.firebasestorage.app",
+            storageBucket: "finance-d8f9e.firebaseapp.com", // 修正為一般格式的域名
             messagingSenderId: "122645255279",
             appId: "1:122645255279:web:25d577b6365c819ffbe99a",
         };
@@ -3930,13 +3935,13 @@ async function initFirebase() {
         // 初始化Firestore
         db = firebase.firestore();
         
-        // 檢查登錄狀態
-        firebase.auth().onAuthStateChanged(function(user) {
-            if (user) {
+        // 設置身份驗證狀態監聽器
+        firebase.auth().onAuthStateChanged(function(userData) {
+            if (userData) {
                 // 用戶已登入
                 isLoggedIn = true;
-                user = user;
-                console.log("用戶已登入:", user.email);
+                user = userData; // 注意這裡應該是userData而不是user
+                console.log("用戶已登入:", userData.email);
                 
                 // 更新UI
                 updateSyncStatus();
