@@ -2233,38 +2233,346 @@ function updateFinancialHealthIndex() {
     console.log("更新財務健康指數");
     
     try {
-        // 模擬計算中，實際應用中可能會有更複雜的評分系統
-        setTimeout(() => {
-            const healthIndexElement = document.getElementById('financialHealthIndex');
-            const financialAdviceElement = document.getElementById('financialAdvice');
+        const healthIndexElement = document.getElementById('financialHealthIndex');
+        const financialAdviceElement = document.getElementById('financialAdvice');
+        
+        if (!healthIndexElement || !financialAdviceElement) {
+            console.error("找不到財務健康指數元素");
+            return;
+        }
+        
+        // 檢查是否有足夠數據計算
+        if (appState.transactions.length === 0) {
+            healthIndexElement.textContent = 'N/A';
+            financialAdviceElement.textContent = '需要記錄交易以計算財務健康指數。開始記錄您的收入和支出，獲取個性化財務建議。';
+            return;
+        }
+        
+        // 計算最近3個月的數據
+        const now = new Date();
+        const threeMonthsAgo = new Date(now);
+        threeMonthsAgo.setMonth(now.getMonth() - 3);
+        
+        const startDate = threeMonthsAgo.toISOString().split('T')[0];
+        const endDate = now.toISOString().split('T')[0];
+        
+        // 獲取最近3個月的交易
+        const recentTransactions = appState.transactions.filter(t => 
+            t.date >= startDate && t.date <= endDate
+        );
+        
+        if (recentTransactions.length === 0) {
+            healthIndexElement.textContent = 'N/A';
+            financialAdviceElement.textContent = '需要最近3個月的交易記錄來計算準確的財務健康指數。繼續記錄您的收入和支出。';
+            return;
+        }
+        
+        // 計算總收入和支出
+        let totalIncome = 0;
+        let totalExpense = 0;
+        
+        recentTransactions.forEach(transaction => {
+            const account = appState.accounts.find(a => a.id === transaction.accountId);
             
-            if (!healthIndexElement || !financialAdviceElement) {
-                return;
+            if (!account) return;
+            
+            let amount = transaction.amount;
+            
+            // 匯率轉換
+            if (account.currency !== defaultCurrency) {
+                const rate = getExchangeRate(account.currency, defaultCurrency);
+                amount = amount * rate;
             }
             
-            // 示例：隨機計算一個財務健康指數(60-95)
-            const healthIndex = Math.floor(Math.random() * 36) + 60;
-            
-            healthIndexElement.textContent = healthIndex;
-            
-            // 根據健康指數提供不同的建議
-            let advice = '';
-            
-            if (healthIndex >= 90) {
-                advice = '你的財務狀況非常健康！繼續保持良好的理財習慣，可考慮增加投資比例，獲取更高的資產回報。';
-            } else if (healthIndex >= 80) {
-                advice = '你的財務狀況良好。建議檢視每月支出，尋找更多節省的空間，並確保有足夠的緊急資金。';
-            } else if (healthIndex >= 70) {
-                advice = '你的財務狀況尚可。建議關注預算管理，減少非必要支出，並嘗試增加收入來源。';
-            } else {
-                advice = '你的財務狀況需要改善。建議制定嚴格的預算計劃，積極償還債務，並開始建立緊急資金。';
+            if (transaction.type === 'income' && transaction.categoryId !== 'transfer_in') {
+                totalIncome += amount;
+            } else if (transaction.type === 'expense' && transaction.categoryId !== 'transfer_out') {
+                totalExpense += amount;
             }
-            
-            financialAdviceElement.textContent = advice;
-        }, 1000);
+        });
+        
+        // 各項指標計算
+        let healthIndex = 0;
+        const savingsScore = calculateSavingsScore(totalIncome, totalExpense);
+        const budgetScore = calculateBudgetScore();
+        const diversityScore = calculateDiversityScore();
+        const consistencyScore = calculateConsistencyScore();
+        
+        // 權重計算最終指數
+        healthIndex = Math.round(
+            savingsScore * 0.4 + 
+            budgetScore * 0.25 + 
+            diversityScore * 0.15 + 
+            consistencyScore * 0.2
+        );
+        
+        // 確保指數在0-100範圍內
+        healthIndex = Math.max(0, Math.min(100, healthIndex));
+        
+        // 顯示指數
+        healthIndexElement.textContent = healthIndex;
+        
+        // 根據健康指數提供不同的建議
+        let advice;
+        
+        if (healthIndex >= 90) {
+            advice = '您的財務狀況非常健康！繼續保持良好的理財習慣，可考慮增加投資比例，獲取更高的資產回報。';
+        } else if (healthIndex >= 80) {
+            advice = '您的財務狀況良好。建議檢視每月支出，尋找更多節省的空間，並確保有足夠的緊急資金。';
+        } else if (healthIndex >= 70) {
+            advice = '您的財務狀況尚可。建議關注預算管理，減少非必要支出，並嘗試增加收入來源。';
+        } else if (healthIndex >= 60) {
+            advice = '您的財務狀況需要改善。建議制定嚴格的預算計劃，減少非必要支出，並開始建立緊急資金。';
+        } else if (healthIndex >= 40) {
+            advice = '您的財務狀況值得關注。建議審視所有支出，削減非必要開支，優先償還高利息債務，並制定緊急儲蓄計劃。';
+        } else {
+            advice = '您的財務狀況需要立即關注。建議尋求專業財務顧問的幫助，制定債務管理計劃，大幅削減開支，並積極尋找增加收入的方式。';
+        }
+        
+        // 添加具體建議
+        if (savingsScore < 60) {
+            advice += ' 您的儲蓄率偏低，建議將收入的20-30%用於儲蓄。';
+        }
+        
+        if (budgetScore < 60) {
+            advice += ' 您可能超支或沒有合理的預算計劃，設定適當的預算目標能更好地控制支出。';
+        }
+        
+        if (diversityScore < 60) {
+            advice += ' 您的收入或支出類別較為單一，可考慮多元化收入來源和平衡各類支出。';
+        }
+        
+        if (consistencyScore < 60) {
+            advice += ' 您的財務行為不夠一致或規律，養成定期記賬和管理財務的習慣很重要。';
+        }
+        
+        financialAdviceElement.textContent = advice;
     } catch (error) {
         console.error("更新財務健康指數時發生錯誤:", error);
-        // 這個功能不是核心功能，錯誤不需要拋出
+        // 顯示友好的錯誤信息，而不是永久的"載入中..."
+        const healthIndexElement = document.getElementById('financialHealthIndex');
+        const financialAdviceElement = document.getElementById('financialAdvice');
+        
+        if (healthIndexElement) healthIndexElement.textContent = '--';
+        if (financialAdviceElement) financialAdviceElement.textContent = '計算財務健康指數時遇到問題，請稍後再試。';
+    }
+}
+
+// 計算儲蓄得分 (0-100)
+function calculateSavingsScore(income, expense) {
+    if (income <= 0) return 0;
+    
+    const savingsRate = (income - expense) / income * 100;
+    
+    // 儲蓄率20%以上得滿分，0%或負數得0分，線性計算中間值
+    if (savingsRate >= 20) return 100;
+    if (savingsRate <= 0) return 0;
+    
+    return savingsRate * 5; // 0-20% 線性映射到 0-100分
+}
+
+// 計算預算得分 (0-100)
+function calculateBudgetScore() {
+    // 如果沒有設置預算，給予較低分數
+    if (!appState.budgets.total || appState.budgets.total <= 0) {
+        return 40;
+    }
+    
+    // 獲取當前預算週期內的支出
+    const today = new Date();
+    const resetCycle = appState.budgets.resetCycle || 'monthly';
+    const resetDay = parseInt(appState.budgets.resetDay || 1, 10);
+    
+    let startDate;
+    
+    if (resetCycle === 'daily') {
+        startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    } else if (resetCycle === 'weekly') {
+        const day = today.getDay(); // 0 = 週日, 1 = 週一, ...
+        const diff = day === 0 ? 6 : day - 1; // 調整為週一作為一週的開始
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - diff);
+    } else { // monthly
+        const currentDay = today.getDate();
+        
+        if (currentDay >= resetDay) {
+            // 本月的重設日
+            startDate = new Date(today.getFullYear(), today.getMonth(), resetDay);
+        } else {
+            // 上月的重設日
+            startDate = new Date(today.getFullYear(), today.getMonth() - 1, resetDay);
+        }
+    }
+    
+    // 格式化日期
+    const startDateString = startDate.toISOString().split('T')[0];
+    const todayString = today.toISOString().split('T')[0];
+    
+    // 查找週期內的支出
+    const cycleExpenses = appState.transactions.filter(t => 
+        t.type === 'expense' && 
+        t.categoryId !== 'transfer_out' &&
+        t.date >= startDateString && 
+        t.date <= todayString
+    );
+    
+    // 計算已使用預算百分比
+    let totalSpent = 0;
+    
+    cycleExpenses.forEach(transaction => {
+        const account = appState.accounts.find(a => a.id === transaction.accountId);
+        
+        if (!account) return;
+        
+        let amount = transaction.amount;
+        
+        // 匯率轉換
+        if (account.currency !== defaultCurrency) {
+            const rate = getExchangeRate(account.currency, defaultCurrency);
+            amount = amount * rate;
+        }
+        
+        totalSpent += amount;
+    });
+    
+    // 計算預算使用率
+    const budgetUsageRate = (totalSpent / appState.budgets.total) * 100;
+    
+    // 判斷預算周期已經過去的比例
+    let cycleElapsedRate;
+    
+    if (resetCycle === 'daily') {
+        // 這天已過去的小時百分比
+        const hours = today.getHours();
+        cycleElapsedRate = (hours / 24) * 100;
+    } else if (resetCycle === 'weekly') {
+        // 這週已過去的天數百分比
+        const daysPassed = today.getDay() === 0 ? 6 : today.getDay() - 1;
+        cycleElapsedRate = (daysPassed / 7) * 100;
+    } else { // monthly
+        // 這月已過去的天數百分比
+        const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        let daysPassed;
+        
+        if (today.getDate() >= resetDay) {
+            daysPassed = today.getDate() - resetDay;
+        } else {
+            const daysInPrevMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+            daysPassed = (daysInPrevMonth - resetDay) + today.getDate();
+        }
+        
+        const totalDays = resetCycle === 'monthly' ? daysInMonth : 30;
+        cycleElapsedRate = (daysPassed / totalDays) * 100;
+    }
+    
+    // 如果預算使用率低於周期已過去的比例，表示控制良好
+    if (budgetUsageRate <= cycleElapsedRate) {
+        // 根據差距給分，最高100分
+        const difference = cycleElapsedRate - budgetUsageRate;
+        return Math.min(100, 80 + difference);
+    } else {
+        // 超支了，根據超支程度扣分
+        const overspentRate = budgetUsageRate - cycleElapsedRate;
+        return Math.max(0, 80 - overspentRate);
+    }
+}
+
+// 計算多樣性得分 (0-100)
+function calculateDiversityScore() {
+    // 檢查收入和支出類別的多樣性
+    const incomeCategories = new Set();
+    const expenseCategories = new Set();
+    
+    // 獲取最近3個月的交易
+    const now = new Date();
+    const threeMonthsAgo = new Date(now);
+    threeMonthsAgo.setMonth(now.getMonth() - 3);
+    
+    const startDate = threeMonthsAgo.toISOString().split('T')[0];
+    const endDate = now.toISOString().split('T')[0];
+    
+    const recentTransactions = appState.transactions.filter(t => 
+        t.date >= startDate && t.date <= endDate &&
+        t.categoryId !== 'transfer_in' && 
+        t.categoryId !== 'transfer_out'
+    );
+    
+    recentTransactions.forEach(transaction => {
+        if (transaction.type === 'income') {
+            incomeCategories.add(transaction.categoryId);
+        } else {
+            expenseCategories.add(transaction.categoryId);
+        }
+    });
+    
+    // 收入來源多樣性 (最高50分)
+    let incomeScore = 0;
+    if (incomeCategories.size >= 3) {
+        incomeScore = 50;
+    } else if (incomeCategories.size === 2) {
+        incomeScore = 40;
+    } else if (incomeCategories.size === 1) {
+        incomeScore = 25;
+    }
+    
+    // 支出類別多樣性 (最高50分)
+    let expenseScore = 0;
+    if (expenseCategories.size >= 5) {
+        expenseScore = 50;
+    } else if (expenseCategories.size >= 3) {
+        expenseScore = 40;
+    } else if (expenseCategories.size >= 1) {
+        expenseScore = 25;
+    }
+    
+    return incomeScore + expenseScore;
+}
+
+// 計算一致性得分 (0-100)
+function calculateConsistencyScore() {
+    // 檢查用戶記賬的規律性
+    const transactions = appState.transactions;
+    
+    if (transactions.length < 5) {
+        return 50; // 交易太少，給予中等分數
+    }
+    
+    // 獲取不同日期的記錄次數
+    const recordDates = new Set();
+    transactions.forEach(t => {
+        recordDates.add(t.date);
+    });
+    
+    // 計算記賬頻率
+    const firstTransaction = new Date(transactions.sort((a, b) => a.date.localeCompare(b.date))[0].date);
+    const lastTransaction = new Date();
+    
+    const totalDays = Math.ceil((lastTransaction - firstTransaction) / (1000 * 60 * 60 * 24));
+    
+    if (totalDays <= 0) {
+        return 80; // 所有交易都在同一天，給予較高分數
+    }
+    
+    const recordFrequency = recordDates.size / totalDays;
+    
+    // 一致性得分計算
+    // 理想情況: 每天都有記錄(recordFrequency=1) 得100分
+    // 每週記錄1-2次(recordFrequency≈0.2) 得70分
+    // 每月記錄1-2次(recordFrequency≈0.05) 得40分
+    // 低於每月一次 得分下降
+    
+    if (recordFrequency >= 0.7) {
+        return 100;
+    } else if (recordFrequency >= 0.3) {
+        return 90;
+    } else if (recordFrequency >= 0.15) {
+        return 80;
+    } else if (recordFrequency >= 0.07) {
+        return 60;
+    } else if (recordFrequency >= 0.03) {
+        return 40;
+    } else {
+        return 20;
     }
 }
 
