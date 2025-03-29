@@ -539,8 +539,56 @@ function resetCategoryForm() {
     document.getElementById('categoryColor').value = '#4CAF50';
     document.getElementById('categoryOrder').value = '0';
     
+    // 清除編輯ID
+    document.getElementById('categoryType').dataset.editId = '';
+    
+    // 恢復模態框標題和按鈕
+    const modalTitle = document.querySelector('#addCategoryModal .modal-title');
+    if (modalTitle) {
+        modalTitle.textContent = '新增類別';
+    }
+    
+    const saveButton = document.getElementById('saveCategoryButton');
+    if (saveButton) {
+        saveButton.textContent = '保存';
+    }
+    
     // 隱藏圖標網格
     document.getElementById('iconGrid').style.display = 'none';
+}
+
+function closeCurrentModal() {
+    console.log("關閉當前模態框");
+    
+    document.querySelectorAll('.modal.active').forEach(modal => {
+        modal.classList.remove('active');
+    });
+    
+    // 如果是賬戶或類別模態框，重置編輯模式
+    if (document.getElementById('addAccountModal').classList.contains('active')) {
+        resetAccountForm();
+        
+        // 恢復模態框標題和按鈕
+        const modalTitle = document.querySelector('#addAccountModal .modal-title');
+        if (modalTitle) {
+            modalTitle.textContent = '新增戶口';
+        }
+        
+        const saveButton = document.getElementById('saveAccountButton');
+        if (saveButton) {
+            saveButton.textContent = '保存';
+        }
+        
+        // 清除編輯ID
+        const editAccountId = document.getElementById('editAccountId');
+        if (editAccountId) {
+            editAccountId.value = '';
+        }
+    }
+    
+    if (document.getElementById('addCategoryModal').classList.contains('active')) {
+        resetCategoryForm();
+    }
 }
 
 // 保存賬戶
@@ -565,37 +613,86 @@ function saveAccount() {
             return;
         }
         
-        // 創建賬戶對象
-        const newAccount = {
-            id: generateId(),
-            name: accountName,
-            type: accountType,
-            balance: initialBalance,
-            currency: accountCurrency,
-            note: accountNote,
-            createdAt: new Date().toISOString()
-        };
+        // 檢查是否是編輯模式
+        const editAccountId = document.getElementById('editAccountId')?.value;
         
-        // 添加到賬戶數組
-        appState.accounts.push(newAccount);
-        
-        // 更新UI
-        updateAccountsUI();
-        updateAllDropdowns();
-        
-        // 保存到本地存儲
-        saveToLocalStorage();
-        
-        // 執行同步（如果啟用）
-        if (enableFirebase && isLoggedIn) {
-            syncToFirebase();
+        if (editAccountId) {
+            // 編輯現有賬戶
+            const accountIndex = appState.accounts.findIndex(a => a.id === editAccountId);
+            
+            if (accountIndex === -1) {
+                showToast('找不到賬戶', 'error');
+                return;
+            }
+            
+            // 獲取原始賬戶
+            const originalAccount = appState.accounts[accountIndex];
+            
+            // 創建更新後的賬戶對象
+            const updatedAccount = {
+                ...originalAccount, // 保留原始字段如createdAt
+                id: editAccountId,
+                name: accountName,
+                type: accountType,
+                balance: initialBalance,
+                currency: accountCurrency,
+                note: accountNote,
+                updatedAt: new Date().toISOString()
+            };
+            
+            // 更新賬戶數組
+            appState.accounts[accountIndex] = updatedAccount;
+            
+            // 更新UI
+            updateAccountsUI();
+            updateAllDropdowns();
+            
+            // 保存到本地存儲
+            saveToLocalStorage();
+            
+            // 執行同步（如果啟用）
+            if (enableFirebase && isLoggedIn) {
+                syncToFirebase();
+            }
+            
+            // 關閉模態框
+            closeCurrentModal();
+            
+            // 顯示成功消息
+            showToast(`已更新帳戶: ${accountName}`, 'success');
+        } else {
+            // 創建新賬戶
+            const newAccount = {
+                id: generateId(),
+                name: accountName,
+                type: accountType,
+                balance: initialBalance,
+                currency: accountCurrency,
+                note: accountNote,
+                createdAt: new Date().toISOString()
+            };
+            
+            // 添加到賬戶數組
+            appState.accounts.push(newAccount);
+            
+            // 更新UI
+            updateAccountsUI();
+            updateAllDropdowns();
+            
+            // 保存到本地存儲
+            saveToLocalStorage();
+            
+            // 執行同步（如果啟用）
+            if (enableFirebase && isLoggedIn) {
+                syncToFirebase();
+            }
+            
+            // 關閉模態框
+            closeCurrentModal();
+            
+            // 顯示成功消息
+            showToast(`已新增帳戶: ${accountName}`, 'success');
         }
-        
-        // 關閉模態框
-        closeCurrentModal();
-        
-        // 顯示成功消息
-        showToast(`已新增帳戶: ${accountName}`, 'success');
     } catch (error) {
         console.error("保存賬戶時發生錯誤:", error);
         showToast('保存賬戶失敗: ' + error.message, 'error');
@@ -613,46 +710,109 @@ function saveCategory() {
         const categoryOrder = parseInt(document.getElementById('categoryOrder').value) || 0;
         const categoryType = document.getElementById('categoryType').value;
         
+        // 檢查是否是編輯模式
+        const editCategoryId = document.getElementById('categoryType').dataset.editId;
+        
         // 驗證
         if (!categoryName) {
             showToast('請輸入類別名稱', 'error');
             return;
         }
         
-        // 創建類別對象
-        const newCategory = {
-            id: generateId(),
-            name: categoryName,
-            icon: categoryIcon,
-            color: categoryColor,
-            order: categoryOrder,
-            createdAt: new Date().toISOString()
-        };
-        
-        // 添加到相應的類別數組
-        if (categoryType === 'income') {
-            appState.categories.income.push(newCategory);
+        if (editCategoryId) {
+            // 編輯現有類別
+            const categoryArray = categoryType === 'income' ? appState.categories.income : appState.categories.expense;
+            const categoryIndex = categoryArray.findIndex(c => c.id === editCategoryId);
+            
+            if (categoryIndex === -1) {
+                showToast('找不到類別', 'error');
+                return;
+            }
+            
+            // 獲取原始類別以保留某些字段
+            const originalCategory = categoryArray[categoryIndex];
+            
+            // 創建更新後的類別對象
+            const updatedCategory = {
+                ...originalCategory,
+                name: categoryName,
+                icon: categoryIcon,
+                color: categoryColor,
+                order: categoryOrder,
+                updatedAt: new Date().toISOString()
+            };
+            
+            // 更新類別數組
+            categoryArray[categoryIndex] = updatedCategory;
+            
+            // 更新UI
+            updateCategoriesUI();
+            updateAllDropdowns();
+            
+            // 保存到本地存儲
+            saveToLocalStorage();
+            
+            // 執行同步（如果啟用）
+            if (enableFirebase && isLoggedIn) {
+                syncToFirebase();
+            }
+            
+            // 關閉模態框
+            closeCurrentModal();
+            
+            // 顯示成功消息
+            showToast(`已更新${categoryType === 'income' ? '收入' : '支出'}類別: ${categoryName}`, 'success');
+            
+            // 重置編輯模式
+            document.getElementById('categoryType').dataset.editId = '';
+            
+            // 恢復模態框標題和按鈕
+            const modalTitle = document.querySelector('#addCategoryModal .modal-title');
+            if (modalTitle) {
+                modalTitle.textContent = '新增類別';
+            }
+            
+            const saveButton = document.getElementById('saveCategoryButton');
+            if (saveButton) {
+                saveButton.textContent = '保存';
+            }
         } else {
-            appState.categories.expense.push(newCategory);
+            // 創建新類別
+            // 創建類別對象
+            const newCategory = {
+                id: generateId(),
+                name: categoryName,
+                icon: categoryIcon,
+                color: categoryColor,
+                order: categoryOrder,
+                createdAt: new Date().toISOString()
+            };
+            
+            // 添加到相應的類別數組
+            if (categoryType === 'income') {
+                appState.categories.income.push(newCategory);
+            } else {
+                appState.categories.expense.push(newCategory);
+            }
+            
+            // 更新UI
+            updateCategoriesUI();
+            updateAllDropdowns();
+            
+            // 保存到本地存儲
+            saveToLocalStorage();
+            
+            // 執行同步（如果啟用）
+            if (enableFirebase && isLoggedIn) {
+                syncToFirebase();
+            }
+            
+            // 關閉模態框
+            closeCurrentModal();
+            
+            // 顯示成功消息
+            showToast(`已新增${categoryType === 'income' ? '收入' : '支出'}類別: ${categoryName}`, 'success');
         }
-        
-        // 更新UI
-        updateCategoriesUI();
-        updateAllDropdowns();
-        
-        // 保存到本地存儲
-        saveToLocalStorage();
-        
-        // 執行同步（如果啟用）
-        if (enableFirebase && isLoggedIn) {
-            syncToFirebase();
-        }
-        
-        // 關閉模態框
-        closeCurrentModal();
-        
-        // 顯示成功消息
-        showToast(`已新增${categoryType === 'income' ? '收入' : '支出'}類別: ${categoryName}`, 'success');
     } catch (error) {
         console.error("保存類別時發生錯誤:", error);
         showToast('保存類別失敗: ' + error.message, 'error');
@@ -954,14 +1114,18 @@ function saveBudgetSettings() {
 
 // 添加類別預算
 function addCategoryBudget() {
-    console.log("添加類別預算");
+    console.log("添加/更新類別預算");
     
     try {
-        const categoryId = document.getElementById('categoryBudgetSelect').value;
+        const categoryBudgetSelect = document.getElementById('categoryBudgetSelect');
+        const categoryId = categoryBudgetSelect.value;
         const budgetAmount = parseFloat(document.getElementById('categoryBudgetAmount').value);
         
-        // 驗證
-        if (!categoryId) {
+        // 檢查是否是編輯模式
+        const editBudgetId = categoryBudgetSelect.dataset.editId;
+        
+        // 基本驗證
+        if (!editBudgetId && !categoryId) {
             showToast('請選擇類別', 'error');
             return;
         }
@@ -971,46 +1135,96 @@ function addCategoryBudget() {
             return;
         }
         
-        // 檢查類別是否已有預算
-        const existingIndex = appState.budgets.categories.findIndex(b => b.categoryId === categoryId);
-        
-        if (existingIndex !== -1) {
-            // 更新現有預算
-            appState.budgets.categories[existingIndex].amount = budgetAmount;
+        if (editBudgetId) {
+            // 編輯現有預算
+            const budgetIndex = appState.budgets.categories.findIndex(b => b.id === editBudgetId);
+            
+            if (budgetIndex === -1) {
+                showToast('找不到預算', 'error');
+                return;
+            }
+            
+            // 獲取實際使用的類別ID（可能是從禁用的下拉框中獲取）
+            const actualCategoryId = appState.budgets.categories[budgetIndex].categoryId;
+            
+            // 更新預算
+            appState.budgets.categories[budgetIndex].amount = budgetAmount;
+            
+            // 如果啟用自動計算，更新總預算
+            if (appState.budgets.autoCalculate) {
+                appState.budgets.total = calculateTotalCategoryBudget();
+            }
+            
+            // 更新UI
+            updateBudgetsUI();
+            updateDashboardUI();
+            
+            // 保存到本地存儲
+            saveToLocalStorage();
+            
+            // 執行同步（如果啟用）
+            if (enableFirebase && isLoggedIn) {
+                syncToFirebase();
+            }
+            
+            // 清空表單並重置編輯模式
+            document.getElementById('categoryBudgetAmount').value = '';
+            categoryBudgetSelect.disabled = false;
+            categoryBudgetSelect.dataset.editId = '';
+            
+            // 恢復按鈕文本
+            const addButton = document.getElementById('addCategoryBudgetButton');
+            if (addButton) {
+                addButton.textContent = '添加';
+            }
+            
+            // 顯示成功消息
+            const category = appState.categories.expense.find(c => c.id === actualCategoryId);
+            const categoryName = category ? category.name : '未知類別';
+            showToast(`已更新${categoryName}預算`, 'success');
         } else {
             // 添加新預算
-            appState.budgets.categories.push({
-                id: generateId(),
-                categoryId: categoryId,
-                amount: budgetAmount
-            });
+            // 檢查類別是否已有預算
+            const existingIndex = appState.budgets.categories.findIndex(b => b.categoryId === categoryId);
+            
+            if (existingIndex !== -1) {
+                // 更新現有預算
+                appState.budgets.categories[existingIndex].amount = budgetAmount;
+            } else {
+                // 添加新預算
+                appState.budgets.categories.push({
+                    id: generateId(),
+                    categoryId: categoryId,
+                    amount: budgetAmount
+                });
+            }
+            
+            // 如果啟用自動計算，更新總預算
+            if (appState.budgets.autoCalculate) {
+                appState.budgets.total = calculateTotalCategoryBudget();
+            }
+            
+            // 更新UI
+            updateBudgetsUI();
+            updateDashboardUI();
+            
+            // 清空表單
+            document.getElementById('categoryBudgetAmount').value = '';
+            
+            // 保存到本地存儲
+            saveToLocalStorage();
+            
+            // 執行同步（如果啟用）
+            if (enableFirebase && isLoggedIn) {
+                syncToFirebase();
+            }
+            
+            // 顯示成功消息
+            showToast('類別預算已添加', 'success');
         }
-        
-        // 如果啟用自動計算，更新總預算
-        if (appState.budgets.autoCalculate) {
-            appState.budgets.total = calculateTotalCategoryBudget();
-        }
-        
-        // 更新UI
-        updateBudgetsUI();
-        updateDashboardUI();
-        
-        // 清空表單
-        document.getElementById('categoryBudgetAmount').value = '';
-        
-        // 保存到本地存儲
-        saveToLocalStorage();
-        
-        // 執行同步（如果啟用）
-        if (enableFirebase && isLoggedIn) {
-            syncToFirebase();
-        }
-        
-        // 顯示成功消息
-        showToast('類別預算已添加', 'success');
     } catch (error) {
-        console.error("添加類別預算時發生錯誤:", error);
-        showToast('添加類別預算失敗: ' + error.message, 'error');
+        console.error("添加/更新類別預算時發生錯誤:", error);
+        showToast('添加/更新類別預算失敗: ' + error.message, 'error');
     }
 }
 
@@ -1241,9 +1455,327 @@ function updateTransactionsList(filters = {}) {
 
 // 編輯交易
 function editTransaction(transactionId) {
-    // 具體實現待完成，這裡只是一個示例
     console.log(`編輯交易: ${transactionId}`);
-    showToast('編輯交易功能開發中', 'info');
+    
+    try {
+        // 找到要編輯的交易
+        const transaction = appState.transactions.find(t => t.id === transactionId);
+        
+        if (!transaction) {
+            showToast('找不到交易', 'error');
+            return;
+        }
+        
+        // 創建編輯交易模態框（如果尚未存在）
+        if (!document.getElementById('editTransactionModal')) {
+            createEditTransactionModal();
+        }
+        
+        // 根據交易類型選擇表單
+        const formPrefix = transaction.type === 'income' ? 'editIncome' : 'editExpense';
+        
+        // 填充表單
+        document.getElementById(`${formPrefix}Id`).value = transaction.id;
+        document.getElementById(`${formPrefix}Account`).value = transaction.accountId;
+        document.getElementById(`${formPrefix}Category`).value = transaction.categoryId;
+        document.getElementById(`${formPrefix}Amount`).value = transaction.amount;
+        document.getElementById(`${formPrefix}Date`).value = transaction.date;
+        document.getElementById(`${formPrefix}Note`).value = transaction.note || '';
+        
+        // 顯示相應的選項卡
+        if (transaction.type === 'income') {
+            document.getElementById('editIncomeTabButton').click();
+        } else {
+            document.getElementById('editExpenseTabButton').click();
+        }
+        
+        // 打開模態框
+        openModal('editTransactionModal');
+    } catch (error) {
+        console.error("編輯交易時發生錯誤:", error);
+        showToast('編輯交易失敗: ' + error.message, 'error');
+    }
+}
+
+function createEditTransactionModal() {
+    // 創建模態框HTML
+    const modalHTML = `
+    <div id="editTransactionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>編輯交易</h3>
+                <button class="close-button">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="tabs">
+                    <div class="tab-buttons">
+                        <button id="editIncomeTabButton" class="tab-button active">收入</button>
+                        <button id="editExpenseTabButton" class="tab-button">支出</button>
+                    </div>
+                    <div class="tab-content">
+                        <div id="editIncomeTab" class="tab-pane active">
+                            <form id="editIncomeForm">
+                                <input type="hidden" id="editIncomeId">
+                                <div class="form-group">
+                                    <label for="editIncomeAccount">選擇戶口</label>
+                                    <select id="editIncomeAccount" required>
+                                        <option value="" disabled selected>選擇戶口</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editIncomeCategory">選擇類別</label>
+                                    <select id="editIncomeCategory" required>
+                                        <option value="" disabled selected>選擇類別</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editIncomeAmount">金額</label>
+                                    <input type="number" id="editIncomeAmount" min="0" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editIncomeDate">日期</label>
+                                    <input type="date" id="editIncomeDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editIncomeNote">備註 (可選)</label>
+                                    <textarea id="editIncomeNote"></textarea>
+                                </div>
+                                <button type="button" id="updateIncomeButton" class="btn btn-primary">更新</button>
+                            </form>
+                        </div>
+                        <div id="editExpenseTab" class="tab-pane">
+                            <form id="editExpenseForm">
+                                <input type="hidden" id="editExpenseId">
+                                <div class="form-group">
+                                    <label for="editExpenseAccount">選擇戶口</label>
+                                    <select id="editExpenseAccount" required>
+                                        <option value="" disabled selected>選擇戶口</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editExpenseCategory">選擇類別</label>
+                                    <select id="editExpenseCategory" required>
+                                        <option value="" disabled selected>選擇類別</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editExpenseAmount">金額</label>
+                                    <input type="number" id="editExpenseAmount" min="0" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editExpenseDate">日期</label>
+                                    <input type="date" id="editExpenseDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editExpenseNote">備註 (可選)</label>
+                                    <textarea id="editExpenseNote"></textarea>
+                                </div>
+                                <button type="button" id="updateExpenseButton" class="btn btn-primary">更新</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+    
+    // 添加到文檔
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // 設置事件監聽器
+    document.getElementById('editIncomeTabButton').addEventListener('click', function() {
+        this.classList.add('active');
+        document.getElementById('editExpenseTabButton').classList.remove('active');
+        document.getElementById('editIncomeTab').classList.add('active');
+        document.getElementById('editExpenseTab').classList.remove('active');
+    });
+    
+    document.getElementById('editExpenseTabButton').addEventListener('click', function() {
+        this.classList.add('active');
+        document.getElementById('editIncomeTabButton').classList.remove('active');
+        document.getElementById('editExpenseTab').classList.add('active');
+        document.getElementById('editIncomeTab').classList.remove('active');
+    });
+    
+    document.getElementById('updateIncomeButton').addEventListener('click', updateTransaction);
+    document.getElementById('updateExpenseButton').addEventListener('click', updateTransaction);
+    
+    // 關閉按鈕
+    document.querySelector('#editTransactionModal .close-button').addEventListener('click', closeCurrentModal);
+    
+    // 填充戶口和類別下拉菜單
+    updateEditTransactionForm();
+}
+
+function updateEditTransactionForm() {
+    // 更新戶口下拉菜單
+    const editIncomeAccount = document.getElementById('editIncomeAccount');
+    const editExpenseAccount = document.getElementById('editExpenseAccount');
+    
+    if (editIncomeAccount && editExpenseAccount) {
+        // 清空下拉菜單
+        editIncomeAccount.innerHTML = '<option value="" disabled selected>選擇戶口</option>';
+        editExpenseAccount.innerHTML = '<option value="" disabled selected>選擇戶口</option>';
+        
+        // 填充下拉菜單
+        appState.accounts.forEach(account => {
+            const incomeOption = document.createElement('option');
+            incomeOption.value = account.id;
+            incomeOption.textContent = `${account.name} (${formatCurrency(account.balance, account.currency)})`;
+            
+            const expenseOption = document.createElement('option');
+            expenseOption.value = account.id;
+            expenseOption.textContent = `${account.name} (${formatCurrency(account.balance, account.currency)})`;
+            
+            editIncomeAccount.appendChild(incomeOption);
+            editExpenseAccount.appendChild(expenseOption);
+        });
+    }
+    
+    // 更新收入類別下拉菜單
+    const editIncomeCategory = document.getElementById('editIncomeCategory');
+    if (editIncomeCategory) {
+        // 清空下拉菜單
+        editIncomeCategory.innerHTML = '<option value="" disabled selected>選擇類別</option>';
+        
+        // 排序類別
+        const sortedIncomeCategories = [...appState.categories.income].sort((a, b) => a.order - b.order);
+        
+        // 填充下拉菜單
+        sortedIncomeCategories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name;
+            editIncomeCategory.appendChild(option);
+        });
+    }
+    
+    // 更新支出類別下拉菜單
+    const editExpenseCategory = document.getElementById('editExpenseCategory');
+    if (editExpenseCategory) {
+        // 清空下拉菜單
+        editExpenseCategory.innerHTML = '<option value="" disabled selected>選擇類別</option>';
+        
+        // 排序類別
+        const sortedExpenseCategories = [...appState.categories.expense].sort((a, b) => a.order - b.order);
+        
+        // 填充下拉菜單
+        sortedExpenseCategories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name;
+            editExpenseCategory.appendChild(option);
+        });
+    }
+}
+
+function updateTransaction() {
+    console.log("更新交易");
+    
+    try {
+        // 確定當前活動的標籤
+        const isIncomeTab = document.getElementById('editIncomeTab').classList.contains('active');
+        const type = isIncomeTab ? 'income' : 'expense';
+        const formPrefix = `edit${type.charAt(0).toUpperCase() + type.slice(1)}`;
+        
+        // 獲取表單數據
+        const transactionId = document.getElementById(`${formPrefix}Id`).value;
+        const accountId = document.getElementById(`${formPrefix}Account`).value;
+        const categoryId = document.getElementById(`${formPrefix}Category`).value;
+        const amount = parseFloat(document.getElementById(`${formPrefix}Amount`).value);
+        const date = document.getElementById(`${formPrefix}Date`).value;
+        const note = document.getElementById(`${formPrefix}Note`).value.trim();
+        
+        // 驗證
+        if (!accountId) {
+            showToast('請選擇賬戶', 'error');
+            return;
+        }
+        
+        if (!categoryId) {
+            showToast('請選擇類別', 'error');
+            return;
+        }
+        
+        if (!amount || amount <= 0) {
+            showToast('請輸入有效金額', 'error');
+            return;
+        }
+        
+        if (!date) {
+            showToast('請選擇日期', 'error');
+            return;
+        }
+        
+        // 找到交易和相關賬戶
+        const transactionIndex = appState.transactions.findIndex(t => t.id === transactionId);
+        if (transactionIndex === -1) {
+            showToast('找不到交易', 'error');
+            return;
+        }
+        
+        const oldTransaction = appState.transactions[transactionIndex];
+        const oldAccount = appState.accounts.find(a => a.id === oldTransaction.accountId);
+        const newAccount = appState.accounts.find(a => a.id === accountId);
+        
+        if (!oldAccount || !newAccount) {
+            showToast('找不到賬戶', 'error');
+            return;
+        }
+        
+        // 恢復原始賬戶餘額
+        if (oldTransaction.type === 'income') {
+            oldAccount.balance -= oldTransaction.amount;
+        } else {
+            oldAccount.balance += oldTransaction.amount;
+        }
+        
+        // 創建更新後的交易
+        const updatedTransaction = {
+            ...oldTransaction,
+            accountId: accountId,
+            categoryId: categoryId,
+            amount: amount,
+            date: date,
+            note: note,
+            updatedAt: new Date().toISOString()
+        };
+        
+        // 更新新賬戶餘額
+        if (type === 'income') {
+            newAccount.balance += amount;
+        } else {
+            newAccount.balance -= amount;
+        }
+        
+        // 更新交易
+        appState.transactions[transactionIndex] = updatedTransaction;
+        
+        // 更新UI
+        updateTransactionsUI();
+        updateAccountsUI();
+        updateDashboardUI();
+        
+        // 保存到本地存儲
+        saveToLocalStorage();
+        
+        // 檢查預算警告
+        checkBudgetAlerts();
+        
+        // 執行同步（如果啟用）
+        if (enableFirebase && isLoggedIn) {
+            syncToFirebase();
+        }
+        
+        // 關閉模態框
+        closeCurrentModal();
+        
+        // 顯示成功消息
+        showToast(`已更新${type === 'income' ? '收入' : '支出'}: ${formatCurrency(amount)}`, 'success');
+    } catch (error) {
+        console.error("更新交易時發生錯誤:", error);
+        showToast('更新交易失敗: ' + error.message, 'error');
+    }
 }
 
 // 刪除交易
@@ -1911,9 +2443,53 @@ function updateTransferForm() {
 
 // 編輯賬戶
 function editAccount(accountId) {
-    // 具體實現待完成，這裡只是一個示例
     console.log(`編輯賬戶: ${accountId}`);
-    showToast('編輯賬戶功能開發中', 'info');
+    
+    try {
+        // 找到要編輯的賬戶
+        const account = appState.accounts.find(a => a.id === accountId);
+        
+        if (!account) {
+            showToast('找不到賬戶', 'error');
+            return;
+        }
+        
+        // 將賬戶數據填充到表單中
+        document.getElementById('accountName').value = account.name;
+        document.getElementById('accountType').value = account.type;
+        document.getElementById('initialBalance').value = account.balance;
+        document.getElementById('accountCurrency').value = account.currency;
+        document.getElementById('accountNote').value = account.note || '';
+        
+        // 將賬戶ID添加到隱藏字段
+        const accountIdField = document.getElementById('editAccountId');
+        if (accountIdField) {
+            accountIdField.value = accountId;
+        } else {
+            const hiddenField = document.createElement('input');
+            hiddenField.type = 'hidden';
+            hiddenField.id = 'editAccountId';
+            hiddenField.value = accountId;
+            document.getElementById('addAccountForm').appendChild(hiddenField);
+        }
+        
+        // 修改模態框標題和按鈕
+        const modalTitle = document.querySelector('#addAccountModal .modal-title');
+        if (modalTitle) {
+            modalTitle.textContent = '編輯戶口';
+        }
+        
+        const saveButton = document.getElementById('saveAccountButton');
+        if (saveButton) {
+            saveButton.textContent = '更新';
+        }
+        
+        // 打開編輯賬戶模態框
+        openModal('addAccountModal');
+    } catch (error) {
+        console.error("編輯賬戶時發生錯誤:", error);
+        showToast('編輯賬戶失敗: ' + error.message, 'error');
+    }
 }
 
 // 刪除賬戶
@@ -2370,11 +2946,46 @@ function updateCategoryBudgetSelect() {
     }
 }
 
-// 編輯類別預算
 function editCategoryBudget(budgetId) {
-    // 具體實現待完成，這裡只是一個示例
     console.log(`編輯類別預算: ${budgetId}`);
-    showToast('編輯類別預算功能開發中', 'info');
+    
+    try {
+        // 找到要編輯的預算
+        const budget = appState.budgets.categories.find(b => b.id === budgetId);
+        
+        if (!budget) {
+            showToast('找不到預算', 'error');
+            return;
+        }
+        
+        // 找到對應的類別
+        const category = appState.categories.expense.find(c => c.id === budget.categoryId);
+        
+        if (!category) {
+            showToast('找不到對應的類別', 'error');
+            return;
+        }
+        
+        // 設置編輯模式
+        document.getElementById('categoryBudgetSelect').value = budget.categoryId;
+        document.getElementById('categoryBudgetAmount').value = budget.amount;
+        document.getElementById('categoryBudgetSelect').disabled = true; // 禁用類別選擇
+        
+        // 存儲編輯ID
+        document.getElementById('categoryBudgetSelect').dataset.editId = budgetId;
+        
+        // 修改按鈕文本
+        const addButton = document.getElementById('addCategoryBudgetButton');
+        if (addButton) {
+            addButton.textContent = '更新';
+        }
+        
+        // 滾動到表單位置
+        document.getElementById('categoryBudgetForm').scrollIntoView({behavior: 'smooth'});
+    } catch (error) {
+        console.error("編輯類別預算時發生錯誤:", error);
+        showToast('編輯類別預算失敗: ' + error.message, 'error');
+    }
 }
 
 // 刪除類別預算
@@ -3738,9 +4349,264 @@ function importDataFromObject(importData) {
 
 // 打開貨幣管理模態框
 function openCurrencyManagementModal() {
-    // 具體實現待完成，這裡只是一個示例
     console.log("打開貨幣管理模態框");
-    showToast('貨幣管理功能開發中', 'info');
+    
+    try {
+        // 創建貨幣管理模態框（如果尚未存在）
+        if (!document.getElementById('currencyManagementModal')) {
+            createCurrencyManagementModal();
+        }
+        
+        // 填充匯率表格
+        updateExchangeRateTable();
+        
+        // 打開模態框
+        openModal('currencyManagementModal');
+    } catch (error) {
+        console.error("打開貨幣管理模態框時發生錯誤:", error);
+        showToast('打開貨幣管理失敗: ' + error.message, 'error');
+    }
+}
+
+function createCurrencyManagementModal() {
+    // 創建模態框HTML
+    const modalHTML = `
+    <div id="currencyManagementModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>匯率與貨幣管理</h3>
+                <button class="close-button">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="tabs">
+                    <div class="tab-buttons">
+                        <button id="exchangeRatesTabButton" class="tab-button active">匯率</button>
+                        <button id="currencySettingsTabButton" class="tab-button">貨幣設置</button>
+                    </div>
+                    <div class="tab-content">
+                        <div id="exchangeRatesTab" class="tab-pane active">
+                            <div class="exchange-rate-controls">
+                                <button id="updateRatesNowButton" class="btn btn-primary">立即更新匯率</button>
+                                <span id="lastRateUpdateTime"></span>
+                            </div>
+                            <div class="exchange-rate-table-container">
+                                <table id="exchangeRateTable" class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>貨幣</th>
+                                            <th>HKD</th>
+                                            <th>USD</th>
+                                            <th>CNY</th>
+                                            <th>EUR</th>
+                                            <th>GBP</th>
+                                            <th>JPY</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- 匯率數據將在這裡填充 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="currencySettingsTab" class="tab-pane">
+                            <form id="currencySettingsForm">
+                                <div class="form-group">
+                                    <label for="manualExchangeFromCurrency">從</label>
+                                    <select id="manualExchangeFromCurrency">
+                                        <option value="HKD">港幣 (HKD)</option>
+                                        <option value="USD">美元 (USD)</option>
+                                        <option value="CNY">人民幣 (CNY)</option>
+                                        <option value="EUR">歐元 (EUR)</option>
+                                        <option value="GBP">英鎊 (GBP)</option>
+                                        <option value="JPY">日元 (JPY)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="manualExchangeToCurrency">至</label>
+                                    <select id="manualExchangeToCurrency">
+                                        <option value="HKD">港幣 (HKD)</option>
+                                        <option value="USD">美元 (USD)</option>
+                                        <option value="CNY">人民幣 (CNY)</option>
+                                        <option value="EUR">歐元 (EUR)</option>
+                                        <option value="GBP">英鎊 (GBP)</option>
+                                        <option value="JPY">日元 (JPY)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="manualExchangeRate">匯率</label>
+                                    <input type="number" id="manualExchangeRate" min="0" step="0.000001">
+                                </div>
+                                <button type="button" id="saveManualRateButton" class="btn btn-primary">保存匯率</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+    
+    // 添加到文檔
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // 設置事件監聽器
+    document.getElementById('exchangeRatesTabButton').addEventListener('click', function() {
+        this.classList.add('active');
+        document.getElementById('currencySettingsTabButton').classList.remove('active');
+        document.getElementById('exchangeRatesTab').classList.add('active');
+        document.getElementById('currencySettingsTab').classList.remove('active');
+    });
+    
+    document.getElementById('currencySettingsTabButton').addEventListener('click', function() {
+        this.classList.add('active');
+        document.getElementById('exchangeRatesTabButton').classList.remove('active');
+        document.getElementById('currencySettingsTab').classList.add('active');
+        document.getElementById('exchangeRatesTab').classList.remove('active');
+    });
+    
+    // 立即更新匯率按鈕
+    document.getElementById('updateRatesNowButton').addEventListener('click', async function() {
+        this.disabled = true;
+        this.textContent = '更新中...';
+        
+        const success = await updateExchangeRates();
+        
+        if (success) {
+            updateExchangeRateTable();
+        }
+        
+        this.disabled = false;
+        this.textContent = '立即更新匯率';
+    });
+    
+    // 保存手動匯率按鈕
+    document.getElementById('saveManualRateButton').addEventListener('click', saveManualExchangeRate);
+    
+    // 預覽匯率
+    document.getElementById('manualExchangeFromCurrency').addEventListener('change', previewExchangeRate);
+    document.getElementById('manualExchangeToCurrency').addEventListener('change', previewExchangeRate);
+    
+    // 關閉按鈕
+    document.querySelector('#currencyManagementModal .close-button').addEventListener('click', closeCurrentModal);
+}
+
+function updateExchangeRateTable() {
+    const table = document.getElementById('exchangeRateTable');
+    const tbody = table.querySelector('tbody');
+    const currencies = ['HKD', 'USD', 'CNY', 'EUR', 'GBP', 'JPY'];
+    
+    // 清空表格
+    tbody.innerHTML = '';
+    
+    // 填充表格
+    currencies.forEach(fromCurrency => {
+        const row = document.createElement('tr');
+        const nameCell = document.createElement('td');
+        nameCell.textContent = fromCurrency;
+        row.appendChild(nameCell);
+        
+        currencies.forEach(toCurrency => {
+            const cell = document.createElement('td');
+            
+            if (fromCurrency === toCurrency) {
+                cell.textContent = '1';
+                cell.classList.add('same-currency');
+            } else {
+                const rate = getExchangeRate(fromCurrency, toCurrency);
+                cell.textContent = rate.toFixed(6);
+            }
+            
+            row.appendChild(cell);
+        });
+        
+        tbody.appendChild(row);
+    });
+    
+    // 更新最後更新時間
+    const storedRates = localStorage.getItem('exchangeRates');
+    if (storedRates) {
+        try {
+            const parsedRates = JSON.parse(storedRates);
+            if (parsedRates.lastUpdated) {
+                const lastUpdateTime = new Date(parsedRates.lastUpdated);
+                document.getElementById('lastRateUpdateTime').textContent = `上次更新: ${lastUpdateTime.toLocaleString()}`;
+            }
+        } catch (e) {
+            console.error("解析存儲的匯率時出錯:", e);
+        }
+    }
+}
+
+function previewExchangeRate() {
+    const fromCurrency = document.getElementById('manualExchangeFromCurrency').value;
+    const toCurrency = document.getElementById('manualExchangeToCurrency').value;
+    const rateInput = document.getElementById('manualExchangeRate');
+    
+    if (fromCurrency === toCurrency) {
+        rateInput.value = '1';
+        rateInput.disabled = true;
+    } else {
+        const rate = getExchangeRate(fromCurrency, toCurrency);
+        rateInput.value = rate.toFixed(6);
+        rateInput.disabled = false;
+    }
+}
+
+function saveManualExchangeRate() {
+    try {
+        const fromCurrency = document.getElementById('manualExchangeFromCurrency').value;
+        const toCurrency = document.getElementById('manualExchangeToCurrency').value;
+        const rate = parseFloat(document.getElementById('manualExchangeRate').value);
+        
+        if (fromCurrency === toCurrency) {
+            showToast('相同貨幣的匯率總是1', 'info');
+            return;
+        }
+        
+        if (!rate || rate <= 0) {
+            showToast('請輸入有效的匯率', 'error');
+            return;
+        }
+        
+        // 更新匯率
+        if (!exchangeRates[fromCurrency]) {
+            exchangeRates[fromCurrency] = {};
+        }
+        
+        exchangeRates[fromCurrency][toCurrency] = rate;
+        
+        // 同時更新反向匯率
+        if (!exchangeRates[toCurrency]) {
+            exchangeRates[toCurrency] = {};
+        }
+        
+        exchangeRates[toCurrency][fromCurrency] = 1 / rate;
+        
+        // 保存到本地存儲
+        const storedRates = localStorage.getItem('exchangeRates');
+        let parsedRates = {};
+        
+        if (storedRates) {
+            try {
+                parsedRates = JSON.parse(storedRates);
+            } catch (e) {
+                console.error("解析存儲的匯率時出錯:", e);
+            }
+        }
+        
+        parsedRates.rates = exchangeRates;
+        parsedRates.lastUpdated = new Date().toISOString();
+        localStorage.setItem('exchangeRates', JSON.stringify(parsedRates));
+        
+        // 更新UI
+        updateExchangeRateTable();
+        updateTransferForm();
+        
+        // 顯示成功消息
+        showToast(`已更新匯率: 1 ${fromCurrency} = ${rate.toFixed(6)} ${toCurrency}`, 'success');
+    } catch (error) {
+        console.error("保存手動匯率時發生錯誤:", error);
+        showToast('保存匯率失敗: ' + error.message, 'error');
+    }
 }
 
 // 從本地存儲加載數據
