@@ -571,7 +571,7 @@ function closeCurrentModal() {
         // 恢復模態框標題和按鈕
         const modalTitle = document.querySelector('#addAccountModal .modal-title');
         if (modalTitle) {
-            modalTitle.textContent = '新增戶口';
+            modalTitle.textContent = '更新戶口';
         }
         
         const saveButton = document.getElementById('saveAccountButton');
