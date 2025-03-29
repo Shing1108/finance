@@ -234,6 +234,23 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 設置定時器，每小時更新匯率 - 添加這一行
         setInterval(updateExchangeRates, 60 * 60 * 1000);
+
+        // 預填充預算開始日期和結束日期
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        
+        const budgetStartDateInput = document.getElementById('budgetStartDate');
+        const budgetEndDateInput = document.getElementById('budgetEndDate');
+        
+        if (budgetStartDateInput) {
+            budgetStartDateInput.value = firstDayOfMonth.toISOString().split('T')[0];
+        }
+        
+        if (budgetEndDateInput) {
+            budgetEndDateInput.value = lastDayOfMonth.toISOString().split('T')[0];
+        }
+        
     } catch (error) {
         console.error("初始化時發生錯誤:", error);
         
@@ -3204,7 +3221,7 @@ function updateBudgetsUI() {
     console.log("更新預算UI");
     
     try {
-        // 更新總預算表單
+        // 更新預算表單
         updateBudgetForm();
         
         // 更新類別預算列表
@@ -3212,6 +3229,9 @@ function updateBudgetsUI() {
         
         // 更新類別預算下拉菜單
         updateCategoryBudgetSelect();
+        
+        // 更新預算歷史記錄
+        updateBudgetHistoryList();
     } catch (error) {
         console.error("更新預算UI時發生錯誤:", error);
         throw error;
