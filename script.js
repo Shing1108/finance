@@ -32,7 +32,6 @@ let alertThreshold = 80;
 let enableFirebase = false;
 
 // Firebase 相關變量
-//let firebase;
 let db;
 let isLoggedIn = false;
 let user = null;
