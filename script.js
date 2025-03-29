@@ -113,12 +113,27 @@ let currentModal = null;
 // DOM 元素快取
 const elements = {};
 
-// 工具函數
+// 修改getElement函數以防止元素未找到錯誤
 function getElement(selector) {
-    if (!elements[selector]) {
-        elements[selector] = document.querySelector(selector);
+    const element = document.querySelector(selector);
+    if (!element) {
+        console.warn(`找不到元素: ${selector}`);
+        // 返回一個虛擬元素，避免null引用錯誤
+        return {
+            textContent: '',
+            innerHTML: '',
+            value: '',
+            style: {},
+            classList: {
+                add: () => {},
+                remove: () => {},
+                toggle: () => {},
+                contains: () => false
+            },
+            addEventListener: () => {}
+        };
     }
-    return elements[selector];
+    return element;
 }
 
 function formatCurrency(amount, currency = defaultCurrency, places = decimalPlaces) {
@@ -223,31 +238,94 @@ function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-// 修正深色模式切換函數
+// 在script.js中替換或添加這個函數
 function toggleDarkMode(enable) {
-    // 先移除所有與主題相關的類
-    document.body.classList.remove('dark-mode', 'light-mode');
+    console.log("切換深色模式:", enable ? "開啟" : "關閉");
     
-    // 添加正確的主題類
-    if (enable) {
-        document.body.classList.add('dark-mode');
-    } else {
-        document.body.classList.add('light-mode'); // 可選，提供默認樣式
-    }
-    
-    // 保存設置
-    darkMode = enable;
-    localStorage.setItem('darkMode', darkMode.toString());
-    
-    // 更新圖表顏色
-    if (typeof updateStatisticsUI === 'function') {
-        try {
-            updateStatisticsUI();
-        } catch (e) {
-            console.error('更新統計圖表時出錯:', e);
+    try {
+        // 使用HTML屬性來切換主題，而不是CSS類
+        if (enable) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
         }
+        
+        // 更新狀態變量
+        darkMode = enable;
+        
+        // 更新appState
+        if (appState && appState.settings) {
+            appState.settings.darkMode = enable;
+        }
+        
+        // 儲存設置到localStorage
+        localStorage.setItem('darkMode', enable.toString());
+        
+        // 可選：更新UI元素
+        const darkModeToggle = document.getElementById('darkMode');
+        if (darkModeToggle) {
+            darkModeToggle.checked = enable;
+        }
+        
+        // 重新繪製圖表以適應新主題
+        if (typeof updateStatisticsUI === 'function') {
+            try {
+                updateStatisticsUI();
+            } catch (error) {
+                console.error("更新統計圖表時出錯:", error);
+            }
+        }
+        
+        console.log("深色模式切換成功");
+    } catch (error) {
+        console.error("切換深色模式時出錯:", error);
     }
 }
+
+// 確保在頁面加載時應用深色模式設置
+function initializeDarkMode() {
+    try {
+        console.log("初始化深色模式...");
+        // 檢查localStorage中的設置
+        const savedDarkMode = localStorage.getItem('darkMode');
+        
+        // 調試信息
+        console.log("localStorage中的darkMode值:", savedDarkMode);
+        
+        let shouldEnableDarkMode = false;
+        
+        // 1. 檢查保存的設置
+        if (savedDarkMode !== null) {
+            shouldEnableDarkMode = savedDarkMode === 'true';
+        } 
+        // 2. 如果沒有保存的設置，檢查系統偏好
+        else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            shouldEnableDarkMode = true;
+        }
+        
+        console.log("決定使用深色模式:", shouldEnableDarkMode);
+        
+        // 應用深色模式設置
+        toggleDarkMode(shouldEnableDarkMode);
+        
+        // 更新UI控件
+        const darkModeToggle = getElement('#darkMode');
+        darkModeToggle.checked = shouldEnableDarkMode;
+        
+        // 監聽系統主題變化
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                // 只有在用戶沒有明確設置偏好時，才跟隨系統
+                if (localStorage.getItem('darkMode') === null) {
+                    toggleDarkMode(e.matches);
+                }
+            });
+        }
+    } catch (error) {
+        console.error("初始化深色模式時出錯:", error);
+    }
+}
+
 
 // 初始化Firebase
 function initializeFirebase() {
@@ -1149,145 +1227,540 @@ async function generateFinancialAdvice() {
     }
 }
 
-// 更新儀表板UI
-async function updateDashboardUI() {
+// 修改updateDashboardUI函數，添加全面的錯誤處理
+function updateDashboardUI() {
     try {
-        // 更新總資產
-        const totalAssets = await calculateTotalAssets();
-        getElement('#totalAssets span:last-child').textContent = formatCurrency(totalAssets);
+        console.log("開始更新儀表板...");
         
-        // 更新今日收入
-        const todayIncome = await calculateTodayIncome();
-        getElement('#todayIncome span:last-child').textContent = formatCurrency(todayIncome);
-        
-        // 更新今日支出
-        const todayExpense = await calculateTodayExpense();
-        getElement('#todayExpense span:last-child').textContent = formatCurrency(todayExpense);
-        
-        // 更新今日交易
-        const todayTransactionsList = getElement('#todayTransactions');
-        const todayTransactions = getTodayTransactions();
-        
-        if (todayTransactions.length === 0) {
-            todayTransactionsList.innerHTML = '<p class="empty-message">今日尚無交易記錄</p>';
-        } else {
-            todayTransactionsList.innerHTML = '';
-            todayTransactions.forEach(transaction => {
-                const account = getAccount(transaction.accountId);
-                const category = getCategory(transaction.categoryId, transaction.type);
-                
-                const transactionElement = document.createElement('div');
-                transactionElement.className = 'transaction-item';
-                transactionElement.innerHTML = `
-                    <div class="transaction-info">
-                        <div class="transaction-category">${category ? category.name : '未知類別'}</div>
-                        <div class="transaction-details">${account ? account.name : '未知戶口'}</div>
-                    </div>
-                    <div class="transaction-amount ${transaction.type}">
-                        ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(transaction.amount, account ? account.currency : defaultCurrency)}
-                    </div>
-                `;
-                
-                todayTransactionsList.appendChild(transactionElement);
-            });
+        // 1. 確保所有必要的數據結構已初始化
+        if (!appState) {
+            console.error("應用狀態未初始化");
+            appState = {
+                accounts: [],
+                categories: { income: [], expense: [] },
+                transactions: [],
+                budgets: { total: 0, categories: [], resetCycle: 'monthly', resetDay: 1 }
+            };
         }
         
-        // 更新近期交易
-        const recentTransactionsList = getElement('#recentTransactions');
-        const recentTransactions = getRecentTransactions();
-        
-        if (recentTransactions.length === 0) {
-            recentTransactionsList.innerHTML = '<p class="empty-message">尚無交易記錄</p>';
-        } else {
-            recentTransactionsList.innerHTML = '';
-            recentTransactions.forEach(transaction => {
-                const account = getAccount(transaction.accountId);
-                const category = getCategory(transaction.categoryId, transaction.type);
-                
-                const transactionElement = document.createElement('div');
-                transactionElement.className = 'transaction-item';
-                transactionElement.innerHTML = `
-                    <div class="transaction-info">
-                        <div class="transaction-category">${category ? category.name : '未知類別'}</div>
-                        <div class="transaction-details">
-                            ${formatDate(transaction.date)} | ${account ? account.name : '未知戶口'}
-                        </div>
-                    </div>
-                    <div class="transaction-amount ${transaction.type}">
-                        ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(transaction.amount, account ? account.currency : defaultCurrency)}
-                    </div>
-                `;
-                
-                recentTransactionsList.appendChild(transactionElement);
-            });
+        // 2. 更新總資產
+        try {
+            updateTotalAssets();
+        } catch (e) {
+            console.error("更新總資產時發生錯誤:", e);
+            getElement('#totalAssets').textContent = formatCurrency(0);
         }
         
-        // 更新預算狀態
-        const budgetStatus = getElement('#budgetStatus');
-        if (appState.budgets.total <= 0 && (!appState.budgets.categories || appState.budgets.categories.length === 0)) {
-            budgetStatus.innerHTML = `
-                <p class="empty-message">尚未設定預算</p>
-                <button class="button-primary" id="setupBudgetBtn">設定預算</button>
-            `;
-            
-            getElement('#setupBudgetBtn').addEventListener('click', () => {
-                navigateTo('#budgets');
-            });
-        } else {
-            // 計算當前預算使用情況
-            const today = new Date();
-            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-            const monthEnd = today.toISOString().split('T')[0];
-            
-            // 計算當月總支出
-            let monthlyExpense = 0;
-            for (const transaction of appState.transactions.filter(t => 
-                t.type === 'expense' && t.date >= monthStart && t.date <= monthEnd)) {
-                
-                const account = appState.accounts.find(acc => acc.id === transaction.accountId);
-                if (account) {
-                    if (account.currency === defaultCurrency) {
-                        monthlyExpense += transaction.amount;
-                    } else {
-                        const rate = await getExchangeRate(account.currency, defaultCurrency);
-                        monthlyExpense += transaction.amount * rate;
-                    }
-                }
-            }
-            
-            const budgetPercentage = (monthlyExpense / appState.budgets.total) * 100;
-            
-            let statusClass = '';
-            if (budgetPercentage > 90) {
-                statusClass = 'danger';
-            } else if (budgetPercentage > alertThreshold) {
-                statusClass = 'warning';
-            }
-            
-            budgetStatus.innerHTML = `
-                <div class="budget-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill ${statusClass}" style="width: ${Math.min(budgetPercentage, 100)}%"></div>
-                    </div>
-                    <div class="progress-labels">
-                        <span>已使用: ${formatCurrency(monthlyExpense)}</span>
-                        <span>預算: ${formatCurrency(appState.budgets.total)}</span>
-                    </div>
-                </div>
-            `;
+        // 3. 更新今日收支
+        try {
+            updateTodayFinancials();
+        } catch (e) {
+            console.error("更新今日收支時發生錯誤:", e);
+            getElement('#todayIncome').textContent = formatCurrency(0);
+            getElement('#todayExpense').textContent = formatCurrency(0);
         }
         
-        // 更新財務健康指數
-        const healthData = await calculateFinancialHealth();
-        getElement('#healthScore').textContent = healthData.score;
-        getElement('#healthScore').nextElementSibling.textContent = healthData.status;
+        // 4. 更新今日交易
+        try {
+            updateTodayTransactions();
+        } catch (e) {
+            console.error("更新今日交易時發生錯誤:", e);
+            getElement('#todayTransactionsList').innerHTML = '<p class="empty-message">今日尚無交易記錄</p>';
+        }
         
-        // 更新財務建議
-        getElement('#financialAdvice').textContent = await generateFinancialAdvice();
+        // 5. 更新預算狀態
+        try {
+            updateBudgetStatus();
+        } catch (e) {
+            console.error("更新預算狀態時發生錯誤:", e);
+            getElement('#budgetStatus').innerHTML = '<p class="empty-message">尚未設定預算</p><a href="#" onclick="showTabContent(\'budgets\')" class="action-link">設定預算</a>';
+        }
+        
+        // 6. 更新近期交易
+        try {
+            updateRecentTransactions();
+        } catch (e) {
+            console.error("更新近期交易時發生錯誤:", e);
+            getElement('#recentTransactionsList').innerHTML = '<p class="empty-message">尚無交易記錄</p>';
+        }
+        
+        // 7. 更新財務健康指數
+        try {
+            updateFinancialHealth();
+        } catch (e) {
+            console.error("更新財務健康指數時發生錯誤:", e);
+            getElement('#financialHealthIndex').textContent = '--';
+            getElement('#financialAdvice').textContent = '無法計算財務建議';
+        }
+        
+        console.log("儀表板更新完成");
     } catch (error) {
-        console.error('Error updating dashboard UI:', error);
-        showToast('更新儀表板錯誤', 'error');
+        console.error("更新儀表板時發生全局錯誤:", error);
+        showToast('更新儀表板錯誤: ' + error.message, 'error');
+        
+        // 確保UI不會完全空白
+        safeUpdateUI();
     }
+}
+
+/**
+ * 安全更新UI
+ * 當主要UI更新失敗時，提供一個基本UI顯示，確保用戶界面不會完全崩潰
+ * 對每個UI元素的更新都進行單獨的try-catch處理
+ */
+function safeUpdateUI() {
+    console.log("執行安全UI更新流程...");
+    
+    // 更新儀表板卡片
+    try {
+        // 更新總資產顯示
+        const totalAssetsElement = document.getElementById('totalAssets');
+        if (totalAssetsElement) {
+            // 嘗試獲取真實數據，失敗則顯示0
+            let totalAssets = 0;
+            try {
+                if (appState && appState.accounts) {
+                    totalAssets = appState.accounts.reduce((sum, account) => {
+                        // 考慮匯率轉換
+                        let balance = account.balance || 0;
+                        if (account.currency !== defaultCurrency) {
+                            try {
+                                const rate = getExchangeRate(account.currency, defaultCurrency) || 1;
+                                balance = balance * rate;
+                            } catch (e) {
+                                console.error("匯率轉換錯誤:", e);
+                            }
+                        }
+                        return sum + balance;
+                    }, 0);
+                }
+            } catch (e) {
+                console.error("計算總資產時出錯:", e);
+            }
+            
+            // 安全地格式化貨幣
+            try {
+                totalAssetsElement.textContent = formatCurrency(totalAssets);
+            } catch (e) {
+                totalAssetsElement.textContent = defaultCurrency + " " + totalAssets.toFixed(2);
+            }
+        }
+    } catch (e) {
+        console.error("更新總資產顯示出錯:", e);
+    }
+    
+    // 更新今日收支
+    try {
+        const todayIncomeElement = document.getElementById('todayIncome');
+        const todayExpenseElement = document.getElementById('todayExpense');
+        
+        if (todayIncomeElement && todayExpenseElement) {
+            // 獲取今日日期
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0]; // 格式為YYYY-MM-DD
+            
+            // 嘗試計算今日收支
+            let todayIncome = 0;
+            let todayExpense = 0;
+            
+            try {
+                if (appState && appState.transactions) {
+                    appState.transactions.forEach(transaction => {
+                        if (transaction.date === todayString) {
+                            // 找到對應的戶口以獲取貨幣信息
+                            const account = appState.accounts.find(acc => acc.id === transaction.accountId);
+                            if (account) {
+                                let amount = transaction.amount || 0;
+                                
+                                // 考慮匯率轉換
+                                if (account.currency !== defaultCurrency) {
+                                    try {
+                                        const rate = getExchangeRate(account.currency, defaultCurrency) || 1;
+                                        amount = amount * rate;
+                                    } catch (e) {
+                                        console.error("匯率轉換錯誤:", e);
+                                    }
+                                }
+                                
+                                if (transaction.type === 'income') {
+                                    todayIncome += amount;
+                                } else if (transaction.type === 'expense') {
+                                    todayExpense += amount;
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("計算今日收支時出錯:", e);
+            }
+            
+            // 安全地格式化並顯示
+            try {
+                todayIncomeElement.textContent = formatCurrency(todayIncome);
+                todayExpenseElement.textContent = formatCurrency(todayExpense);
+            } catch (e) {
+                todayIncomeElement.textContent = defaultCurrency + " " + todayIncome.toFixed(2);
+                todayExpenseElement.textContent = defaultCurrency + " " + todayExpense.toFixed(2);
+            }
+        }
+    } catch (e) {
+        console.error("更新今日收支顯示出錯:", e);
+    }
+    
+    // 更新今日交易列表
+    try {
+        const todayTransactionsListElement = document.getElementById('todayTransactionsList');
+        if (todayTransactionsListElement) {
+            // 獲取今日日期
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0]; // 格式為YYYY-MM-DD
+            
+            let todayTransactions = [];
+            try {
+                if (appState && appState.transactions) {
+                    todayTransactions = appState.transactions.filter(t => t.date === todayString);
+                }
+            } catch (e) {
+                console.error("獲取今日交易時出錯:", e);
+            }
+            
+            if (todayTransactions.length > 0) {
+                let html = '';
+                
+                try {
+                    // 限制顯示最多5筆交易
+                    const displayTransactions = todayTransactions.slice(0, 5);
+                    
+                    for (const transaction of displayTransactions) {
+                        try {
+                            // 獲取相關數據
+                            const account = appState.accounts.find(a => a.id === transaction.accountId);
+                            const category = transaction.type === 'income' 
+                                ? appState.categories.income.find(c => c.id === transaction.categoryId)
+                                : appState.categories.expense.find(c => c.id === transaction.categoryId);
+                            
+                            const accountName = account ? account.name : '未知戶口';
+                            const categoryName = category ? category.name : '未知類別';
+                            const categoryIcon = category ? category.icon : 'fas fa-question';
+                            const categoryColor = category ? category.color : '#999';
+                            
+                            // 安全格式化金額
+                            let formattedAmount;
+                            try {
+                                formattedAmount = formatCurrency(transaction.amount, account ? account.currency : defaultCurrency);
+                            } catch (e) {
+                                formattedAmount = (account ? account.currency : defaultCurrency) + " " + (transaction.amount || 0).toFixed(2);
+                            }
+                            
+                            // 構建HTML
+                            html += `
+                                <div class="transaction-item ${transaction.type}">
+                                    <div class="transaction-icon" style="color: ${categoryColor}">
+                                        <i class="${categoryIcon}"></i>
+                                    </div>
+                                    <div class="transaction-details">
+                                        <div class="transaction-category">${categoryName}</div>
+                                        <div class="transaction-account">${accountName}</div>
+                                    </div>
+                                    <div class="transaction-amount">${formattedAmount}</div>
+                                </div>
+                            `;
+                        } catch (itemError) {
+                            console.error("處理交易項目時出錯:", itemError);
+                            // 提供簡化的後備顯示
+                            html += `
+                                <div class="transaction-item">
+                                    <div class="transaction-icon"><i class="fas fa-circle"></i></div>
+                                    <div class="transaction-details">
+                                        <div class="transaction-category">交易</div>
+                                        <div class="transaction-account">戶口</div>
+                                    </div>
+                                    <div class="transaction-amount">${transaction.amount || 0}</div>
+                                </div>
+                            `;
+                        }
+                    }
+                } catch (renderError) {
+                    console.error("渲染交易列表時出錯:", renderError);
+                    html = '<p class="error-message">載入交易時出錯</p>';
+                }
+                
+                todayTransactionsListElement.innerHTML = html;
+            } else {
+                todayTransactionsListElement.innerHTML = '<p class="empty-message">今日尚無交易記錄</p>';
+            }
+        }
+    } catch (e) {
+        console.error("更新今日交易列表出錯:", e);
+        // 確保列表至少有一個空消息
+        try {
+            const element = document.getElementById('todayTransactionsList');
+            if (element) {
+                element.innerHTML = '<p class="empty-message">無法載入今日交易</p>';
+            }
+        } catch (backupError) {}
+    }
+    
+    // 更新預算狀態
+    try {
+        const budgetStatusElement = document.getElementById('budgetStatus');
+        if (budgetStatusElement) {
+            let hasBudget = false;
+            
+            try {
+                hasBudget = appState && appState.budgets && 
+                            ((appState.budgets.total && appState.budgets.total > 0) || 
+                             (appState.budgets.categories && appState.budgets.categories.length > 0));
+            } catch (e) {
+                console.error("檢查預算狀態時出錯:", e);
+            }
+            
+            if (hasBudget) {
+                try {
+                    // 計算總預算和已使用金額
+                    let totalBudget = appState.budgets.total || 0;
+                    let totalUsed = 0;
+                    
+                    // 獲取今日日期計算當前預算週期
+                    const today = new Date();
+                    const resetCycle = appState.budgets.resetCycle || 'monthly';
+                    const resetDay = parseInt(appState.budgets.resetDay || 1, 10);
+                    
+                    // 確定預算期間的開始日期
+                    let startDate;
+                    if (resetCycle === 'monthly') {
+                        const currentDay = today.getDate();
+                        if (currentDay >= resetDay) {
+                            // 本月的重設日
+                            startDate = new Date(today.getFullYear(), today.getMonth(), resetDay);
+                        } else {
+                            // 上月的重設日
+                            startDate = new Date(today.getFullYear(), today.getMonth() - 1, resetDay);
+                        }
+                    } else if (resetCycle === 'weekly') {
+                        // 計算7天前
+                        startDate = new Date(today);
+                        startDate.setDate(today.getDate() - 7);
+                    } else { // daily
+                        // 今天開始
+                        startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                    }
+                    
+                    // 格式化日期為YYYY-MM-DD
+                    const startDateStr = startDate.toISOString().split('T')[0];
+                    const endDateStr = today.toISOString().split('T')[0];
+                    
+                    // 計算已使用預算
+                    if (appState.transactions) {
+                        appState.transactions.forEach(transaction => {
+                            if (transaction.type === 'expense' && 
+                                transaction.date >= startDateStr && 
+                                transaction.date <= endDateStr) {
+                                
+                                const account = appState.accounts.find(a => a.id === transaction.accountId);
+                                if (account) {
+                                    let amount = transaction.amount || 0;
+                                    
+                                    // 考慮匯率轉換
+                                    if (account.currency !== defaultCurrency) {
+                                        try {
+                                            const rate = getExchangeRate(account.currency, defaultCurrency) || 1;
+                                            amount = amount * rate;
+                                        } catch (e) {
+                                            console.error("匯率轉換錯誤:", e);
+                                        }
+                                    }
+                                    
+                                    totalUsed += amount;
+                                }
+                            }
+                        });
+                    }
+                    
+                    // 計算百分比和剩餘預算
+                    const usedPercentage = totalBudget > 0 ? (totalUsed / totalBudget * 100) : 0;
+                    const remainingBudget = Math.max(0, totalBudget - totalUsed);
+                    
+                    // 獲取預算週期描述
+                    let cycleDescription = '本月';
+                    if (resetCycle === 'weekly') {
+                        cycleDescription = '本週';
+                    } else if (resetCycle === 'daily') {
+                        cycleDescription = '今日';
+                    }
+                    
+                    // 構建預算狀態HTML
+                    let progressColor = 'var(--primary-color)';
+                    if (usedPercentage > 90) {
+                        progressColor = 'var(--danger-color)';
+                    } else if (usedPercentage > 70) {
+                        progressColor = 'var(--warning-color)';
+                    }
+                    
+                    budgetStatusElement.innerHTML = `
+                        <div class="budget-header">
+                            <h4>${cycleDescription}預算</h4>
+                            <span class="budget-amount">${formatCurrency(totalBudget)}</span>
+                        </div>
+                        <div class="budget-progress-container">
+                            <div class="budget-progress-bar" style="width: ${Math.min(100, usedPercentage)}%; background-color: ${progressColor}"></div>
+                        </div>
+                        <div class="budget-info">
+                            <span>已使用 ${formatCurrency(totalUsed)} (${usedPercentage.toFixed(1)}%)</span>
+                            <span>剩餘 ${formatCurrency(remainingBudget)}</span>
+                        </div>
+                    `;
+                } catch (budgetError) {
+                    console.error("渲染預算狀態時出錯:", budgetError);
+                    budgetStatusElement.innerHTML = '<p class="error-message">無法載入預算資訊</p>';
+                }
+            } else {
+                budgetStatusElement.innerHTML = '<p class="empty-message">尚未設定預算</p><a href="#" onclick="showTabContent(\'budgets\')" class="action-link">設定預算</a>';
+            }
+        }
+    } catch (e) {
+        console.error("更新預算狀態出錯:", e);
+        try {
+            const element = document.getElementById('budgetStatus');
+            if (element) {
+                element.innerHTML = '<p class="empty-message">無法載入預算資訊</p>';
+            }
+        } catch (backupError) {}
+    }
+    
+    // 更新近期交易
+    try {
+        const recentTransactionsListElement = document.getElementById('recentTransactionsList');
+        if (recentTransactionsListElement) {
+            let recentTransactions = [];
+            
+            try {
+                if (appState && appState.transactions) {
+                    // 獲取最近10筆交易
+                    recentTransactions = [...appState.transactions]
+                        .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
+                        .slice(0, 10);
+                }
+            } catch (e) {
+                console.error("獲取近期交易時出錯:", e);
+            }
+            
+            if (recentTransactions.length > 0) {
+                let html = '';
+                
+                try {
+                    for (const transaction of recentTransactions) {
+                        try {
+                            // 獲取相關數據
+                            const account = appState.accounts.find(a => a.id === transaction.accountId);
+                            const category = transaction.type === 'income' 
+                                ? appState.categories.income.find(c => c.id === transaction.categoryId)
+                                : appState.categories.expense.find(c => c.id === transaction.categoryId);
+                            
+                            const accountName = account ? account.name : '未知戶口';
+                            const categoryName = category ? category.name : '未知類別';
+                            const categoryIcon = category ? category.icon : 'fas fa-question';
+                            const categoryColor = category ? category.color : '#999';
+                            
+                            // 安全格式化金額和日期
+                            let formattedAmount, formattedDate;
+                            try {
+                                formattedAmount = formatCurrency(transaction.amount, account ? account.currency : defaultCurrency);
+                                
+                                const [year, month, day] = transaction.date.split('-');
+                                formattedDate = `${day}/${month}/${year}`;
+                            } catch (e) {
+                                formattedAmount = (account ? account.currency : defaultCurrency) + " " + (transaction.amount || 0).toFixed(2);
+                                formattedDate = transaction.date || '未知日期';
+                            }
+                            
+                            // 構建HTML
+                            html += `
+                                <div class="transaction-item ${transaction.type}">
+                                    <div class="transaction-date">${formattedDate}</div>
+                                    <div class="transaction-icon" style="color: ${categoryColor}">
+                                        <i class="${categoryIcon}"></i>
+                                    </div>
+                                    <div class="transaction-details">
+                                        <div class="transaction-category">${categoryName}</div>
+                                        <div class="transaction-account">${accountName}</div>
+                                        ${transaction.note ? `<div class="transaction-note">${transaction.note}</div>` : ''}
+                                    </div>
+                                    <div class="transaction-amount">${formattedAmount}</div>
+                                </div>
+                            `;
+                        } catch (itemError) {
+                            console.error("處理交易項目時出錯:", itemError);
+                            // 提供簡化的後備顯示
+                            html += `
+                                <div class="transaction-item">
+                                    <div class="transaction-date">${transaction.date || '未知日期'}</div>
+                                    <div class="transaction-icon"><i class="fas fa-circle"></i></div>
+                                    <div class="transaction-details">
+                                        <div class="transaction-category">交易</div>
+                                        <div class="transaction-account">戶口</div>
+                                    </div>
+                                    <div class="transaction-amount">${transaction.amount || 0}</div>
+                                </div>
+                            `;
+                        }
+                    }
+                } catch (renderError) {
+                    console.error("渲染近期交易時出錯:", renderError);
+                    html = '<p class="error-message">載入交易時出錯</p>';
+                }
+                
+                recentTransactionsListElement.innerHTML = html;
+            } else {
+                recentTransactionsListElement.innerHTML = '<p class="empty-message">尚無交易記錄</p>';
+            }
+        }
+    } catch (e) {
+        console.error("更新近期交易列表出錯:", e);
+        try {
+            const element = document.getElementById('recentTransactionsList');
+            if (element) {
+                element.innerHTML = '<p class="empty-message">無法載入近期交易</p>';
+            }
+        } catch (backupError) {}
+    }
+    
+    // 更新財務健康指數
+    try {
+        const financialHealthIndexElement = document.getElementById('financialHealthIndex');
+        const financialAdviceElement = document.getElementById('financialAdvice');
+        
+        if (financialHealthIndexElement) {
+            financialHealthIndexElement.textContent = '--';
+        }
+        
+        if (financialAdviceElement) {
+            financialAdviceElement.textContent = '無法計算財務建議';
+        }
+    } catch (e) {
+        console.error("更新財務健康指數出錯:", e);
+    }
+    
+    // 更新連接狀態
+    try {
+        const connectionStatusElement = document.getElementById('connectionStatus');
+        if (connectionStatusElement) {
+            if (enableFirebase) {
+                if (isLoggedIn) {
+                    connectionStatusElement.innerHTML = '<span class="status-connected">已登入</span>';
+                } else {
+                    connectionStatusElement.innerHTML = '<span class="status-disconnected">未登入</span>';
+                }
+            } else {
+                connectionStatusElement.innerHTML = '<span class="status-offline">離線模式</span>';
+            }
+        }
+    } catch (e) {
+        console.error("更新連接狀態出錯:", e);
+    }
+    
+    console.log("安全UI更新完成");
 }
 
 // 檢查並執行預算重設
@@ -3875,45 +4348,117 @@ function updateSettingsUI() {
 
 // 保存設定
 function saveSettings() {
-    // 獲取新設定
-    darkMode = getElement('#darkMode').checked;
-    fontSize = document.querySelector('input[name="fontSize"]:checked').value;
-    const newDefaultCurrency = getElement('#defaultCurrency').value;
-    decimalPlaces = parseInt(document.querySelector('input[name="decimalPlaces"]:checked').value, 10);
-    enableBudgetAlerts = getElement('#enableBudgetAlerts').checked;
-    alertThreshold = parseInt(getElement('#alertThreshold').value, 10);
-    enableFirebase = getElement('#enableFirebaseSync').checked;
-    
-    // 應用深色模式
-    if (darkMode) {
-        document.body.classList.add('dark-mode');
-    } else {
-        document.body.classList.remove('dark-mode');
+    try {
+        console.log("開始保存設置...");
+        
+        // 獲取新設定值
+        const newDarkMode = document.getElementById('darkMode').checked;
+        const newFontSize = document.querySelector('input[name="fontSize"]:checked').value;
+        const newDefaultCurrency = document.getElementById('defaultCurrency').value;
+        const newDecimalPlaces = parseInt(document.querySelector('input[name="decimalPlaces"]:checked').value, 10);
+        const newEnableBudgetAlerts = document.getElementById('enableBudgetAlerts').checked;
+        const newAlertThreshold = parseInt(document.getElementById('alertThreshold').value, 10);
+        const newEnableFirebase = document.getElementById('enableFirebaseSync').checked;
+        
+        console.log("新設置值:", {
+            darkMode: newDarkMode,
+            fontSize: newFontSize,
+            defaultCurrency: newDefaultCurrency,
+            decimalPlaces: newDecimalPlaces,
+            enableBudgetAlerts: newEnableBudgetAlerts,
+            alertThreshold: newAlertThreshold,
+            enableFirebase: newEnableFirebase
+        });
+        
+        // 檢查深色模式是否改變
+        if (newDarkMode !== darkMode) {
+            toggleDarkMode(newDarkMode);
+        }
+        
+        // 檢查字體大小是否改變
+        if (newFontSize !== fontSize) {
+            fontSize = newFontSize;
+            applyFontSize();
+        }
+        
+        // 檢查默認貨幣是否改變
+        if (newDefaultCurrency !== defaultCurrency) {
+            defaultCurrency = newDefaultCurrency;
+            // 可能需要重新計算所有顯示金額
+        }
+        
+        // 檢查小數點位數是否改變
+        if (newDecimalPlaces !== decimalPlaces) {
+            decimalPlaces = newDecimalPlaces;
+            // 重新格式化所有金額顯示
+        }
+        
+        // 檢查預算提醒設置是否改變
+        enableBudgetAlerts = newEnableBudgetAlerts;
+        alertThreshold = newAlertThreshold;
+        
+        // 檢查Firebase同步設置是否改變
+        if (newEnableFirebase !== enableFirebase) {
+            enableFirebase = newEnableFirebase;
+            
+            if (enableFirebase) {
+                // 嘗試初始化Firebase
+                initFirebase().then(() => {
+                    showToast('雲端同步已啟用', 'success');
+                    updateSyncStatus();
+                }).catch(error => {
+                    console.error("啟用Firebase時出錯:", error);
+                    showToast('無法連接雲端服務: ' + error.message, 'error');
+                    enableFirebase = false;
+                    
+                    // 更新UI以反映實際狀態
+                    const firebaseToggle = document.getElementById('enableFirebaseSync');
+                    if (firebaseToggle) {
+                        firebaseToggle.checked = false;
+                    }
+                });
+            } else {
+                showToast('雲端同步已停用', 'info');
+                updateSyncStatus();
+            }
+        }
+        
+        // 更新appState中的設置
+        appState.settings = {
+            darkMode,
+            fontSize,
+            defaultCurrency,
+            decimalPlaces,
+            enableBudgetAlerts,
+            alertThreshold,
+            enableFirebase
+        };
+        
+        // 儲存到localStorage
+        saveToLocalStorage();
+        
+        // 關閉模態框
+        closeCurrentModal();
+        
+        // 更新UI
+        updateAllUI();
+        
+        console.log("設置保存成功");
+        showToast('設置已保存', 'success');
+    } catch (error) {
+        console.error("保存設置時出錯:", error);
+        showToast('保存設置失敗: ' + error.message, 'error');
     }
-    
-    // 應用字體大小
-    document.body.className = document.body.className.replace(/font-size-\w+/, '');
-    document.body.classList.add(`font-size-${fontSize}`);
-    
-    // 檢查默認貨幣是否更改
-    if (newDefaultCurrency !== defaultCurrency) {
-        defaultCurrency = newDefaultCurrency;
-        // 更新UI需要重新計算貨幣
-        updateDashboardUI();
-    } else {
-        defaultCurrency = newDefaultCurrency;
+}
+
+function applyFontSize() {
+    try {
+        document.documentElement.classList.remove('font-small', 'font-medium', 'font-large');
+        document.documentElement.classList.add('font-' + fontSize);
+        console.log("應用字體大小:", fontSize);
+    } catch (error) {
+        console.error("應用字體大小時出錯:", error);
     }
-    
-    // 儲存設定
-    saveToLocalStorage();
-    
-    // 關閉設定模態框
-    closeCurrentModal();
-    
-    // 更新UI
-    updateAllUI();
-    
-    showToast('已成功保存設定', 'success');
 }
 
 // 清除所有數據
@@ -4114,68 +4659,233 @@ function navigateTo(hash) {
 
 // 應用初始化
 async function initApp() {
-    // 初始化UI元素
-    const todayDate = getTodayDate();
-    if (getElement('#incomeDate')) {
-        getElement('#incomeDate').value = todayDate;
-    }
-    if (getElement('#expenseDate')) {
-        getElement('#expenseDate').value = todayDate;
-    }
-    
-    // 檢查是否支持localStorage
-    if (typeof Storage === 'undefined') {
-        showToast('您的瀏覽器不支持本地存儲，部分功能可能無法使用', 'warning');
-    }
-    
-    // 初始化Firebase
-    updateConnectionStatus('正在連接...');
-    initializeFirebase()
-        .then(initialized => {
-            if (initialized) {
-                showToast('Firebase已連接', 'success');
-            } else {
-                showToast('無法連接Firebase，使用本地模式', 'warning');
-            }
-        })
-        .catch(error => {
-            console.error('Firebase initialization error:', error);
-            showToast('Firebase初始化錯誤，使用本地模式', 'error');
-            updateConnectionStatus('連接失敗');
-        });
-    
-    // 從localStorage加載資料
-    loadFromLocalStorage();
-
-     // 檢查預算重設
-    checkBudgetReset();
-    
-    // 初始化圖標選擇器
-    populateIconSelector();
-    
-    // 設置事件監聽器
-    setupEventListeners();
-    
-    // 應用深色模式
-    if (darkMode) {
-        document.body.classList.add('dark-mode');
-    }
-    
-    // 應用字體大小
-    document.body.classList.add(`font-size-${fontSize}`);
-    
-    // 處理URL哈希
-    if (location.hash) {
-        navigateTo(location.hash);
-    } else {
-        navigateTo('#dashboard');
-    }
-    
-    // 初始化匯率數據
     try {
-        await initializeExchangeRates();
+        console.log("開始初始化應用...");
+        
+        // 檢查並創建必要的數據結構
+        if (!appState) {
+            appState = {
+                accounts: [],
+                categories: { income: [], expense: [] },
+                transactions: [],
+                budgets: { 
+                    total: 0, 
+                    categories: [], 
+                    resetCycle: 'monthly', 
+                    resetDay: 1,
+                    inheritLastMonth: true
+                },
+                settings: {
+                    darkMode: false,
+                    fontSize: 'medium',
+                    defaultCurrency: 'HKD',
+                    decimalPlaces: 2,
+                    enableBudgetAlerts: false,
+                    alertThreshold: 80,
+                    enableFirebase: false
+                }
+            };
+        }
+        
+        // 從localStorage加載資料
+        loadFromLocalStorage();
+        
+        // 確保設置對象存在
+        if (!appState.settings) {
+            appState.settings = {
+                darkMode: false,
+                fontSize: 'medium',
+                defaultCurrency: 'HKD',
+                decimalPlaces: 2,
+                enableBudgetAlerts: false,
+                alertThreshold: 80,
+                enableFirebase: false
+            };
+        }
+        
+        // 設置全局變量
+        darkMode = appState.settings.darkMode || false;
+        fontSize = appState.settings.fontSize || 'medium';
+        defaultCurrency = appState.settings.defaultCurrency || 'HKD';
+        decimalPlaces = appState.settings.decimalPlaces || 2;
+        enableBudgetAlerts = appState.settings.enableBudgetAlerts || false;
+        alertThreshold = appState.settings.alertThreshold || 80;
+        enableFirebase = appState.settings.enableFirebase || false;
+        
+        console.log("從localStorage加載的設置:", {
+            darkMode, fontSize, defaultCurrency, decimalPlaces,
+            enableBudgetAlerts, alertThreshold, enableFirebase
+        });
+        
+        // 初始化深色模式
+        initializeDarkMode();
+        
+        // 檢查預算重設
+        try {
+            checkBudgetReset();
+        } catch (e) {
+            console.error("檢查預算重設時出錯:", e);
+        }
+        
+        // 初始化Firebase (如果啟用)
+        if (enableFirebase) {
+            try {
+                await initFirebase();
+                console.log("Firebase初始化成功");
+                
+                // 檢查用戶是否已登入
+                const user = firebase.auth().currentUser;
+                if (user) {
+                    console.log("用戶已登入:", user.email);
+                    isLoggedIn = true;
+                    
+                    // 嘗試從Firebase同步數據
+                    try {
+                        await syncFromFirebase();
+                        showToast('已從雲端同步數據', 'success');
+                    } catch (syncError) {
+                        console.error("從Firebase同步數據時出錯:", syncError);
+                        showToast('同步數據失敗: ' + syncError.message, 'error');
+                    }
+                } else {
+                    console.log("用戶未登入");
+                    isLoggedIn = false;
+                }
+                
+                updateSyncStatus();
+            } catch (firebaseError) {
+                console.error("初始化Firebase時出錯:", firebaseError);
+                showToast('連接雲端服務失敗', 'error');
+                enableFirebase = false;
+            }
+        }
+        
+        // 設置全局事件監聽器
+        setupEventListeners();
+        
+        // 初始化匯率數據
+        try {
+            await initializeExchangeRates();
+            console.log("匯率數據初始化成功");
+        } catch (e) {
+            console.error("初始化匯率數據時出錯:", e);
+            showToast('無法獲取最新匯率', 'warning');
+        }
+        
+        // 更新所有UI元素
+        try {
+            updateAllUI();
+            console.log("UI初始化完成");
+        } catch (uiError) {
+            console.error("更新UI時出錯:", uiError);
+            
+            // 嘗試逐個更新UI元素，防止一個錯誤影響全部
+            try { updateAccountsUI(); } catch (e) { console.error("更新戶口UI出錯:", e); }
+            try { updateCategoriesUI(); } catch (e) { console.error("更新類別UI出錯:", e); }
+            try { updateTransactionsUI(); } catch (e) { console.error("更新交易UI出錯:", e); }
+            try { updateBudgetsUI(); } catch (e) { console.error("更新預算UI出錯:", e); }
+            try { updateDashboardUI(); } catch (e) { console.error("更新儀表板UI出錯:", e); }
+            try { updateStatisticsUI(); } catch (e) { console.error("更新統計UI出錯:", e); }
+            try { updateSyncUI(); } catch (e) { console.error("更新同步UI出錯:", e); }
+        }
+        
+        // 檢查URL參數，可能包含指定顯示的頁面
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const page = urlParams.get('page');
+            if (page) {
+                showTabContent(page);
+            }
+        } catch (e) {
+            console.error("處理URL參數時出錯:", e);
+        }
+        
+        // 移除載入中覆蓋層
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+        }
+        
+        // 嘗試檢查更新
+        try {
+            checkForUpdates();
+        } catch (e) {
+            console.error("檢查更新時出錯:", e);
+        }
+        
+        console.log("應用初始化完成");
     } catch (error) {
-        console.error('Error initializing exchange rates:', error);
+        console.error("初始化應用時出錯:", error);
+        
+        // 嘗試顯示錯誤訊息
+        showToast('初始化應用時出錯: ' + error.message, 'error');
+        
+        // 移除載入中覆蓋層，避免卡在載入畫面
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+        }
+        
+        // 仍然嘗試更新UI，盡可能顯示一些內容
+        try {
+            safeUpdateUI();
+        } catch (e) {
+            console.error("安全更新UI時出錯:", e);
+        }
+    }
+}
+
+/**
+ * 初始化深色模式
+ */
+function initializeDarkMode() {
+    try {
+        console.log("初始化深色模式...");
+        
+        // 先檢查localStorage中的設置
+        let shouldEnableDarkMode = false;
+        
+        // 1. 檢查appState中的設置
+        if (typeof darkMode !== 'undefined') {
+            shouldEnableDarkMode = darkMode;
+            console.log("從appState使用深色模式設置:", shouldEnableDarkMode);
+        } 
+        // 2. 直接檢查localStorage (備用)
+        else {
+            const savedDarkMode = localStorage.getItem('darkMode');
+            if (savedDarkMode !== null) {
+                shouldEnableDarkMode = savedDarkMode === 'true';
+                console.log("從localStorage使用深色模式設置:", shouldEnableDarkMode);
+            } 
+            // 3. 檢查系統偏好
+            else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                shouldEnableDarkMode = true;
+                console.log("從系統偏好使用深色模式設置:", shouldEnableDarkMode);
+            }
+        }
+        
+        // 應用深色模式設置
+        toggleDarkMode(shouldEnableDarkMode);
+        
+        // 更新設置頁面的開關
+        const darkModeToggle = document.getElementById('darkMode');
+        if (darkModeToggle) {
+            darkModeToggle.checked = shouldEnableDarkMode;
+        }
+        
+        // 監聽系統主題變化
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                // 只有在用戶沒有明確設置偏好時，才跟隨系統
+                if (localStorage.getItem('darkMode') === null) {
+                    toggleDarkMode(e.matches);
+                }
+            });
+        }
+        
+        console.log("深色模式初始化完成");
+    } catch (error) {
+        console.error("初始化深色模式時出錯:", error);
     }
 }
 
@@ -4373,3 +5083,49 @@ function setupEventListeners() {
 
 // 當DOM加載完成後初始化應用
 document.addEventListener('DOMContentLoaded', initApp);
+
+// 添加全局錯誤處理以捕獲未處理的錯誤
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error("全局錯誤:", message, "在", source, "行:", lineno, "列:", colno);
+    console.error("錯誤對象:", error);
+    
+    // 可選：顯示錯誤通知
+    if (typeof showToast === 'function') {
+        showToast('發生錯誤: ' + message, 'error');
+    }
+    
+    return true; // 防止默認錯誤處理
+};
+
+// 深色模式調試函數
+function debugDarkMode() {
+    console.log("=== 深色模式調試信息 ===");
+    console.log("當前darkMode變量值:", darkMode);
+    console.log("localStorage中的darkMode值:", localStorage.getItem('darkMode'));
+    console.log("深色模式切換按鈕狀態:", getElement('#darkMode').checked);
+    console.log("HTML data-theme屬性:", document.documentElement.getAttribute('data-theme'));
+    console.log("系統偏好深色模式:", window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    
+    // 檢查CSS變量是否正確應用
+    const bodyStyles = getComputedStyle(document.body);
+    console.log("body背景顏色:", bodyStyles.backgroundColor);
+    console.log("body文字顏色:", bodyStyles.color);
+    
+    // 添加測試按鈕
+    console.log("添加測試按鈕到頁面...");
+    const testBtn = document.createElement('button');
+    testBtn.textContent = '測試深色模式';
+    testBtn.style.position = 'fixed';
+    testBtn.style.bottom = '10px';
+    testBtn.style.right = '10px';
+    testBtn.style.zIndex = '9999';
+    testBtn.addEventListener('click', function() {
+        toggleDarkMode(!darkMode);
+    });
+    document.body.appendChild(testBtn);
+}
+
+// 在頁面加載後執行調試
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(debugDarkMode, 1000); // 延遲執行以確保其他代碼已加載
+});
