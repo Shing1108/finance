@@ -1,3 +1,15 @@
+// 添加安全機制：確保載入覆蓋層在出錯時也能被隱藏
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        var overlay = document.getElementById('loadingOverlay');
+        if (overlay && overlay.style.display !== 'none') {
+            console.log('強制關閉載入覆蓋層');
+            overlay.style.display = 'none';
+        }
+    }, 5000); // 5秒後強制關閉
+});
+
+
 // 全局變量
 let appState = {
     // 賬戶數組
