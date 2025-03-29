@@ -1356,3 +1356,105 @@ a:hover {
         display: block; /* 在手機模式下顯示 */
     }
 }
+
+/* 預算歷史記錄樣式 */
+.budget-history-list {
+    padding: var(--spacing-m);
+}
+
+.budget-history-item {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    padding: var(--spacing-m);
+    margin-bottom: var(--spacing-m);
+}
+
+.budget-history-item .budget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-s);
+}
+
+.budget-history-item .budget-date {
+    font-size: var(--font-size-small);
+    color: var(--text-light);
+}
+
+.budget-history-item .budget-amounts {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-s);
+}
+
+.budget-history-item .budget-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-s);
+    margin-top: var(--spacing-s);
+}
+
+/* 預算詳情模態框樣式 */
+.budget-details-header {
+    margin-bottom: var(--spacing-m);
+}
+
+.budget-details-header h2 {
+    margin-bottom: var(--spacing-xs);
+}
+
+.budget-period {
+    color: var(--text-light);
+    font-size: var(--font-size-small);
+}
+
+.budget-details-summary {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-m);
+    margin-bottom: var(--spacing-m);
+}
+
+.budget-detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-s);
+}
+
+.budget-detail-row:last-child {
+    margin-bottom: 0;
+    padding-top: var(--spacing-s);
+    border-top: 1px solid var(--border-color);
+    font-weight: bold;
+}
+
+.budget-details-categories h4 {
+    margin-bottom: var(--spacing-m);
+}
+
+.budget-category-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-m);
+    padding: var(--spacing-s) 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.budget-category-item:last-child {
+    border-bottom: none;
+}
+
+.category-info {
+    display: flex;
+    align-items: center;
+    width: 150px;
+}
+
+.category-icon {
+    margin-right: var(--spacing-s);
+}
+
+.category-budget-info {
+    flex: 1;
+}
