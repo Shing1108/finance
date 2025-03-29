@@ -1,25 +1,155 @@
 // 全局變量
 let appState = {
-    accounts: [],
-    transactions: [],
+    // 賬戶數組
+    accounts: [
+        // 示例賬戶
+        /*{
+            id: "acc-123",
+            name: "現金錢包",
+            type: "cash",
+            balance: 5000,
+            currency: "HKD",
+            note: "日常消費用",
+            createdAt: "2023-01-01T08:00:00Z",
+            updatedAt: "2023-01-15T10:30:00Z"
+        }*/
+    ],
+    
+    // 交易數組
+    transactions: [
+        // 示例交易
+        /*{
+            id: "trans-123",
+            type: "expense", // 'income' 或 'expense'
+            accountId: "acc-123",
+            categoryId: "cat-456",
+            amount: 200,
+            date: "2023-01-10",
+            note: "晚餐",
+            createdAt: "2023-01-10T20:30:00Z",
+            updatedAt: "2023-01-10T20:30:00Z"
+        }*/
+    ],
+    
+    // 類別對象
     categories: {
-        income: [],
-        expense: []
+        // 收入類別
+        income: [
+            // 示例收入類別
+            /*{
+                id: "income-cat-1",
+                name: "薪資",
+                icon: "fas fa-money-bill-wave",
+                color: "#27ae60",
+                order: 1,
+                createdAt: "2023-01-01T08:00:00Z",
+                updatedAt: "2023-01-01T08:00:00Z"
+            }*/
+        ],
+        
+        // 支出類別
+        expense: [
+            // 示例支出類別
+            /*{
+                id: "expense-cat-1",
+                name: "餐飲",
+                icon: "fas fa-utensils",
+                color: "#e74c3c",
+                order: 1,
+                createdAt: "2023-01-01T08:00:00Z",
+                updatedAt: "2023-01-01T08:00:00Z"
+            }*/
+        ]
     },
+    
+    // 預算系統（改進版本）
     budgets: {
-        total: 0,
-        resetCycle: 'monthly',
-        resetDay: 1,
-        categories: []
+        // 當前激活的預算
+        current: {
+            // 示例當前預算
+            /*{
+                id: "budget-123",            // 預算唯一ID
+                name: "2025年3月預算",       // 預算名稱
+                startDate: "2025-03-02",     // 開始日期
+                endDate: "2025-04-01",       // 結束日期
+                totalAmount: 10000,          // 總預算金額
+                categories: [                // 按類別細分的預算
+                    {
+                        id: "cat-budget-1",       // 類別預算唯一ID
+                        categoryId: "expense-cat-1", // 對應支出類別ID
+                        amount: 3000               // 分配給該類別的預算金額
+                    },
+                    {
+                        id: "cat-budget-2",
+                        categoryId: "expense-cat-2",
+                        amount: 2000
+                    }
+                    // 可添加更多類別預算...
+                ],
+                autoCalculate: true,        // 是否自動計算總預算（基於類別預算總和）
+                createdAt: "2025-03-01T08:00:00Z" // 創建時間
+            }*/
+        },
+        
+        // 歷史預算記錄，最新的預算在前
+        history: [
+            // 示例歷史預算
+            /*{
+                id: "budget-122",
+                name: "2025年2月預算",
+                startDate: "2025-02-01", 
+                endDate: "2025-03-01",
+                totalAmount: 9500,
+                categories: [
+                    {
+                        id: "cat-budget-old-1",
+                        categoryId: "expense-cat-1",
+                        amount: 2800
+                    },
+                    {
+                        id: "cat-budget-old-2",
+                        categoryId: "expense-cat-2",
+                        amount: 1900
+                    }
+                    // 可添加更多類別預算...
+                ],
+                autoCalculate: true,
+                createdAt: "2025-02-01T08:00:00Z",
+                // 預算完成后的統計信息
+                actualSpent: 9200,        // 實際支出總額
+                status: "completed",      // 預算狀態: "completed"已完成, "active"進行中, "draft"草稿
+                categoryStats: [          // 可選: 每個類別的使用統計
+                    {
+                        categoryId: "expense-cat-1",
+                        budgeted: 2800,
+                        spent: 2750
+                    },
+                    {
+                        categoryId: "expense-cat-2",
+                        budgeted: 1900,
+                        spent: 2100   // 超出預算
+                    }
+                ]
+            }*/
+        ],
+        
+        // 預算設置 (用於保存用戶偏好)
+        settings: {
+            defaultDuration: 30,           // 默認預算時長(天)
+            autoCreateNext: true,          // 是否自動創建下一期預算
+            notifyThreshold: 90,           // 預算使用提醒閾值(百分比)
+        }
     },
+    
+    // 應用設置
     settings: {
-        darkMode: false,
-        fontSize: 'medium',
-        defaultCurrency: 'HKD',
-        decimalPlaces: 2,
-        enableBudgetAlerts: false,
-        alertThreshold: 80,
-        enableFirebase: false
+        darkMode: false,                  // 深色模式
+        fontSize: 'medium',                // 字體大小: 'small', 'medium', 'large'
+        defaultCurrency: 'HKD',            // 默認貨幣
+        decimalPlaces: 2,                  // 小數點位數: 0-3
+        enableBudgetAlerts: false,         // 是否啟用預算提醒
+        alertThreshold: 80,                // 提醒閾值(百分比)
+        enableFirebase: false              // 是否啟用Firebase雲同步
     }
 };
 
@@ -341,67 +471,62 @@ function setupEventListeners() {
         });
     }
     
-    // 收入/支出類別標簽切換事件
-    if (incomeCategoryTabButton && expenseCategoryTabButton) {
-        incomeCategoryTabButton.addEventListener('click', function() {
-            this.classList.add('active');
-            expenseCategoryTabButton.classList.remove('active');
-            document.getElementById('incomeCategoryTab').classList.add('active');
-            document.getElementById('expenseCategoryTab').classList.remove('active');
-        });
-        
-        expenseCategoryTabButton.addEventListener('click', function() {
-            this.classList.add('active');
-            incomeCategoryTabButton.classList.remove('active');
-            document.getElementById('expenseCategoryTab').classList.add('active');
-            document.getElementById('incomeCategoryTab').classList.remove('active');
-        });
-    }
+// 賬戶視圖切換事件
+if (accountCardView && accountListView) {
+    accountCardView.addEventListener('click', function() {
+        this.classList.add('active');
+        accountListView.classList.remove('active');
+        const accountsList = document.getElementById('accountsList');
+        if (accountsList) {
+            accountsList.className = 'accounts-list card-view';
+            
+            // 重新渲染賬戶列表以確保DOM正確更新
+            updateAccountsUI();
+        }
+    });
     
-    // 賬戶視圖切換事件
-    if (accountCardView && accountListView) {
-        accountCardView.addEventListener('click', function() {
-            this.classList.add('active');
-            accountListView.classList.remove('active');
-            document.getElementById('accountsList').className = 'accounts-list card-view';
-        });
-        
-        accountListView.addEventListener('click', function() {
-            this.classList.add('active');
-            accountCardView.classList.remove('active');
-            document.getElementById('accountsList').className = 'accounts-list list-view';
-        });
-    }
+    accountListView.addEventListener('click', function() {
+        this.classList.add('active');
+        accountCardView.classList.remove('active');
+        const accountsList = document.getElementById('accountsList');
+        if (accountsList) {
+            accountsList.className = 'accounts-list list-view';
+            
+            // 重新渲染賬戶列表以確保DOM正確更新
+            updateAccountsUI();
+        }
+    });
+}
+
+// 類別視圖切換也需要類似修改
+// 收入類別視圖切換事件
+if (incomeCategoryCardView && incomeCategoryListView) {
+    incomeCategoryCardView.addEventListener('click', function() {
+        this.classList.add('active');
+        incomeCategoryListView.classList.remove('active');
+        const categoriesList = document.getElementById('incomeCategoriesList');
+        if (categoriesList) {
+            categoriesList.className = 'categories-list card-view';
+            
+            // 重新渲染列表
+            updateCategoriesUI();
+        }
+    });
     
-    // 收入類別視圖切換事件
-    if (incomeCategoryCardView && incomeCategoryListView) {
-        incomeCategoryCardView.addEventListener('click', function() {
-            this.classList.add('active');
-            incomeCategoryListView.classList.remove('active');
-            document.getElementById('incomeCategoriesList').className = 'categories-list card-view';
-        });
-        
-        incomeCategoryListView.addEventListener('click', function() {
-            this.classList.add('active');
-            incomeCategoryCardView.classList.remove('active');
-            document.getElementById('incomeCategoriesList').className = 'categories-list list-view';
-        });
-    }
-    
-    // 支出類別視圖切換事件
-    if (expenseCategoryCardView && expenseCategoryListView) {
-        expenseCategoryCardView.addEventListener('click', function() {
-            this.classList.add('active');
-            expenseCategoryListView.classList.remove('active');
-            document.getElementById('expenseCategoriesList').className = 'categories-list card-view';
-        });
-        
-        expenseCategoryListView.addEventListener('click', function() {
-            this.classList.add('active');
-            expenseCategoryCardView.classList.remove('active');
-            document.getElementById('expenseCategoriesList').className = 'categories-list list-view';
-        });
-    }
+    incomeCategoryListView.addEventListener('click', function() {
+        this.classList.add('active');
+        incomeCategoryCardView.classList.remove('active');
+        const categoriesList = document.getElementById('incomeCategoriesList');
+        if (categoriesList) {
+            categoriesList.className = 'categories-list list-view';
+            
+            // 重新渲染列表
+            updateCategoriesUI();
+        }
+    });
+}
+
+// 支出類別視圖切換類似修改
     
     // 轉賬匯率監聽
     setupTransferExchangeRateListener();
@@ -6103,5 +6228,477 @@ function loadStoredExchangeRates() {
     } else {
         // 沒有存儲的匯率，嘗試獲取新匯率
         updateExchangeRates();
+    }
+}
+
+// 創建新預算
+function createNewBudget() {
+    console.log("創建新預算");
+    
+    try {
+        const budgetName = document.getElementById('budgetName').value.trim();
+        const startDate = document.getElementById('budgetStartDate').value;
+        const endDate = document.getElementById('budgetEndDate').value;
+        const autoCalculate = document.getElementById('autoCalculateBudget').checked;
+        
+        let totalBudget = 0;
+        if (autoCalculate) {
+            totalBudget = calculateTotalCategoryBudget();
+        } else {
+            totalBudget = parseFloat(document.getElementById('totalBudget').value) || 0;
+        }
+        
+        // 驗證
+        if (!budgetName) {
+            showToast('請輸入預算名稱', 'error');
+            return;
+        }
+        
+        if (!startDate) {
+            showToast('請選擇開始日期', 'error');
+            return;
+        }
+        
+        if (!endDate) {
+            showToast('請選擇結束日期', 'error');
+            return;
+        }
+        
+        if (new Date(startDate) >= new Date(endDate)) {
+            showToast('結束日期必須晚於開始日期', 'error');
+            return;
+        }
+        
+        if (!totalBudget || totalBudget <= 0) {
+            showToast('請輸入有效的預算金額', 'error');
+            return;
+        }
+        
+        // 如果有當前預算，將其移至歷史記錄
+        if (appState.budgets.current) {
+            // 確保歷史記錄數組已初始化
+            if (!appState.budgets.history) {
+                appState.budgets.history = [];
+            }
+            
+            appState.budgets.history.unshift(appState.budgets.current);
+        }
+        
+        // 創建新預算
+        appState.budgets.current = {
+            id: generateId(),
+            name: budgetName,
+            startDate: startDate,
+            endDate: endDate,
+            totalAmount: totalBudget,
+            categories: [], // 將在添加類別預算時填充
+            autoCalculate: autoCalculate,
+            createdAt: new Date().toISOString()
+        };
+        
+        // 更新UI
+        updateBudgetsUI();
+        updateDashboardUI();
+        
+        // 保存到本地存儲
+        saveToLocalStorage();
+        
+        // 執行同步（如果啟用）
+        if (enableFirebase && isLoggedIn) {
+            syncToFirebase();
+        }
+        
+        // 清空表單
+        document.getElementById('budgetName').value = '';
+        
+        // 顯示成功消息
+        showToast('預算已創建', 'success');
+    } catch (error) {
+        console.error("創建新預算時發生錯誤:", error);
+        showToast('創建預算失敗: ' + error.message, 'error');
+    }
+}
+
+// 更新預算歷史記錄列表
+function updateBudgetHistoryList() {
+    console.log("更新預算歷史記錄");
+    
+    try {
+        const budgetHistoryList = document.getElementById('budgetHistoryList');
+        
+        if (!budgetHistoryList) {
+            console.error("找不到預算歷史記錄列表元素");
+            return;
+        }
+        
+        // 檢查是否有歷史記錄
+        if (!appState.budgets.history || appState.budgets.history.length === 0) {
+            budgetHistoryList.innerHTML = '<p class="empty-message">尚無預算歷史記錄</p>';
+            return;
+        }
+        
+        let html = '';
+        
+        // 排序歷史記錄（最新的在前）
+        const sortedHistory = [...appState.budgets.history].sort((a, b) => 
+            new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        
+        sortedHistory.forEach(budget => {
+            // 計算實際支出（如果未記錄則計算）
+            let actualSpent = budget.actualSpent;
+            if (actualSpent === undefined) {
+                actualSpent = calculateActualSpent(budget.startDate, budget.endDate);
+            }
+            
+            // 計算使用百分比
+            const usagePercentage = budget.totalAmount > 0 
+                ? Math.min(100, (actualSpent / budget.totalAmount) * 100) 
+                : 0;
+            
+            // 設置進度條顏色
+            let progressColor = 'var(--primary-color)';
+            if (usagePercentage > 100) {
+                progressColor = 'var(--danger-color)';
+            } else if (usagePercentage > 90) {
+                progressColor = 'var(--warning-color)';
+            }
+            
+            // 格式化日期
+            const formattedStartDate = formatDate(budget.startDate);
+            const formattedEndDate = formatDate(budget.endDate);
+            
+            html += `
+                <div class="budget-history-item" data-id="${budget.id}">
+                    <div class="budget-header">
+                        <h4>${budget.name}</h4>
+                        <div class="budget-date">${formattedStartDate} - ${formattedEndDate}</div>
+                    </div>
+                    <div class="budget-amounts">
+                        <div>預算: ${formatCurrency(budget.totalAmount)}</div>
+                        <div>實際: ${formatCurrency(actualSpent)}</div>
+                    </div>
+                    <div class="budget-progress-container">
+                        <div class="budget-progress-bar" style="width: ${usagePercentage}%; background-color: ${progressColor}"></div>
+                    </div>
+                    <div class="budget-actions">
+                        <button class="btn btn-sm view-budget" data-id="${budget.id}">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm copy-budget" data-id="${budget.id}">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        budgetHistoryList.innerHTML = html;
+        
+        // 添加查看和複製按鈕的事件監聽器
+        budgetHistoryList.querySelectorAll('.view-budget').forEach(button => {
+            button.addEventListener('click', function() {
+                const budgetId = this.getAttribute('data-id');
+                viewBudgetDetails(budgetId);
+            });
+        });
+        
+        budgetHistoryList.querySelectorAll('.copy-budget').forEach(button => {
+            button.addEventListener('click', function() {
+                const budgetId = this.getAttribute('data-id');
+                copyBudgetToNew(budgetId);
+            });
+        });
+    } catch (error) {
+        console.error("更新預算歷史記錄時發生錯誤:", error);
+        throw error;
+    }
+}
+
+// 計算指定日期範圍內的實際支出
+function calculateActualSpent(startDate, endDate) {
+    try {
+        // 篩選日期範圍內的支出交易
+        const rangeTransactions = appState.transactions.filter(t => 
+            t.type === 'expense' && 
+            t.categoryId !== 'transfer_out' &&
+            t.date >= startDate && 
+            t.date <= endDate
+        );
+        
+        // 計算總支出
+        let totalSpent = 0;
+        
+        rangeTransactions.forEach(transaction => {
+            const account = appState.accounts.find(a => a.id === transaction.accountId);
+            
+            if (!account) return;
+            
+            let amount = transaction.amount;
+            
+            // 匯率轉換
+            if (account.currency !== defaultCurrency) {
+                const rate = getExchangeRate(account.currency, defaultCurrency);
+                amount = amount * rate;
+            }
+            
+            totalSpent += amount;
+        });
+        
+        return totalSpent;
+    } catch (error) {
+        console.error("計算實際支出時發生錯誤:", error);
+        return 0;
+    }
+}
+
+// 查看預算詳情
+function viewBudgetDetails(budgetId) {
+    console.log(`查看預算詳情: ${budgetId}`);
+    
+    try {
+        // 找到對應的預算
+        const budget = appState.budgets.history.find(b => b.id === budgetId);
+        
+        if (!budget) {
+            showToast('找不到預算記錄', 'error');
+            return;
+        }
+        
+        // 創建並顯示預算詳情模態框
+        if (!document.getElementById('budgetDetailsModal')) {
+            createBudgetDetailsModal();
+        }
+        
+        // 填充預算詳情
+        document.getElementById('budgetDetailName').textContent = budget.name;
+        document.getElementById('budgetDetailPeriod').textContent = `${formatDate(budget.startDate)} - ${formatDate(budget.endDate)}`;
+        document.getElementById('budgetDetailTotal').textContent = formatCurrency(budget.totalAmount);
+        
+        // 計算實際支出
+        let actualSpent = budget.actualSpent;
+        if (actualSpent === undefined) {
+            actualSpent = calculateActualSpent(budget.startDate, budget.endDate);
+        }
+        
+        document.getElementById('budgetDetailSpent').textContent = formatCurrency(actualSpent);
+        
+        // 計算剩餘/超支
+        const remaining = budget.totalAmount - actualSpent;
+        const remainingElement = document.getElementById('budgetDetailRemaining');
+        
+        if (remaining >= 0) {
+            remainingElement.textContent = `剩餘: ${formatCurrency(remaining)}`;
+            remainingElement.style.color = 'var(--income-color)';
+        } else {
+            remainingElement.textContent = `超支: ${formatCurrency(Math.abs(remaining))}`;
+            remainingElement.style.color = 'var(--expense-color)';
+        }
+        
+        // 填充類別預算列表
+        const categoriesList = document.getElementById('budgetDetailCategories');
+        
+        if (budget.categories && budget.categories.length > 0) {
+            let categoriesHtml = '';
+            
+            budget.categories.forEach(catBudget => {
+                // 找到對應的類別
+                const category = appState.categories.expense.find(c => c.id === catBudget.categoryId);
+                if (!category) return;
+                
+                // 計算該類別的實際支出
+                const categorySpent = calculateCategorySpent(catBudget.categoryId, budget.startDate, budget.endDate);
+                
+                // 計算使用百分比
+                const usagePercentage = catBudget.amount > 0 
+                    ? Math.min(100, (categorySpent / catBudget.amount) * 100) 
+                    : 0;
+                
+                // 設置進度條顏色
+                let progressColor = 'var(--primary-color)';
+                if (usagePercentage > 100) {
+                    progressColor = 'var(--danger-color)';
+                } else if (usagePercentage > 90) {
+                    progressColor = 'var(--warning-color)';
+                }
+                
+                categoriesHtml += `
+                    <div class="budget-category-item">
+                        <div class="category-info">
+                            <div class="category-icon" style="color: ${category.color}">
+                                <i class="${category.icon}"></i>
+                            </div>
+                            <div class="category-name">${category.name}</div>
+                        </div>
+                        <div class="category-budget-info">
+                            <div class="budget-amounts">
+                                <div>預算: ${formatCurrency(catBudget.amount)}</div>
+                                <div>實際: ${formatCurrency(categorySpent)}</div>
+                            </div>
+                            <div class="budget-progress-container">
+                                <div class="budget-progress-bar" style="width: ${usagePercentage}%; background-color: ${progressColor}"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            categoriesList.innerHTML = categoriesHtml;
+        } else {
+            categoriesList.innerHTML = '<p class="empty-message">此預算沒有設置類別預算</p>';
+        }
+        
+        // 打開模態框
+        openModal('budgetDetailsModal');
+    } catch (error) {
+        console.error("查看預算詳情時發生錯誤:", error);
+        showToast('查看預算詳情失敗: ' + error.message, 'error');
+    }
+}
+
+// 計算特定類別在指定日期範圍內的支出
+function calculateCategorySpent(categoryId, startDate, endDate) {
+    try {
+        // 篩選該類別在日期範圍內的支出交易
+        const categoryTransactions = appState.transactions.filter(t => 
+            t.type === 'expense' && 
+            t.categoryId === categoryId &&
+            t.date >= startDate && 
+            t.date <= endDate
+        );
+        
+        // 計算總支出
+        let totalSpent = 0;
+        
+        categoryTransactions.forEach(transaction => {
+            const account = appState.accounts.find(a => a.id === transaction.accountId);
+            
+            if (!account) return;
+            
+            let amount = transaction.amount;
+            
+            // 匯率轉換
+            if (account.currency !== defaultCurrency) {
+                const rate = getExchangeRate(account.currency, defaultCurrency);
+                amount = amount * rate;
+            }
+            
+            totalSpent += amount;
+        });
+        
+        return totalSpent;
+    } catch (error) {
+        console.error("計算類別支出時發生錯誤:", error);
+        return 0;
+    }
+}
+
+// 複製歷史預算到新預算
+function copyBudgetToNew(budgetId) {
+    console.log(`複製預算: ${budgetId}`);
+    
+    try {
+        // 找到對應的預算
+        const sourceBudget = appState.budgets.history.find(b => b.id === budgetId);
+        
+        if (!sourceBudget) {
+            showToast('找不到預算記錄', 'error');
+            return;
+        }
+        
+        // 設置表單值
+        document.getElementById('budgetName').value = `${sourceBudget.name} (複製)`;
+        
+        // 設置日期為下一個週期
+        const sourceStartDate = new Date(sourceBudget.startDate);
+        const sourceEndDate = new Date(sourceBudget.endDate);
+        const duration = sourceEndDate - sourceStartDate; // 毫秒
+        
+        const newStartDate = new Date(sourceEndDate);
+        newStartDate.setDate(newStartDate.getDate() + 1); // 從上一個結束日期後一天開始
+        
+        const newEndDate = new Date(newStartDate);
+        newEndDate.setTime(newStartDate.getTime() + duration); // 相同持續時間
+        
+        document.getElementById('budgetStartDate').value = newStartDate.toISOString().slice(0, 10);
+        document.getElementById('budgetEndDate').value = newEndDate.toISOString().slice(0, 10);
+        
+        // 設置預算金額和自動計算
+        document.getElementById('totalBudget').value = sourceBudget.totalAmount;
+        document.getElementById('autoCalculateBudget').checked = sourceBudget.autoCalculate || false;
+        
+        // 滾動到表單位置
+        document.getElementById('budgetForm').scrollIntoView({behavior: 'smooth'});
+        
+        // 顯示提示信息
+        showToast('已複製預算設置，請確認後創建新預算', 'info');
+    } catch (error) {
+        console.error("複製預算時發生錯誤:", error);
+        showToast('複製預算失敗: ' + error.message, 'error');
+    }
+}
+
+// 創建預算詳情模態框
+function createBudgetDetailsModal() {
+    // 創建模態框HTML
+    const modalHTML = `
+    <div id="budgetDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>預算詳情</h3>
+                <button class="close-button">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="budget-details-header">
+                    <h2 id="budgetDetailName">預算名稱</h2>
+                    <div id="budgetDetailPeriod" class="budget-period">日期範圍</div>
+                </div>
+                <div class="budget-details-summary">
+                    <div class="budget-detail-row">
+                        <div class="detail-label">總預算:</div>
+                        <div id="budgetDetailTotal" class="detail-value">$0.00</div>
+                    </div>
+                    <div class="budget-detail-row">
+                        <div class="detail-label">實際支出:</div>
+                        <div id="budgetDetailSpent" class="detail-value">$0.00</div>
+                    </div>
+                    <div class="budget-detail-row">
+                        <div class="detail-label">結餘:</div>
+                        <div id="budgetDetailRemaining" class="detail-value">$0.00</div>
+                    </div>
+                </div>
+                <div class="budget-details-categories">
+                    <h4>類別預算</h4>
+                    <div id="budgetDetailCategories" class="category-budgets-list">
+                        <!-- 類別預算將在這裡填充 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">關閉</button>
+            </div>
+        </div>
+    </div>`;
+    
+    // 添加到文檔
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // 添加關閉按鈕事件
+    document.querySelector('#budgetDetailsModal .close-button').addEventListener('click', closeCurrentModal);
+    document.querySelector('#budgetDetailsModal .modal-close').addEventListener('click', closeCurrentModal);
+}
+
+// 格式化日期為更友好的顯示形式
+function formatDate(dateString) {
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('zh-HK', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    } catch (error) {
+        console.error("格式化日期時發生錯誤:", error);
+        return dateString;
     }
 }
