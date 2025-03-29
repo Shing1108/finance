@@ -4,7 +4,7 @@ const firebaseConfig = {
     projectId: "finance-d8f9e",
     storageBucket: "finance-d8f9e.firebasestorage.app",
     messagingSenderId: "1:122645255279:web:25d577b6365c819ffbe99a",
-    appId: "YOUR_APP_ID"
+    appId: "1:122645255279:web:25d577b6365c819ffbe99a"
 };
 
 // 匯率API配置
@@ -221,6 +221,32 @@ function formatDate(dateString) {
 // 生成唯一ID
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// 修正深色模式切換函數
+function toggleDarkMode(enable) {
+    // 先移除所有與主題相關的類
+    document.body.classList.remove('dark-mode', 'light-mode');
+    
+    // 添加正確的主題類
+    if (enable) {
+        document.body.classList.add('dark-mode');
+    } else {
+        document.body.classList.add('light-mode'); // 可選，提供默認樣式
+    }
+    
+    // 保存設置
+    darkMode = enable;
+    localStorage.setItem('darkMode', darkMode.toString());
+    
+    // 更新圖表顏色
+    if (typeof updateStatisticsUI === 'function') {
+        try {
+            updateStatisticsUI();
+        } catch (e) {
+            console.error('更新統計圖表時出錯:', e);
+        }
+    }
 }
 
 // 初始化Firebase
@@ -1264,6 +1290,178 @@ async function updateDashboardUI() {
     }
 }
 
+// 檢查並執行預算重設
+function checkBudgetReset() {
+    // 獲取今天的日期
+    const today = new Date();
+    const currentDay = today.getDate();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    // 獲取上次重設的日期
+    const lastResetStr = localStorage.getItem('lastBudgetReset');
+    let lastReset = lastResetStr ? new Date(lastResetStr) : null;
+    
+    // 獲取重設設置
+    const resetCycle = appState.budgets.resetCycle || 'monthly';
+    const resetDay = parseInt(appState.budgets.resetDay || 1, 10);
+    const inheritLastMonth = appState.budgets.inheritLastMonth !== false;
+    
+    // 確定是否需要重設
+    let shouldReset = false;
+    
+    if (!lastReset) {
+        // 首次運行，記錄今天為重設日
+        localStorage.setItem('lastBudgetReset', today.toISOString());
+        return; // 不需要重設
+    }
+    
+    const lastResetDay = lastReset.getDate();
+    const lastResetMonth = lastReset.getMonth();
+    const lastResetYear = lastReset.getFullYear();
+    
+    if (resetCycle === 'monthly') {
+        // 如果今天是重設日或之後，且上次重設是在上個月或更早
+        if (currentDay >= resetDay && 
+            (currentYear > lastResetYear || 
+             (currentYear === lastResetYear && currentMonth > lastResetMonth))) {
+            shouldReset = true;
+        }
+        // 處理跨月且本月沒有該日期的情況（例如2月沒有30、31日）
+        else if (currentDay < resetDay && 
+                lastResetDay < resetDay && 
+                (currentYear > lastResetYear || 
+                 (currentYear === lastResetYear && currentMonth > lastResetMonth))) {
+            // 檢查當前月份是否已經過了最大日期（月末）
+            const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            if (resetDay > lastDayOfMonth && currentDay === lastDayOfMonth) {
+                shouldReset = true;
+            }
+        }
+    }
+    else if (resetCycle === 'weekly') {
+        // 計算今天與上次重設的天數差
+        const daysDiff = Math.floor((today - lastReset) / (1000 * 60 * 60 * 24));
+        if (daysDiff >= 7) {
+            shouldReset = true;
+        }
+    }
+    else if (resetCycle === 'daily') {
+        // 如果日期不同，就需要重設
+        if (currentDay !== lastResetDay || 
+            currentMonth !== lastResetMonth || 
+            currentYear !== lastResetYear) {
+            shouldReset = true;
+        }
+    }
+    
+    // 執行預算重設
+    if (shouldReset) {
+        resetBudgets(inheritLastMonth);
+        localStorage.setItem('lastBudgetReset', today.toISOString());
+        showToast(`預算已按${resetCycle === 'monthly' ? '月' : (resetCycle === 'weekly' ? '週' : '日')}重設`, 'info');
+    }
+}
+
+// 重設預算
+function resetBudgets(inheritLastMonth) {
+    // 存儲當前預算記錄到歷史
+    if (!appState.budgetHistory) {
+        appState.budgetHistory = [];
+    }
+    
+    // 添加當前預算到歷史
+    const today = new Date();
+    const historyEntry = {
+        period: today.toISOString().substring(0, 7), // 格式：YYYY-MM
+        total: appState.budgets.total,
+        spent: calculateTotalSpentInCurrentPeriod(),
+        categories: JSON.parse(JSON.stringify(appState.budgets.categories || [])),
+        createdAt: today.toISOString()
+    };
+    
+    appState.budgetHistory.push(historyEntry);
+    
+    // 限制歷史記錄數量（保留最近12個月）
+    if (appState.budgetHistory.length > 12) {
+        appState.budgetHistory = appState.budgetHistory.slice(-12);
+    }
+    
+    // 如果不繼承上月預算，則重置類別預算使用情況
+    if (!inheritLastMonth) {
+        // 重設所有類別的已用金額（保留預算總額）
+        if (appState.budgets.categories) {
+            appState.budgets.categories.forEach(category => {
+                category.used = 0;
+            });
+        }
+    }
+    
+    // 保存更新後的數據
+    saveToLocalStorage();
+    
+    // 更新UI
+    updateBudgetsUI();
+    updateDashboardUI();
+}
+
+// 計算當期預算使用
+function calculateTotalSpentInCurrentPeriod() {
+    const today = new Date();
+    let startDate;
+    
+    // 根據重設週期確定開始日期
+    if (appState.budgets.resetCycle === 'monthly') {
+        const resetDay = parseInt(appState.budgets.resetDay || 1, 10);
+        const currentDay = today.getDate();
+        
+        if (currentDay >= resetDay) {
+            // 本月的重設日
+            startDate = new Date(today.getFullYear(), today.getMonth(), resetDay);
+        } else {
+            // 上月的重設日
+            startDate = new Date(today.getFullYear(), today.getMonth() - 1, resetDay);
+        }
+    } 
+    else if (appState.budgets.resetCycle === 'weekly') {
+        // 計算7天前
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 7);
+    }
+    else { // daily
+        // 今天開始
+        startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    }
+    
+    // 格式化日期為YYYY-MM-DD
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = today.toISOString().split('T')[0];
+    
+    // 計算這段時間內的支出總和
+    let totalSpent = 0;
+    
+    appState.transactions.forEach(transaction => {
+        if (transaction.type === 'expense' && 
+            transaction.date >= startDateStr && 
+            transaction.date <= endDateStr) {
+            
+            const account = appState.accounts.find(a => a.id === transaction.accountId);
+            if (account) {
+                // 如果貨幣與默認貨幣不同，需要轉換
+                if (account.currency === defaultCurrency) {
+                    totalSpent += transaction.amount;
+                } else {
+                    // 獲取匯率並計算
+                    const exchangeRate = getExchangeRate(account.currency, defaultCurrency) || 1;
+                    totalSpent += transaction.amount * exchangeRate;
+                }
+            }
+        }
+    });
+    
+    return totalSpent;
+}
+
 // 更新戶口UI
 function updateAccountsUI() {
     const accountsList = getElement('#accountsList');
@@ -1651,6 +1849,141 @@ async function handleTransfer() {
         console.error('Transfer error:', error);
         hideLoadingMessage();
         showToast('轉賬處理出錯', 'error');
+    }
+}
+
+// 更新類別預算列表
+function updateCategoryBudgetsList() {
+    const categoryBudgetsList = getElement('#categoryBudgetsList');
+    
+    if (!appState.budgets.categories || appState.budgets.categories.length === 0) {
+        categoryBudgetsList.innerHTML = '<p class="empty-message">尚未設置類別預算</p>';
+        return;
+    }
+    
+    categoryBudgetsList.innerHTML = '';
+    
+    // 計算每個類別的當前使用情況
+    updateBudgetUsage();
+    
+    appState.budgets.categories.forEach(budget => {
+        const category = appState.categories.expense.find(c => c.id === budget.categoryId);
+        
+        if (!category) return; // 跳過已刪除的類別
+        
+        // 計算使用百分比
+        const used = budget.used || 0;
+        const percentage = budget.amount > 0 ? (used / budget.amount * 100) : 0;
+        
+        // 根據使用比例確定顏色
+        let progressColor = 'var(--primary-color)';
+        if (percentage > 90) {
+            progressColor = 'var(--danger-color)';
+        } else if (percentage > 70) {
+            progressColor = 'var(--warning-color)';
+        }
+        
+        const budgetItem = document.createElement('div');
+        budgetItem.className = 'category-budget-item';
+        budgetItem.innerHTML = `
+            <div class="category-budget-info">
+                <div class="category-budget-name">
+                    <span class="category-icon" style="color: ${category.color}">
+                        <i class="${category.icon || 'fas fa-tag'}"></i>
+                    </span>
+                    ${category.name}
+                </div>
+                <div class="budget-progress-container">
+                    <div class="budget-progress-bar" style="width: ${Math.min(100, percentage)}%; background-color: ${progressColor}"></div>
+                </div>
+                <div class="budget-usage">
+                    ${formatCurrency(used)} / ${formatCurrency(budget.amount)} (${percentage.toFixed(1)}%)
+                </div>
+            </div>
+            <div class="category-budget-amount">
+                ${formatCurrency(budget.amount)}
+            </div>
+            <div class="category-budget-actions">
+                <button class="edit-budget" data-id="${budget.categoryId}"><i class="fas fa-edit"></i></button>
+                <button class="delete-budget" data-id="${budget.categoryId}"><i class="fas fa-trash"></i></button>
+            </div>
+        `;
+        
+        categoryBudgetsList.appendChild(budgetItem);
+    });
+    
+    // 添加事件監聽器
+    attachBudgetEventListeners();
+}
+
+// 更新預算使用情況
+async function updateBudgetUsage() {
+    try {
+        // 確定預算期間的開始日期
+        const today = new Date();
+        let startDate;
+        
+        // 根據重設週期確定開始日期
+        if (appState.budgets.resetCycle === 'monthly') {
+            const resetDay = parseInt(appState.budgets.resetDay || 1, 10);
+            const currentDay = today.getDate();
+            
+            if (currentDay >= resetDay) {
+                // 本月的重設日
+                startDate = new Date(today.getFullYear(), today.getMonth(), resetDay);
+            } else {
+                // 上月的重設日
+                startDate = new Date(today.getFullYear(), today.getMonth() - 1, resetDay);
+            }
+        } 
+        else if (appState.budgets.resetCycle === 'weekly') {
+            // 計算7天前
+            startDate = new Date(today);
+            startDate.setDate(today.getDate() - 7);
+        }
+        else { // daily
+            // 今天開始
+            startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        }
+        
+        // 格式化日期為YYYY-MM-DD
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = today.toISOString().split('T')[0];
+        
+        // 重置所有類別的使用量
+        if (appState.budgets.categories) {
+            appState.budgets.categories.forEach(budget => {
+                budget.used = 0;
+            });
+        }
+        
+        // 計算每個類別的使用量
+        for (const transaction of appState.transactions) {
+            if (transaction.type === 'expense' && 
+                transaction.date >= startDateStr && 
+                transaction.date <= endDateStr) {
+                
+                const categoryId = transaction.categoryId;
+                const account = appState.accounts.find(a => a.id === transaction.accountId);
+                
+                if (!account) continue;
+                
+                // 計算等值金額（考慮匯率）
+                let amount = transaction.amount;
+                if (account.currency !== defaultCurrency) {
+                    const rate = await getExchangeRate(account.currency, defaultCurrency);
+                    amount = transaction.amount * rate;
+                }
+                
+                // 找到對應的預算類別並更新使用量
+                const budget = appState.budgets.categories?.find(b => b.categoryId === categoryId);
+                if (budget) {
+                    budget.used = (budget.used || 0) + amount;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('更新預算使用情況時出錯:', error);
     }
 }
 
@@ -2766,9 +3099,21 @@ function updateBudgetsUI() {
 function saveBudgetSettings() {
     const total = parseFloat(getElement('#totalBudget').value) || 0;
     const resetCycle = document.querySelector('input[name="resetCycle"]:checked').value;
+    const resetDay = parseInt(getElement('#monthlyResetDay').value, 10) || 1;
+    const inheritLastMonth = getElement('#inheritLastMonthBudget').checked;
     
     appState.budgets.total = total;
     appState.budgets.resetCycle = resetCycle;
+    appState.budgets.resetDay = resetDay;
+    appState.budgets.inheritLastMonth = inheritLastMonth;
+    
+    // 顯示或隱藏重設日選擇器
+    const resetDayContainer = getElement('#resetDayContainer');
+    if (resetCycle === 'monthly') {
+        resetDayContainer.style.display = 'block';
+    } else {
+        resetDayContainer.style.display = 'none';
+    }
     
     // 儲存到本地和Firebase
     saveToLocalStorage();
@@ -2801,15 +3146,26 @@ function addCategoryBudget() {
     
     const existingIndex = appState.budgets.categories.findIndex(b => b.categoryId === categoryId);
     
+    // 獲取分類顏色用於顯示
+    const category = appState.categories.expense.find(c => c.id === categoryId);
+    let categoryName = "未知類別";
+    if (category) {
+        categoryName = category.name;
+    }
+    
     if (existingIndex >= 0) {
         // 更新現有預算
         appState.budgets.categories[existingIndex].amount = amount;
+        showToast(`已更新「${categoryName}」預算`, 'success');
     } else {
         // 添加新預算
         appState.budgets.categories.push({
             categoryId,
-            amount
+            amount,
+            used: 0,
+            createdAt: new Date().toISOString()
         });
+        showToast(`已添加「${categoryName}」預算`, 'success');
     }
     
     // 如果設置為自動計算總預算
@@ -2826,8 +3182,6 @@ function addCategoryBudget() {
     // 更新UI
     updateBudgetsUI();
     updateDashboardUI();
-    
-    showToast('已成功添加類別預算', 'success');
 }
 
 // 編輯類別預算
@@ -3792,6 +4146,9 @@ async function initApp() {
     
     // 從localStorage加載資料
     loadFromLocalStorage();
+
+     // 檢查預算重設
+    checkBudgetReset();
     
     // 初始化圖標選擇器
     populateIconSelector();
