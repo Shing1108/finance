@@ -58,7 +58,6 @@ const currencySymbols = {
     JPY: "¥"
 };
 
-// 初始化
 document.addEventListener('DOMContentLoaded', function() {
     try {
         console.log("應用程序初始化中...");
@@ -77,6 +76,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 預填充表單日期為今天
         setDefaultDates();
+        
+        // 加載匯率數據 - 添加這一行
+        loadStoredExchangeRates();
         
         // 初始化UI更新
         updateAllUI();
@@ -100,6 +102,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 隱藏載入覆蓋層
         document.getElementById('loadingOverlay').style.display = 'none';
+        
+        // 設置定時器，每小時更新匯率 - 添加這一行
+        setInterval(updateExchangeRates, 60 * 60 * 1000);
     } catch (error) {
         console.error("初始化時發生錯誤:", error);
         
@@ -3914,10 +3919,12 @@ async function initFirebase() {
         const firebaseConfig = {
             apiKey: "AIzaSyAaqadmDSgQ-huvY7uNNrPtjFSOl93jVEE",
             authDomain: "finance-d8f9e.firebaseapp.com",
+            databaseURL: "https://finance-d8f9e-default-rtdb.firebaseio.com",
             projectId: "finance-d8f9e",
             storageBucket: "finance-d8f9e.firebasestorage.app",
-            messagingSenderId: "1:122645255279:web:25d577b6365c819ffbe99a",
-            appId: "1:122645255279:web:25d577b6365c819ffbe99a"
+            messagingSenderId: "122645255279",
+            appId: "1:122645255279:web:25d577b6365c819ffbe99a",
+            measurementId: "G-ZCGNG1DRJS"
         };
         
         // 初始化Firebase
@@ -4802,4 +4809,123 @@ function safeUpdateUI() {
     }
     
     console.log("安全UI更新完成");
+}
+
+// 定期更新匯率（每小時一次）
+async function updateExchangeRates() {
+    try {
+        console.log("正在更新匯率...");
+        
+        // 使用您的 ExchangeRate-API 密鑰
+        // 替換 'YOUR_API_KEY' 為您的實際 API 密鑰
+        const apiKey = '7c54ea3dee46895c929cfeb0';
+        const baseUrl = 'https://v6.exchangerate-api.com/v6/';
+        
+        // 我們使用 USD 作為基礎貨幣
+        const baseCurrency = 'USD';
+        const endpoint = `${baseUrl}${apiKey}/latest/${baseCurrency}`;
+        
+        const response = await fetch(endpoint);
+        
+        // 檢查 HTTP 狀態
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // 檢查 API 返回的結果
+        if (data.result === 'success') {
+            // 更新匯率數據
+            const newRates = {};
+            const currencies = ['HKD', 'USD', 'CNY', 'EUR', 'GBP', 'JPY'];
+            
+            // 對於每種貨幣，創建對其他所有貨幣的匯率
+            currencies.forEach(fromCurrency => {
+                newRates[fromCurrency] = {};
+                
+                currencies.forEach(toCurrency => {
+                    if (fromCurrency !== toCurrency) {
+                        // 從 USD 到目標貨幣的匯率
+                        const fromToUSD = fromCurrency === 'USD' ? 1 : 1 / data.conversion_rates[fromCurrency];
+                        const usdToTo = data.conversion_rates[toCurrency];
+                        
+                        // 計算匯率並保留6位小數
+                        newRates[fromCurrency][toCurrency] = parseFloat((fromToUSD * usdToTo).toFixed(6));
+                    }
+                });
+            });
+            
+            // 更新全局匯率變量
+            exchangeRates = newRates;
+            
+            // 保存到本地存儲
+            localStorage.setItem('exchangeRates', JSON.stringify({
+                rates: newRates,
+                lastUpdated: new Date().toISOString()
+            }));
+            
+            console.log("匯率更新成功");
+            showToast('匯率已更新', 'success');
+            
+            // 更新相關 UI
+            updateTransferForm();
+            updateAllUI();
+            
+            return true;
+        } else {
+            throw new Error(`API error: ${data.error_type}`);
+        }
+    } catch (error) {
+        console.error("更新匯率時發生錯誤:", error);
+        showToast('更新匯率失敗: ' + error.message, 'error');
+        
+        // 嘗試使用本地存儲的上次成功匯率
+        const storedRates = localStorage.getItem('exchangeRates');
+        if (storedRates) {
+            try {
+                const parsedRates = JSON.parse(storedRates);
+                if (parsedRates.rates) {
+                    exchangeRates = parsedRates.rates;
+                    console.log("使用本地存儲的匯率（上次更新時間：" + new Date(parsedRates.lastUpdated).toLocaleString() + "）");
+                    showToast('使用本地存儲的匯率', 'info');
+                }
+            } catch (e) {
+                console.error("解析存儲的匯率時出錯:", e);
+            }
+        }
+    }
+    
+    return false;
+}
+
+// 啟動時嘗試加載本地存儲的匯率
+function loadStoredExchangeRates() {
+    const storedRates = localStorage.getItem('exchangeRates');
+    if (storedRates) {
+        try {
+            const parsedRates = JSON.parse(storedRates);
+            if (parsedRates.rates) {
+                exchangeRates = parsedRates.rates;
+                console.log("使用本地存儲的匯率（上次更新時間：" + new Date(parsedRates.lastUpdated).toLocaleString() + "）");
+                
+                // 檢查上次更新時間，如果超過1小時，則更新匯率
+                const lastUpdated = new Date(parsedRates.lastUpdated);
+                const oneHourAgo = new Date();
+                oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+                
+                if (lastUpdated < oneHourAgo) {
+                    console.log("匯率數據已過期，嘗試更新...");
+                    updateExchangeRates();
+                }
+            }
+        } catch (e) {
+            console.error("解析存儲的匯率時出錯:", e);
+            // 如果解析失敗，嘗試獲取新匯率
+            updateExchangeRates();
+        }
+    } else {
+        // 沒有存儲的匯率，嘗試獲取新匯率
+        updateExchangeRates();
+    }
 }
