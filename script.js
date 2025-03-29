@@ -52,7 +52,8 @@ if (enableFirebase) {
             firebase.firestore().settings({
                 cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
                 experimentalForceLongPolling: true, // 使用長輪詢而非WebChannel
-                ignoreUndefinedProperties: true
+                ignoreUndefinedProperties: true,
+                merge: true // 添加這一行，解決覆蓋host設置的問題
             });
             
             db = firebase.firestore();
@@ -115,25 +116,24 @@ function initApp() {
         
         // 檢查是否可以使用 Firebase 認證
         if (enableFirebase && typeof auth !== 'undefined' && auth) {
+            // 嘗試創建連接測試集合
+            if (db) {
+                db.collection('connection_test').doc('test').set({
+                    testTime: new Date().toString(),
+                    appVersion: '1.0'
+                }).then(() => {
+                    console.log("連接測試集合初始化成功");
+                }).catch(error => {
+                    console.warn("連接測試集合初始化失敗:", error);
+                });
+            }
+            
             // 檢查認證狀態
             checkAuthState();
         } else {
             console.log("Firebase 認證不可用，使用本地模式");
             updateAuthUI(false);
         }
-        
-        // 添加事件監聽器
-        setTimeout(() => {
-            try {
-                setupEventListeners();
-            } catch (e) {
-                console.error("設置事件監聽器失敗:", e);
-                // 嘗試後續設置
-                setTimeout(setupEventListeners, 1000);
-            }
-        }, 100);
-        
-        console.log("應用初始化完成");
     } catch (e) {
         console.error("應用初始化過程中發生錯誤:", e);
     }
@@ -560,146 +560,27 @@ function loadDataFromFirestore(userId) {
         
         // 確保有效的用戶ID
         if (!userId) {
-            console.warn('未提供用戶ID，無法加載數據');
-            updateAppState(defaultData);
-            showLoadingMessage('未登入，使用本地數據');
-            loadFromLocalStorage();
-            return Promise.resolve();
-        }
-        
-        // 進行連接測試
-        return db.collection('connection_test').doc('test')
-            .set({ timestamp: firebase.firestore.FieldValue.serverTimestamp() })
-            .then(() => {
-                console.log("Firebase連接測試成功，開始加載數據");
-                
-                // 參考用戶文檔
-                const userRef = db.collection('users').doc(userId);
-                
-                // 加載戶口數據
-                return userRef.collection('accounts').get()
-                    .then(snapshot => {
-                        showLoadingMessage('加載戶口數據...');
-                        const accounts = [];
-                        if (!snapshot.empty) {
-                            snapshot.forEach(doc => {
-                                accounts.push({ id: doc.id, ...doc.data() });
-                            });
-                        }
-                        return accounts;
+            console.warn('未提供用戶ID，嘗試匿名登入');
+            if (auth) {
+                return auth.signInAnonymously()
+                    .then(userCredential => {
+                        console.log('匿名登入成功', userCredential.user);
+                        // 使用新的用戶ID再次嘗試加載數據
+                        return loadDataFromFirestore(userCredential.user.uid);
                     })
                     .catch(error => {
-                        console.error('加載戶口數據失敗:', error);
-                        return [];
+                        console.error('匿名登入失敗', error);
+                        loadFromLocalStorage();
+                        hideLoadingMessage();
+                        return Promise.resolve(defaultData);
                     });
-            })
-            .then(accounts => {
-                // 參考用戶文檔
-                const userRef = db.collection('users').doc(userId);
-                
-                // 加載類別數據
-                return userRef.collection('categories').doc('all').get()
-                    .then(doc => {
-                        showLoadingMessage('加載類別數據...');
-                        if (doc.exists) {
-                            return { accounts, categories: doc.data() };
-                        } else {
-                            // 創建默認類別
-                            return { accounts, categories: loadDefaultCategories() };
-                        }
-                    })
-                    .catch(error => {
-                        console.error('加載類別數據失敗:', error);
-                        return { accounts, categories: loadDefaultCategories() };
-                    });
-            })
-            .then(data => {
-                // 參考用戶文檔
-                const userRef = db.collection('users').doc(userId);
-                
-                // 加載交易數據
-                return userRef.collection('transactions').get()
-                    .then(snapshot => {
-                        showLoadingMessage('加載交易數據...');
-                        const transactions = [];
-                        if (!snapshot.empty) {
-                            snapshot.forEach(doc => {
-                                // 添加日期轉換
-                                const transData = doc.data();
-                                if (transData.date && transData.date.toDate) {
-                                    transData.date = transData.date.toDate();
-                                }
-                                transactions.push({ id: doc.id, ...transData });
-                            });
-                        }
-                        return { ...data, transactions };
-                    })
-                    .catch(error => {
-                        console.error('加載交易數據失敗:', error);
-                        return { ...data, transactions: [] };
-                    });
-            })
-            .then(data => {
-                // 參考用戶文檔
-                const userRef = db.collection('users').doc(userId);
-                
-                // 加載預算數據
-                return userRef.collection('budgets').doc('current').get()
-                    .then(doc => {
-                        showLoadingMessage('加載預算數據...');
-                        if (doc.exists) {
-                            return { ...data, budgets: doc.data() };
-                        } else {
-                            return {
-                                ...data,
-                                budgets: {
-                                    general: 0,
-                                    categories: [],
-                                    cycle: 'monthly',
-                                    resetDay: 1
-                                }
-                            };
-                        }
-                    })
-                    .catch(error => {
-                        console.error('加載預算數據失敗:', error);
-                        return {
-                            ...data,
-                            budgets: {
-                                general: 0,
-                                categories: [],
-                                cycle: 'monthly',
-                                resetDay: 1
-                            }
-                        };
-                    });
-            })
-            .then(data => {
-                updateAppState(data);
-                saveToLocalStorage(data);  // 保存到本地存儲作為備份
-                
-                // 更新最後同步時間
-                appState.lastSyncTime = new Date();
-                localStorage.setItem('lastSyncTime', appState.lastSyncTime.toString());
-                
-                const lastSyncTimeEl = getElement('#lastSyncTime');
-                if (lastSyncTimeEl) {
-                    lastSyncTimeEl.textContent = formatDate(appState.lastSyncTime);
-                }
-                
-                showLoadingMessage('數據加載完成');
-                setTimeout(hideLoadingMessage, 500);
-                return data;
-            })
-            .catch(error => {
-                console.error('Firebase數據加載失敗:', error);
-                showToast('Firebase數據加載失敗，將使用本地數據', 'error');
+            } else {
+                updateAppState(defaultData);
+                showLoadingMessage('未登入，使用本地數據');
                 loadFromLocalStorage();
-                hideLoadingMessage();
-                // 禁用Firebase
-                db = null;
-                return defaultData;
-            });
+                return Promise.resolve();
+            }
+        }
     } catch (e) {
         console.error("從Firebase加載數據失敗:", e);
         loadFromLocalStorage();
@@ -2934,54 +2815,25 @@ function syncData() {
         }
         
         if (!appState.user) {
-            showToast('請先登入', 'warning');
+            // 嘗試匿名登入
+            if (auth) {
+                showLoadingMessage('正在嘗試匿名登入...');
+                auth.signInAnonymously()
+                    .then(() => {
+                        showToast('匿名登入成功', 'success');
+                        // 登入成功後再次嘗試同步
+                        setTimeout(syncData, 1000);
+                    })
+                    .catch(error => {
+                        console.error('匿名登入失敗:', error);
+                        showToast('無法登入，使用本地模式', 'warning');
+                        hideLoadingMessage();
+                    });
+            } else {
+                showToast('請先登入', 'warning');
+            }
             return;
         }
-        
-        if (!navigator.onLine) {
-            showToast('離線狀態無法同步', 'warning');
-            return;
-        }
-        
-        if (!db) {
-            showToast('Firebase 未初始化或不可用，使用本地模式', 'warning');
-            return;
-        }
-        
-        showLoadingMessage('同步中...');
-        
-        // 進行連接測試
-        db.collection('connection_test').doc('test')
-            .set({ timestamp: firebase.firestore.FieldValue.serverTimestamp() })
-            .then(() => {
-                console.log("Firebase連接測試成功，開始同步數據");
-                // 同步所有數據
-                return Promise.all([
-                    syncAccounts(),
-                    syncCategories(),
-                    syncTransactions(),
-                    syncBudgets()
-                ]);
-            })
-            .then(() => {
-                appState.lastSyncTime = new Date();
-                localStorage.setItem('lastSyncTime', appState.lastSyncTime.toString());
-                
-                const lastSyncTimeEl = getElement('#lastSyncTime');
-                if (lastSyncTimeEl) {
-                    lastSyncTimeEl.textContent = formatDate(appState.lastSyncTime);
-                }
-                
-                hideLoadingMessage();
-                showToast('數據同步完成', 'success');
-            })
-            .catch(error => {
-                console.error('同步失敗:', error);
-                hideLoadingMessage();
-                showToast('同步失敗: ' + (error.message || '未知錯誤') + '，使用本地模式', 'error');
-                // 禁用Firebase
-                db = null;
-            });
     } catch (e) {
         console.error("同步數據失敗:", e);
         hideLoadingMessage();
