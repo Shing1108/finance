@@ -1,4 +1,3 @@
-// Firebase Configuration - 需要您自己的 Firebase 配置
 const firebaseConfig = {
     apiKey: "AIzaSyAaqadmDSgQ-huvY7uNNrPtjFSOl93jVEE",
     authDomain: "finance-d8f9e.firebaseapp.com",
@@ -107,6 +106,10 @@ let autoSync = true;
 // Firebase 變數
 let db, auth, firebaseInitialized = false;
 
+// 模態框狀態跟踪
+let modalQueue = [];
+let currentModal = null;
+
 // DOM 元素快取
 const elements = {};
 
@@ -141,31 +144,63 @@ function hideLoadingMessage() {
     getElement('#loadingOverlay').style.display = 'none';
 }
 
+// 顯示模態框
+function showModal(modalId) {
+    // 將模態框添加到隊列
+    modalQueue.push(modalId);
+    
+    // 如果沒有其他模態框正在顯示，則顯示當前模態框
+    if (!currentModal) {
+        processModalQueue();
+    }
+}
+
+// 關閉當前模態框
+function closeCurrentModal() {
+    if (currentModal) {
+        const modal = getElement(currentModal);
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        currentModal = null;
+        
+        // 處理隊列中的下一個模態框
+        processModalQueue();
+    }
+}
+
+// 處理模態框隊列
+function processModalQueue() {
+    if (modalQueue.length > 0) {
+        currentModal = modalQueue.shift();
+        const modal = getElement(currentModal);
+        if (modal) {
+            modal.style.display = 'block';
+            document.body.classList.add('modal-active');
+        } else {
+            // 如果找不到模態框，處理下一個
+            currentModal = null;
+            processModalQueue();
+        }
+    } else {
+        document.body.classList.remove('modal-active');
+    }
+}
+
 // 顯示確認模態框
 function showConfirmModal(message, onConfirm) {
-    const confirmModal = getElement('#confirmModal');
     const confirmMessage = getElement('#confirmMessage');
-    const confirmYesBtn = getElement('#confirmYesBtn');
-    const confirmNoBtn = getElement('#confirmNoBtn');
-    
     confirmMessage.textContent = message;
     
-    confirmYesBtn.onclick = () => {
-        confirmModal.style.display = 'none';
+    getElement('#confirmYesBtn').onclick = () => {
+        closeCurrentModal();
         if (typeof onConfirm === 'function') {
             onConfirm();
         }
     };
     
-    confirmNoBtn.onclick = () => {
-        confirmModal.style.display = 'none';
-    };
-    
-    getElement('#confirmModal .close').onclick = () => {
-        confirmModal.style.display = 'none';
-    };
-    
-    confirmModal.style.display = 'block';
+    // 顯示確認模態框
+    showModal('#confirmModal');
 }
 
 // 獲取日期函數
@@ -205,9 +240,6 @@ function initializeFirebase() {
         auth.onAuthStateChanged(handleAuthStateChanged);
         
         db = firebase.firestore();
-        db.settings({
-            cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-        });
         
         // 使用離線持久化
         db.enablePersistence({ synchronizeTabs: true })
@@ -220,20 +252,26 @@ function initializeFirebase() {
             });
         
         // 監聽連接狀態
-        db.collection('status').doc('connection')
-            .set({ timestamp: firebase.firestore.FieldValue.serverTimestamp() })
-            .then(() => {
-                updateConnectionStatus('已連接');
-                firebaseInitialized = true;
-                return true;
-            })
-            .catch(error => {
-                console.error('Firebase connection test failed:', error);
-                updateConnectionStatus('連接失敗');
-                return false;
-            });
-        
-        return Promise.resolve(true);
+        try {
+            db.collection('status').doc('connection')
+                .set({ timestamp: firebase.firestore.FieldValue.serverTimestamp() })
+                .then(() => {
+                    updateConnectionStatus('已連接');
+                    firebaseInitialized = true;
+                    return true;
+                })
+                .catch(error => {
+                    console.error('Firebase connection test failed:', error);
+                    updateConnectionStatus('連接失敗');
+                    return false;
+                });
+            
+            return Promise.resolve(true);
+        } catch (connError) {
+            console.error('Connection test error:', connError);
+            updateConnectionStatus('測試連接失敗');
+            return Promise.resolve(false);
+        }
     } catch (error) {
         console.error('Firebase initialization error:', error);
         updateConnectionStatus('初始化失敗');
@@ -481,7 +519,7 @@ function saveToLocalStorage() {
     }
     
     // 如果啟用了自動同步，同步到Firebase
-    if (enableFirebase && autoSync && appState.currentUser) {
+    if (enableFirebase && autoSync && appState.currentUser && firebaseInitialized) {
         syncData().catch(error => {
             console.error('Auto sync failed:', error);
         });
@@ -758,23 +796,24 @@ function useBackupRate(fromCurrency, toCurrency) {
 }
 
 // 計算總資產
-function calculateTotalAssets() {
-    return appState.accounts.reduce((total, account) => {
+async function calculateTotalAssets() {
+    let total = 0;
+    
+    for (const account of appState.accounts) {
         // 將所有貨幣轉換為預設貨幣
         let amount = account.balance;
         if (account.currency !== defaultCurrency) {
-            getExchangeRate(account.currency, defaultCurrency)
-                .then(rate => {
-                    amount = account.balance * rate;
-                    return total + amount;
-                })
-                .catch(error => {
-                    console.error('Exchange rate calculation error:', error);
-                    return total + amount;
-                });
+            try {
+                const rate = await getExchangeRate(account.currency, defaultCurrency);
+                amount = account.balance * rate;
+            } catch (error) {
+                console.error('Exchange rate calculation error:', error);
+            }
         }
-        return total + amount;
-    }, 0);
+        total += amount;
+    }
+    
+    return total;
 }
 
 // 更新匯率信息UI
@@ -1089,15 +1128,15 @@ async function updateDashboardUI() {
     try {
         // 更新總資產
         const totalAssets = await calculateTotalAssets();
-        getElement('#totalAssets span').textContent = formatCurrency(totalAssets);
+        getElement('#totalAssets span:last-child').textContent = formatCurrency(totalAssets);
         
         // 更新今日收入
         const todayIncome = await calculateTodayIncome();
-        getElement('#todayIncome span').textContent = formatCurrency(todayIncome);
+        getElement('#todayIncome span:last-child').textContent = formatCurrency(todayIncome);
         
         // 更新今日支出
         const todayExpense = await calculateTodayExpense();
-        getElement('#todayExpense span').textContent = formatCurrency(todayExpense);
+        getElement('#todayExpense span:last-child').textContent = formatCurrency(todayExpense);
         
         // 更新今日交易
         const todayTransactionsList = getElement('#todayTransactions');
@@ -1170,8 +1209,27 @@ async function updateDashboardUI() {
             });
         } else {
             // 計算當前預算使用情況
-            const totalExpense = await calculateTodayExpense();
-            const budgetPercentage = (totalExpense / appState.budgets.total) * 100;
+            const today = new Date();
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+            const monthEnd = today.toISOString().split('T')[0];
+            
+            // 計算當月總支出
+            let monthlyExpense = 0;
+            for (const transaction of appState.transactions.filter(t => 
+                t.type === 'expense' && t.date >= monthStart && t.date <= monthEnd)) {
+                
+                const account = appState.accounts.find(acc => acc.id === transaction.accountId);
+                if (account) {
+                    if (account.currency === defaultCurrency) {
+                        monthlyExpense += transaction.amount;
+                    } else {
+                        const rate = await getExchangeRate(account.currency, defaultCurrency);
+                        monthlyExpense += transaction.amount * rate;
+                    }
+                }
+            }
+            
+            const budgetPercentage = (monthlyExpense / appState.budgets.total) * 100;
             
             let statusClass = '';
             if (budgetPercentage > 90) {
@@ -1186,7 +1244,7 @@ async function updateDashboardUI() {
                         <div class="progress-fill ${statusClass}" style="width: ${Math.min(budgetPercentage, 100)}%"></div>
                     </div>
                     <div class="progress-labels">
-                        <span>已使用: ${formatCurrency(totalExpense)}</span>
+                        <span>已使用: ${formatCurrency(monthlyExpense)}</span>
                         <span>預算: ${formatCurrency(appState.budgets.total)}</span>
                     </div>
                 </div>
@@ -1344,7 +1402,7 @@ function addAccount() {
     updateCurrencySelect();
     
     // 顯示模態框
-    getElement('#accountModal').style.display = 'block';
+    showModal('#accountModal');
     getElement('#accountModal h2').textContent = '新增戶口';
     
     getElement('#saveAccountBtn').onclick = () => {
@@ -1380,7 +1438,7 @@ function addAccount() {
         saveToLocalStorage();
         
         // 關閉模態框並更新UI
-        getElement('#accountModal').style.display = 'none';
+        closeCurrentModal();
         updateAccountsUI();
         
         showToast('已成功新增戶口', 'success');
@@ -1433,7 +1491,7 @@ function editAccount(accountId) {
     getElement('#accountNote').value = account.note || '';
     
     // 顯示模態框
-    getElement('#accountModal').style.display = 'block';
+    showModal('#accountModal');
     getElement('#accountModal h2').textContent = '編輯戶口';
     
     getElement('#saveAccountBtn').onclick = () => {
@@ -1465,7 +1523,7 @@ function editAccount(accountId) {
         saveToLocalStorage();
         
         // 關閉模態框並更新UI
-        getElement('#accountModal').style.display = 'none';
+        closeCurrentModal();
         updateAccountsUI();
         updateDashboardUI();
         
@@ -1613,15 +1671,21 @@ function updateCategoriesUI() {
         // 根據視圖選項顯示不同的類別列表
         const isCardView = getElement('#incomeCategoryCardViewBtn').classList.contains('active');
         
-        appState.categories.income.forEach(category => {
+        // 對類別進行排序
+        const sortedIncomeCategories = [...appState.categories.income].sort((a, b) => {
+            return (a.sort || 0) - (b.sort || 0);
+        });
+        
+        sortedIncomeCategories.forEach(category => {
             if (isCardView) {
                 const categoryCard = document.createElement('div');
                 categoryCard.className = 'category-card';
-                categoryCard.innerHTML = `
+               categoryCard.innerHTML = `
                     <div class="category-icon" style="color: ${category.color}">
                         <i class="${category.icon || 'fas fa-tag'}"></i>
                     </div>
                     <div class="category-name">${category.name}</div>
+                    <div class="category-sort" style="font-size: var(--font-size-small); color: var(--text-light);">順序: ${category.sort || 0}</div>
                     <div class="category-actions">
                         <button class="edit-category" data-id="${category.id}" data-type="income"><i class="fas fa-edit"></i></button>
                         <button class="delete-category" data-id="${category.id}" data-type="income"><i class="fas fa-trash"></i></button>
@@ -1638,6 +1702,7 @@ function updateCategoriesUI() {
                             <i class="${category.icon || 'fas fa-tag'}"></i>
                         </span>
                         <span class="category-name">${category.name}</span>
+                        <span style="font-size: var(--font-size-small); color: var(--text-light); margin-left: 10px;">順序: ${category.sort || 0}</span>
                     </div>
                     <div class="category-actions">
                         <button class="edit-category" data-id="${category.id}" data-type="income"><i class="fas fa-edit"></i></button>
@@ -1665,7 +1730,12 @@ function updateCategoriesUI() {
         // 根據視圖選項顯示不同的類別列表
         const isCardView = getElement('#expenseCategoryCardViewBtn').classList.contains('active');
         
-        appState.categories.expense.forEach(category => {
+        // 對類別進行排序
+        const sortedExpenseCategories = [...appState.categories.expense].sort((a, b) => {
+            return (a.sort || 0) - (b.sort || 0);
+        });
+        
+        sortedExpenseCategories.forEach(category => {
             if (isCardView) {
                 const categoryCard = document.createElement('div');
                 categoryCard.className = 'category-card';
@@ -1674,6 +1744,7 @@ function updateCategoriesUI() {
                         <i class="${category.icon || 'fas fa-tag'}"></i>
                     </div>
                     <div class="category-name">${category.name}</div>
+                    <div class="category-sort" style="font-size: var(--font-size-small); color: var(--text-light);">順序: ${category.sort || 0}</div>
                     <div class="category-actions">
                         <button class="edit-category" data-id="${category.id}" data-type="expense"><i class="fas fa-edit"></i></button>
                         <button class="delete-category" data-id="${category.id}" data-type="expense"><i class="fas fa-trash"></i></button>
@@ -1690,6 +1761,7 @@ function updateCategoriesUI() {
                             <i class="${category.icon || 'fas fa-tag'}"></i>
                         </span>
                         <span class="category-name">${category.name}</span>
+                        <span style="font-size: var(--font-size-small); color: var(--text-light); margin-left: 10px;">順序: ${category.sort || 0}</span>
                     </div>
                     <div class="category-actions">
                         <button class="edit-category" data-id="${category.id}" data-type="expense"><i class="fas fa-edit"></i></button>
@@ -1740,8 +1812,11 @@ function updateCategorySelects() {
         transferOption.textContent = '轉賬';
         incomeCategory.appendChild(transferOption);
         
+        // 對類別進行排序後添加
+        const sortedCategories = [...appState.categories.income].sort((a, b) => (a.sort || 0) - (b.sort || 0));
+        
         // 添加類別選項
-        appState.categories.income.forEach(category => {
+        sortedCategories.forEach(category => {
             const option = document.createElement('option');
             option.value = category.id;
             option.textContent = category.name;
@@ -1769,8 +1844,11 @@ function updateCategorySelects() {
         transferOption.textContent = '轉賬';
         expenseCategory.appendChild(transferOption);
         
+        // 對類別進行排序後添加
+        const sortedCategories = [...appState.categories.expense].sort((a, b) => (a.sort || 0) - (b.sort || 0));
+        
         // 添加類別選項
-        appState.categories.expense.forEach(category => {
+        sortedCategories.forEach(category => {
             const option = document.createElement('option');
             option.value = category.id;
             option.textContent = category.name;
@@ -1802,7 +1880,10 @@ function updateCategorySelects() {
         const incomeOptgroup = document.createElement('optgroup');
         incomeOptgroup.label = '收入類別';
         
-        appState.categories.income.forEach(category => {
+        // 對收入類別進行排序
+        const sortedIncomeCategories = [...appState.categories.income].sort((a, b) => (a.sort || 0) - (b.sort || 0));
+        
+        sortedIncomeCategories.forEach(category => {
             const option = document.createElement('option');
             option.value = `income-${category.id}`;
             option.textContent = category.name;
@@ -1815,7 +1896,10 @@ function updateCategorySelects() {
         const expenseOptgroup = document.createElement('optgroup');
         expenseOptgroup.label = '支出類別';
         
-        appState.categories.expense.forEach(category => {
+        // 對支出類別進行排序
+        const sortedExpenseCategories = [...appState.categories.expense].sort((a, b) => (a.sort || 0) - (b.sort || 0));
+        
+        sortedExpenseCategories.forEach(category => {
             const option = document.createElement('option');
             option.value = `expense-${category.id}`;
             option.textContent = category.name;
@@ -1839,8 +1923,11 @@ function updateCategorySelects() {
         // 清空選項
         budgetCategory.innerHTML = '<option value="" disabled selected>選擇類別</option>';
         
+        // 對支出類別進行排序
+        const sortedExpenseCategories = [...appState.categories.expense].sort((a, b) => (a.sort || 0) - (b.sort || 0));
+        
         // 主要添加支出類別
-        appState.categories.expense.forEach(category => {
+        sortedExpenseCategories.forEach(category => {
             const option = document.createElement('option');
             option.value = category.id;
             option.textContent = category.name;
@@ -1872,6 +1959,8 @@ function populateIconSelector() {
         'fas fa-coins', 'fas fa-dollar-sign', 'fas fa-percentage', 'fas fa-donate'
     ];
     
+    iconSelector.innerHTML = ''; // 清空圖標選擇器
+    
     icons.forEach(icon => {
         const iconOption = document.createElement('div');
         iconOption.className = 'icon-option';
@@ -1901,6 +1990,7 @@ function addCategory(type) {
     // 重置表單
     getElement('#categoryName').value = '';
     getElement('#categoryColor').value = '#4CAF50';
+    getElement('#categorySort').value = '0';
     
     // 取消所有圖標的選中狀態
     document.querySelectorAll('.icon-option').forEach(el => {
@@ -1915,13 +2005,14 @@ function addCategory(type) {
     }
     
     // 顯示模態框
-    getElement('#categoryModal').style.display = 'block';
+    showModal('#categoryModal');
     getElement('#categoryModal h2').textContent = `新增${type === 'income' ? '收入' : '支出'}類別`;
     
     getElement('#saveCategoryBtn').onclick = () => {
         const name = getElement('#categoryName').value.trim();
         const color = getElement('#categoryColor').value;
         const icon = getElement('#categoryModal').getAttribute('data-selected-icon') || 'fas fa-tag';
+        const sort = parseInt(getElement('#categorySort').value) || 0;
         
         if (!name) {
             showToast('請輸入類別名稱', 'warning');
@@ -1933,6 +2024,7 @@ function addCategory(type) {
             name,
             color,
             icon,
+            sort,
             createdAt: new Date().toISOString()
         };
         
@@ -1942,7 +2034,7 @@ function addCategory(type) {
         saveToLocalStorage();
         
         // 關閉模態框並更新UI
-        getElement('#categoryModal').style.display = 'none';
+        closeCurrentModal();
         updateCategoriesUI();
         
         showToast(`已成功新增${type === 'income' ? '收入' : '支出'}類別`, 'success');
@@ -1960,6 +2052,7 @@ function editCategory(categoryId, type) {
     // 填充表單
     getElement('#categoryName').value = category.name;
     getElement('#categoryColor').value = category.color || '#4CAF50';
+    getElement('#categorySort').value = category.sort || 0;
     
     // 取消所有圖標的選中狀態
     document.querySelectorAll('.icon-option').forEach(el => {
@@ -1976,13 +2069,14 @@ function editCategory(categoryId, type) {
     getElement('#categoryModal').setAttribute('data-selected-icon', currentIcon);
     
     // 顯示模態框
-    getElement('#categoryModal').style.display = 'block';
+    showModal('#categoryModal');
     getElement('#categoryModal h2').textContent = `編輯${type === 'income' ? '收入' : '支出'}類別`;
     
     getElement('#saveCategoryBtn').onclick = () => {
         const name = getElement('#categoryName').value.trim();
         const color = getElement('#categoryColor').value;
         const icon = getElement('#categoryModal').getAttribute('data-selected-icon') || 'fas fa-tag';
+        const sort = parseInt(getElement('#categorySort').value) || 0;
         
         if (!name) {
             showToast('請輸入類別名稱', 'warning');
@@ -1993,13 +2087,14 @@ function editCategory(categoryId, type) {
         category.name = name;
         category.color = color;
         category.icon = icon;
+        category.sort = sort;
         category.updatedAt = new Date().toISOString();
         
         // 儲存到本地和Firebase
         saveToLocalStorage();
         
         // 關閉模態框並更新UI
-        getElement('#categoryModal').style.display = 'none';
+        closeCurrentModal();
         updateCategoriesUI();
         
         showToast(`已成功更新${type === 'income' ? '收入' : '支出'}類別`, 'success');
@@ -3043,6 +3138,13 @@ function updateCurrencyManagementUI() {
     // 設置實時匯率開關
     getElement('#useRealTimeRates').checked = appState.useRealTimeRates;
     
+    // 更新上次匯率更新時間
+    if (lastUpdateTime) {
+        getElement('#lastRateUpdateTime').textContent = new Date(lastUpdateTime).toLocaleString();
+    } else {
+        getElement('#lastRateUpdateTime').textContent = '從未更新';
+    }
+    
     // 添加事件監聽器
     document.querySelectorAll('.edit-currency').forEach(button => {
         button.addEventListener('click', e => {
@@ -3151,11 +3253,11 @@ function createCurrencyManagementModal() {
     
     // 關閉模態框事件
     getElement('#currencyManagementModal .close').addEventListener('click', () => {
-        getElement('#currencyManagementModal').style.display = 'none';
+        closeCurrentModal();
     });
     
     getElement('#closeCurrencyManagementBtn').addEventListener('click', () => {
-        getElement('#currencyManagementModal').style.display = 'none';
+        closeCurrentModal();
     });
     
     // 新增貨幣按鈕事件
@@ -3173,9 +3275,10 @@ function addCurrency() {
     getElement('#currencyCode').value = '';
     getElement('#currencyName').value = '';
     getElement('#currencySymbol').value = '';
+    getElement('#currencyCode').disabled = false; // 允許編輯代碼
     
     // 顯示模態框
-    getElement('#currencyEditModal').style.display = 'block';
+    showModal('#currencyEditModal');
     getElement('#currencyEditModal h2').textContent = '新增貨幣';
     
     // 設置保存按鈕事件
@@ -3211,7 +3314,7 @@ function addCurrency() {
         saveToLocalStorage();
         
         // 關閉模態框
-        getElement('#currencyEditModal').style.display = 'none';
+        closeCurrentModal();
         
         // 刷新匯率數據
         refreshAllExchangeRates().then(() => {
@@ -3261,11 +3364,11 @@ function createCurrencyEditModal() {
     
     // 關閉模態框事件
     getElement('#currencyEditModal .close').addEventListener('click', () => {
-        getElement('#currencyEditModal').style.display = 'none';
+        closeCurrentModal();
     });
     
     getElement('#cancelCurrencyBtn').addEventListener('click', () => {
-        getElement('#currencyEditModal').style.display = 'none';
+        closeCurrentModal();
     });
 }
 
@@ -3289,7 +3392,7 @@ function editCurrency(currencyCode) {
     getElement('#currencySymbol').value = currency.symbol || '';
     
     // 顯示模態框
-    getElement('#currencyEditModal').style.display = 'block';
+    showModal('#currencyEditModal');
     getElement('#currencyEditModal h2').textContent = '編輯貨幣';
     
     // 設置保存按鈕事件
@@ -3310,7 +3413,7 @@ function editCurrency(currencyCode) {
         saveToLocalStorage();
         
         // 關閉模態框
-        getElement('#currencyEditModal').style.display = 'none';
+        closeCurrentModal();
         
         // 更新UI
         updateCurrencyManagementUI();
@@ -3341,6 +3444,9 @@ function deleteCurrency(currencyCode) {
         return;
     }
     
+    // 關閉當前模態框，然後顯示確認模態框
+    closeCurrentModal();
+    
     showConfirmModal(`確定要刪除「${currency.name} (${currency.code})」貨幣嗎？`, () => {
         // 刪除自定義匯率
         for (const key in appState.exchangeRates) {
@@ -3362,6 +3468,9 @@ function deleteCurrency(currencyCode) {
         // 儲存到本地和Firebase
         saveToLocalStorage();
         
+        // 重新顯示匯率管理模態框
+        showModal('#currencyManagementModal');
+        
         // 更新UI
         updateCurrencyManagementUI();
         updateCurrencySelect();
@@ -3376,7 +3485,9 @@ function updateSettingsUI() {
     getElement('#darkMode').checked = darkMode;
     
     // 更新字體大小設置
-    document.querySelector(`input[name="fontSize"][value="${fontSize}"]`).checked = true;
+    document.querySelectorAll(`input[name="fontSize"]`).forEach(radio => {
+        radio.checked = (radio.value === fontSize);
+    });
     
     // 更新預設貨幣設置
     const defaultCurrencySelect = getElement('#defaultCurrency');
@@ -3396,7 +3507,9 @@ function updateSettingsUI() {
     defaultCurrencySelect.value = defaultCurrency;
     
     // 更新小數點位數設置
-    document.querySelector(`input[name="decimalPlaces"][value="${decimalPlaces}"]`).checked = true;
+    document.querySelectorAll(`input[name="decimalPlaces"]`).forEach(radio => {
+        radio.checked = (parseInt(radio.value) === decimalPlaces);
+    });
     
     // 更新預算提醒設置
     getElement('#enableBudgetAlerts').checked = enableBudgetAlerts;
@@ -3411,7 +3524,7 @@ function saveSettings() {
     // 獲取新設定
     darkMode = getElement('#darkMode').checked;
     fontSize = document.querySelector('input[name="fontSize"]:checked').value;
-    defaultCurrency = getElement('#defaultCurrency').value;
+    const newDefaultCurrency = getElement('#defaultCurrency').value;
     decimalPlaces = parseInt(document.querySelector('input[name="decimalPlaces"]:checked').value, 10);
     enableBudgetAlerts = getElement('#enableBudgetAlerts').checked;
     alertThreshold = parseInt(getElement('#alertThreshold').value, 10);
@@ -3428,17 +3541,20 @@ function saveSettings() {
     document.body.className = document.body.className.replace(/font-size-\w+/, '');
     document.body.classList.add(`font-size-${fontSize}`);
     
+    // 檢查默認貨幣是否更改
+    if (newDefaultCurrency !== defaultCurrency) {
+        defaultCurrency = newDefaultCurrency;
+        // 更新UI需要重新計算貨幣
+        updateDashboardUI();
+    } else {
+        defaultCurrency = newDefaultCurrency;
+    }
+    
     // 儲存設定
-    localStorage.setItem('darkMode', darkMode.toString());
-    localStorage.setItem('fontSize', fontSize);
-    localStorage.setItem('defaultCurrency', defaultCurrency);
-    localStorage.setItem('decimalPlaces', decimalPlaces.toString());
-    localStorage.setItem('enableBudgetAlerts', enableBudgetAlerts.toString());
-    localStorage.setItem('alertThreshold', alertThreshold.toString());
-    localStorage.setItem('enableFirebase', enableFirebase.toString());
+    saveToLocalStorage();
     
     // 關閉設定模態框
-    getElement('#settingsModal').style.display = 'none';
+    closeCurrentModal();
     
     // 更新UI
     updateAllUI();
@@ -3677,9 +3793,6 @@ async function initApp() {
     // 從localStorage加載資料
     loadFromLocalStorage();
     
-    // 初始化模態框
-    initModals();
-    
     // 初始化圖標選擇器
     populateIconSelector();
     
@@ -3709,44 +3822,6 @@ async function initApp() {
     }
 }
 
-// 初始化模態框
-function initModals() {
-    const modals = document.querySelectorAll('.modal');
-    const closeButtons = document.querySelectorAll('.close');
-    
-    closeButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            modals.forEach(modal => {
-                modal.style.display = 'none';
-            });
-        });
-    });
-    
-    window.addEventListener('click', e => {
-        modals.forEach(modal => {
-            if (e.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
-    });
-    
-    getElement('#cancelAccountBtn').addEventListener('click', () => {
-        getElement('#accountModal').style.display = 'none';
-    });
-    
-    getElement('#cancelCategoryBtn').addEventListener('click', () => {
-        getElement('#categoryModal').style.display = 'none';
-    });
-    
-    getElement('#cancelSettingsBtn').addEventListener('click', () => {
-        getElement('#settingsModal').style.display = 'none';
-    });
-    
-    getElement('#confirmNoBtn').addEventListener('click', () => {
-        getElement('#confirmModal').style.display = 'none';
-    });
-}
-
 // 設置事件監聽器
 function setupEventListeners() {
     // 導航事件
@@ -3759,7 +3834,7 @@ function setupEventListeners() {
     
     // 設定按鈕
     getElement('#settingsBtn').addEventListener('click', () => {
-        getElement('#settingsModal').style.display = 'block';
+        showModal('#settingsModal');
     });
     
     // 匯率管理
@@ -3768,7 +3843,7 @@ function setupEventListeners() {
             createCurrencyManagementModal();
         }
         updateCurrencyManagementUI();
-        getElement('#currencyManagementModal').style.display = 'block';
+        showModal('#currencyManagementModal');
     });
     
     // 添加戶口
@@ -3805,12 +3880,16 @@ function setupEventListeners() {
             const tabId = tab.getAttribute('data-tab');
             const tabContent = document.getElementById(`${tabId}Tab`);
             
+            // 找到父容器，然後處理其中的標籤頁
+            const tabContainer = tab.parentElement;
+            const contentContainer = tabContent.parentElement;
+            
             // 移除所有active類
-            document.querySelectorAll('.tab').forEach(t => {
+            tabContainer.querySelectorAll('.tab').forEach(t => {
                 t.classList.remove('active');
             });
             
-            document.querySelectorAll('.tab-content').forEach(content => {
+            contentContainer.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
             
@@ -3919,6 +3998,20 @@ function setupEventListeners() {
     
     // 清除數據
     getElement('#clearDataBtn').addEventListener('click', clearAllData);
+    
+    // 添加窗口關閉事件處理
+    document.querySelectorAll('.modal .close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', () => {
+            closeCurrentModal();
+        });
+    });
+    
+    // 點擊模態框外部關閉
+    window.addEventListener('click', e => {
+        if (e.target.classList.contains('modal')) {
+            closeCurrentModal();
+        }
+    });
 }
 
 // 當DOM加載完成後初始化應用
