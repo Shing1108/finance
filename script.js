@@ -389,10 +389,10 @@ function setupEventListeners() {
         });
     }
     
-    // 保存預算設定按鈕點擊事件
-    if (saveBudgetSettingsButton) {
-        saveBudgetSettingsButton.addEventListener('click', saveBudgetSettings);
-    }
+ // 保存預算設定按鈕點擊事件
+if (saveBudgetSettingsButton) {
+    saveBudgetSettingsButton.addEventListener('click', createNewBudget);
+}
     
     // 添加類別預算點擊事件
     if (addCategoryBudgetButton) {
@@ -517,6 +517,32 @@ if (incomeCategoryCardView && incomeCategoryListView) {
         this.classList.add('active');
         incomeCategoryCardView.classList.remove('active');
         const categoriesList = document.getElementById('incomeCategoriesList');
+        if (categoriesList) {
+            categoriesList.className = 'categories-list list-view';
+            
+            // 重新渲染列表
+            updateCategoriesUI();
+        }
+    });
+
+    // 支出類別視圖切換事件
+if (expenseCategoryCardView && expenseCategoryListView) {
+    expenseCategoryCardView.addEventListener('click', function() {
+        this.classList.add('active');
+        expenseCategoryListView.classList.remove('active');
+        const categoriesList = document.getElementById('expenseCategoriesList');
+        if (categoriesList) {
+            categoriesList.className = 'categories-list card-view';
+            
+            // 重新渲染列表
+            updateCategoriesUI();
+        }
+    });
+    
+    expenseCategoryListView.addEventListener('click', function() {
+        this.classList.add('active');
+        expenseCategoryCardView.classList.remove('active');
+        const categoriesList = document.getElementById('expenseCategoriesList');
         if (categoriesList) {
             categoriesList.className = 'categories-list list-view';
             
@@ -3698,11 +3724,48 @@ function updateExpenseCategoriesList() {
 
 // 編輯類別
 function editCategory(categoryId, categoryType) {
-    // 具體實現待完成，這裡只是一個示例
     console.log(`編輯${categoryType}類別: ${categoryId}`);
-    showToast('編輯類別功能開發中', 'info');
+    
+    try {
+        // 找到要編輯的類別
+        const categoryArray = categoryType === 'income' ? appState.categories.income : appState.categories.expense;
+        const category = categoryArray.find(c => c.id === categoryId);
+        
+        if (!category) {
+            showToast('找不到類別', 'error');
+            return;
+        }
+        
+        // 填充表單
+        document.getElementById('categoryName').value = category.name;
+        document.getElementById('selectedIcon').className = category.icon;
+        document.getElementById('categoryColor').value = category.color;
+        document.getElementById('categoryOrder').value = category.order || 0;
+        
+        // 設置類別類型
+        document.getElementById('categoryType').value = categoryType;
+        
+        // 設置編輯模式
+        document.getElementById('categoryType').dataset.editId = categoryId;
+        
+        // 修改模態框標題和按鈕
+        const modalTitle = document.querySelector('#addCategoryModal .modal-title');
+        if (modalTitle) {
+            modalTitle.textContent = '編輯類別';
+        }
+        
+        const saveButton = document.getElementById('saveCategoryButton');
+        if (saveButton) {
+            saveButton.textContent = '更新';
+        }
+        
+        // 打開編輯類別模態框
+        openModal('addCategoryModal');
+    } catch (error) {
+        console.error("編輯類別時發生錯誤:", error);
+        showToast('編輯類別失敗: ' + error.message, 'error');
+    }
 }
-
 // 刪除類別
 function deleteCategory(categoryId, categoryType) {
     console.log(`刪除${categoryType}類別: ${categoryId}`);
