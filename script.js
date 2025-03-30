@@ -640,15 +640,103 @@ function setupEventListeners() {
             case 'budgets':
                 updateBudgetsUI();
                 break;
-            case 'categories':
-                updateCategoriesUI();
-                break;
-            case 'statistics':
-                updateStatisticsUI();
-                break;
-            case 'sync':
-                updateSyncUI();
-                break;
+case 'categories':
+    try {
+        console.log("正在嘗試更新類別UI...");
+        updateCategoriesUI();
+    } catch (error) {
+        console.error("更新類別UI時發生錯誤:", error);
+        
+        // 應急處理：直接添加基本內容
+        try {
+            // 確保收入類別顯示區域有內容
+            const incomeCategoriesList = document.getElementById('incomeCategoriesList');
+            if (incomeCategoriesList) {
+                incomeCategoriesList.innerHTML = `
+                    <div class="category-add-card">
+                        <button id="addIncomeCategoryButton" class="btn btn-add">+ 新增</button>
+                    </div>
+                    <p class="empty-message">載入類別時出錯，請重新載入頁面試試</p>
+                `;
+            }
+            
+            // 確保支出類別顯示區域有內容
+            const expenseCategoriesList = document.getElementById('expenseCategoriesList');
+            if (expenseCategoriesList) {
+                expenseCategoriesList.innerHTML = `
+                    <div class="category-add-card">
+                        <button id="addExpenseCategoryButton" class="btn btn-add">+ 新增</button>
+                    </div>
+                    <p class="empty-message">載入類別時出錯，請重新載入頁面試試</p>
+                `;
+            }
+            
+            // 重新綁定按鈕事件
+            document.querySelectorAll('#addIncomeCategoryButton, #addExpenseCategoryButton').forEach(button => {
+                button.addEventListener('click', function() {
+                    const type = this.id === 'addIncomeCategoryButton' ? 'income' : 'expense';
+                    document.getElementById('categoryType').value = type;
+                    openModal('addCategoryModal');
+                });
+            });
+        } catch (e) {
+            console.error("應急處理類別UI也失敗:", e);
+        }
+    }
+    break;
+case 'statistics':
+    try {
+        console.log("正在嘗試更新統計UI...");
+        updateStatisticsUI();
+    } catch (error) {
+        console.error("更新統計UI時發生錯誤:", error);
+        
+        // 應急處理
+        try {
+            const incomeChart = document.getElementById('incomeChart');
+            const expenseChart = document.getElementById('expenseChart');
+            
+            if (incomeChart) {
+                incomeChart.innerHTML = '<p class="error-message">載入收入統計圖表時發生錯誤，請重新載入頁面試試</p>';
+            }
+            
+            if (expenseChart) {
+                expenseChart.innerHTML = '<p class="error-message">載入支出統計圖表時發生錯誤，請重新載入頁面試試</p>';
+            }
+        } catch (e) {
+            console.error("應急處理統計UI也失敗:", e);
+        }
+    }
+    break;
+case 'sync':
+    try {
+        console.log("正在嘗試更新同步UI...");
+        updateSyncUI();
+    } catch (error) {
+        console.error("更新同步UI時發生錯誤:", error);
+        
+        // 應急處理
+        try {
+            const syncTab = document.getElementById('sync');
+            if (syncTab) {
+                // 確保能顯示基本內容
+                const syncStatus = syncTab.querySelector('.sync-status');
+                if (syncStatus) {
+                    syncStatus.innerHTML = `
+                        <div id="loginStatus">載入狀態時出錯</div>
+                        <div class="sync-actions">
+                            <button class="btn" onclick="location.reload()">
+                                <i class="fas fa-sync"></i> 重新載入頁面
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        } catch (e) {
+            console.error("應急處理同步UI也失敗:", e);
+        }
+    }
+    break;
         }
     }
 
@@ -1285,6 +1373,11 @@ function setupEventListeners() {
 
             if (!budgetAmount || budgetAmount <= 0) {
                 showToast('請輸入有效金額', 'error');
+                return;
+
+             // 在這裡添加額外的檢查：
+            if (isNaN(budgetAmount)) {
+                showToast('請輸入有效的預算金額', 'error');
                 return;
             }
 
@@ -3890,7 +3983,14 @@ function setupEventListeners() {
     // 生成收入統計圖表
     function generateIncomeChart() {
         console.log("生成收入統計圖表");
-
+        
+        try {
+        // 添加這行：
+        if (typeof Chart === 'undefined') {
+            console.error("Chart.js 未正確載入");
+            throw new Error("Chart.js 未載入，無法生成圖表");
+        }
+        
         try {
             const incomeChartContainer = document.getElementById('incomeChart');
 
@@ -4473,6 +4573,13 @@ function setupEventListeners() {
             alert(`${type.toUpperCase()}: ${message}`);
         }
     }
+        // 頁面載入指示器
+function showPageLoading(tabId) {
+    const tab = document.getElementById(tabId);
+    if (tab) {
+        tab.innerHTML = '<div class="page-loading"><div class="spinner"></div><p>載入中...</p></div>';
+    }
+}
 
     // 加載設置
     function loadSettingsFromStorage() {
@@ -5276,12 +5383,13 @@ function setupEventListeners() {
             }
 
               // 檢查Firebase SDK是否已正確加載
-              if (typeof firebase === 'undefined' || !firebase.app || !firebase.auth || !firebase.firestore) {
-                console.error("Firebase SDK未完全加載，請確保在HTML中正確引入Firebase SDK");
-                enableFirebase = false; // 自動禁用功能
-                updateSyncStatus(); // 更新狀態
-                showToast('雲端同步功能無法使用：Firebase SDK未加載', 'error');
-                return;
+        // 檢查Firebase SDK是否已正確加載
+        if (typeof firebase === 'undefined' || !firebase.app || !firebase.auth || !firebase.firestore) {
+            console.error("Firebase SDK未完全加載，請確保在HTML中正確引入Firebase SDK");
+            enableFirebase = false; // 自動禁用功能
+            updateSyncStatus(); // 更新狀態
+            showToast('雲端同步功能無法使用：Firebase SDK未加載', 'error');
+            return;
             }
 
             // 檢查是否已初始化
@@ -6802,3 +6910,9 @@ function setupEventListeners() {
             return dateString;
         }
     }
+
+// 全局錯誤處理 - 添加在文件末尾
+window.addEventListener('error', function(event) {
+    console.error("全局錯誤:", event.error);
+    showToast('發生錯誤: ' + (event.error?.message || '未知錯誤'), 'error');
+});
