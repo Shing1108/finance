@@ -5088,7 +5088,7 @@ function openCurrencyManagementModal() {
     }
 }
 
-// 創建貨幣管理模態框
+// 在 script.js 中添加或修改此函數
 function createCurrencyManagementModal() {
     // 創建模態框HTML
     const modalHTML = `
