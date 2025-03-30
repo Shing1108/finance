@@ -1352,7 +1352,6 @@ case 'sync':
             showToast('保存預算設置失敗: ' + error.message, 'error');
         }
     }
-
 // 添加類別預算
 function addCategoryBudget() {
     console.log("添加/更新類別預算");
