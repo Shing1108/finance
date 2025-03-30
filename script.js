@@ -539,69 +539,64 @@ function setupEventListeners() {
                 updateCategoriesUI();
             }
         });
-
-        // 支出類別視圖切換事件
-        if (expenseCategoryCardView && expenseCategoryListView) {
-            expenseCategoryCardView.addEventListener('click', function () {
-                this.classList.add('active');
-                expenseCategoryListView.classList.remove('active');
-                const categoriesList = document.getElementById('expenseCategoriesList');
-                if (categoriesList) {
-                    categoriesList.className = 'categories-list card-view';
-
-                    // 重新渲染列表
-                    updateCategoriesUI();
-                }
-            });
-
-            expenseCategoryListView.addEventListener('click', function () {
-                this.classList.add('active');
-                expenseCategoryCardView.classList.remove('active');
-                const categoriesList = document.getElementById('expenseCategoriesList');
-                if (categoriesList) {
-                    categoriesList.className = 'categories-list list-view';
-
-                    // 重新渲染列表
-                    updateCategoriesUI();
-                }
-            });
-        }
-
-        // 支出類別視圖切換類似修改
-
-        // 轉賬匯率監聽
-        setupTransferExchangeRateListener();
-
-        // 自動計算預算切換
-        const autoCalculateBudget = document.getElementById('autoCalculateBudget');
-        if (autoCalculateBudget) {
-            autoCalculateBudget.addEventListener('change', function () {
-                const totalBudgetInput = document.getElementById('totalBudget');
-                if (this.checked) {
-                    totalBudgetInput.disabled = true;
-                    totalBudgetInput.value = calculateTotalCategoryBudget();
-                } else {
-                    totalBudgetInput.disabled = false;
-                }
-            });
-        }
-
-        // 重設週期變更事件
-        document.querySelectorAll('input[name="resetCycle"]').forEach(input => {
-            input.addEventListener('change', function () {
-                const monthlyResetDayInput = document.getElementById('monthlyResetDay');
-                const monthlyResetDayContainer = monthlyResetDayInput.parentElement;
-
-                if (this.value === 'monthly') {
-                    monthlyResetDayContainer.style.display = 'block';
-                } else {
-                    monthlyResetDayContainer.style.display = 'none';
-                }
-            });
-        });
-
-        console.log("事件監聽器設置完成");
     }
+    
+
+     // 支出類別視圖切換事件
+     if (expenseCategoryCardView && expenseCategoryListView) {
+         expenseCategoryCardView.addEventListener('click', function () {
+             this.classList.add('active');
+             expenseCategoryListView.classList.remove('active');
+             const categoriesList = document.getElementById('expenseCategoriesList');
+             if (categoriesList) {
+                 categoriesList.className = 'categories-list card-view';
+                 // 重新渲染列表
+                 updateCategoriesUI();
+             }
+         });
+         expenseCategoryListView.addEventListener('click', function () {
+             this.classList.add('active');
+             expenseCategoryCardView.classList.remove('active');
+             const categoriesList = document.getElementById('expenseCategoriesList');
+             if (categoriesList) {
+                 categoriesList.className = 'categories-list list-view';
+                 // 重新渲染列表
+                 updateCategoriesUI();
+             }
+         });
+     }
+
+    // 支出類別視圖切換類似修改
+    // 轉賬匯率監聽
+    setupTransferExchangeRateListener();
+    // 自動計算預算切換
+    const autoCalculateBudget = document.getElementById('autoCalculateBudget');
+    if (autoCalculateBudget) {
+        autoCalculateBudget.addEventListener('change', function () {
+            const totalBudgetInput = document.getElementById('totalBudget');
+            if (this.checked) {
+                totalBudgetInput.disabled = true;
+                totalBudgetInput.value = calculateTotalCategoryBudget();
+            } else {
+                totalBudgetInput.disabled = false;
+            }
+        });
+    }
+    // 重設週期變更事件
+    document.querySelectorAll('input[name="resetCycle"]').forEach(input => {
+        input.addEventListener('change', function () {
+            const monthlyResetDayInput = document.getElementById('monthlyResetDay');
+            const monthlyResetDayContainer = monthlyResetDayInput.parentElement;
+            if (this.value === 'monthly') {
+                monthlyResetDayContainer.style.display = 'block';
+            } else {
+                monthlyResetDayContainer.style.display = 'none';
+            }
+        });
+    });
+        
+    console.log("事件監聽器設置完成");
+    
 }
 
     // 顯示指定的選項卡內容
@@ -675,15 +670,6 @@ function setupEventListeners() {
         } else if (modalId === 'addCategoryModal') {
             resetCategoryForm();
         }
-    }
-
-    // 關閉當前打開的模態框
-    function closeCurrentModal() {
-        console.log("關閉當前模態框");
-
-        document.querySelectorAll('.modal.active').forEach(modal => {
-            modal.classList.remove('active');
-        });
     }
 
     // 重置賬戶表單
@@ -5289,9 +5275,13 @@ function setupEventListeners() {
                 return;
             }
 
-            // 檢查Firebase SDK是否已正確加載
-            if (typeof firebase === 'undefined') {
-                throw new Error("Firebase SDK未加載，請確保在HTML中正確引入Firebase SDK");
+              // 檢查Firebase SDK是否已正確加載
+              if (typeof firebase === 'undefined' || !firebase.app || !firebase.auth || !firebase.firestore) {
+                console.error("Firebase SDK未完全加載，請確保在HTML中正確引入Firebase SDK");
+                enableFirebase = false; // 自動禁用功能
+                updateSyncStatus(); // 更新狀態
+                showToast('雲端同步功能無法使用：Firebase SDK未加載', 'error');
+                return;
             }
 
             // 檢查是否已初始化
@@ -5704,25 +5694,53 @@ function setupEventListeners() {
 
         try {
             // 更新儀表板UI
-            updateDashboardUI();
+            try {
+                updateDashboardUI();
+            } catch (e) {
+                console.error("更新儀表板UI失敗:", e);
+            }
 
-            // 更新賬戶UI
-            updateAccountsUI();
+            // 更新UI
+            try {
+                updateAccountsUI();
+            } catch (e) {
+                console.error("更新賬戶UI失敗:", e);
+            }            
 
             // 更新交易UI
-            updateTransactionsUI();
+             try {
+                updateTransactionsUI();
+            } catch (e) {
+                console.error("更新交易UI失敗:", e);
+            }            
 
             // 更新預算UI
-            updateBudgetsUI();
+            try {
+                updateBudgetsUI();
+            } catch (e) {
+                console.error("更新預算UI失敗:", e);
+            } 
 
             // 更新類別UI
-            updateCategoriesUI();
+            try {
+                updateCategoriesUI();
+            } catch (e) {
+                console.error("更新類別UI失敗:", e);
+            }            
 
             // 更新轉賬表單
-            updateTransferForm();
+            try {
+                updateTransferForm();
+            } catch (e) {
+                console.error("更新轉賬表單失敗:", e);
+            }    
 
             // 更新連接狀態
-            updateConnectionStatus();
+            try {
+                updateConnectionStatus();
+            } catch (e) {
+                console.error("更新連接狀態失敗:", e);
+            }    
 
             // 當前標簽內容
             const currentTab = document.querySelector('.nav-links li.active');
