@@ -4,16 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>進階個人財務追蹤器</title>
+    <!-- 先載入FontAwesome圖標庫 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 載入CSS樣式 -->
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
     
-    <!-- 在index.html的<head>部分 -->
-    <!-- 確保這行在 </body> 標籤前，且未被注釋 -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 加載Firebase SDK - 放在頂部確保先載入 -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <!-- 加載Chart.js - 確保先於我們的腳本 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <!-- 載入中覆蓋層 -->
@@ -68,7 +71,7 @@
                 <button id="settingsButton" class="settings-button">
                     <i class="fas fa-cog"></i>
                 </button>
-                <div class="version">v1.2.0</div>
+                <div class="version">v1.2.1</div>
             </div>
         </nav>
 
@@ -327,101 +330,99 @@
             <!-- 預算設定 -->
             <div id="budgets" class="tab-content">
                 <h2>預算設定</h2>
-                <!-- 修改預算設定卡片 -->
-
-                <!-- 添加類別預算設定卡片 -->
-<div class="card">
-    <div class="card-header">
-        <h3>📊 類別預算設定</h3>
-    </div>
-    <div class="category-budget-form">
-        <div class="form-row">
-            <div class="form-group">
-                <label for="categoryBudgetSelect">選擇類別</label>
-                <select id="categoryBudgetSelect" class="form-control" data-edit-id="">
-                    <option value="" disabled selected>選擇類別</option>
-                </select>
+                <!-- 類別預算設定卡片 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📊 類別預算設定</h3>
+                    </div>
+                    <div class="category-budget-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="categoryBudgetSelect">選擇類別</label>
+                                <select id="categoryBudgetSelect" class="form-control" data-edit-id="">
+                                    <option value="" disabled selected>選擇類別</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="categoryBudgetAmount">預算金額</label>
+                                <input type="number" id="categoryBudgetAmount" class="form-control" min="0" step="0.01">
+                            </div>
+                        </div>
+                        <button id="addCategoryBudgetButton" class="btn btn-primary">添加</button>
+                    </div>
+                    <div id="categoryBudgetsList" class="category-budgets-list">
+                        <p class="empty-message">尚未設置類別預算</p>
+                    </div>
+                </div>
+                <!-- 預算設定卡片 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>⚙️ 預算設定</h3>
+                    </div>
+                    <div class="budget-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="budgetName">預算名稱</label>
+                                <input type="text" id="budgetName" class="form-control" placeholder="例如: 2025年3月預算">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="budgetStartDate">開始日期</label>
+                                <input type="date" id="budgetStartDate" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="budgetEndDate">結束日期</label>
+                                <input type="date" id="budgetEndDate" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="totalBudget">總預算金額</label>
+                                <input type="number" id="totalBudget" class="form-control" min="0" step="0.01">
+                            </div>
+                            <!-- 預算重設週期 -->
+                            <div class="form-group">
+                                <label>預算重設週期</label>
+                                <div class="radio-group">
+                                    <div class="radio-item">
+                                        <input type="radio" id="resetCycleMonthly" name="resetCycle" value="monthly" checked>
+                                        <label for="resetCycleMonthly">每月</label>
+                                    </div>
+                                    <div class="radio-item">
+                                        <input type="radio" id="resetCycleWeekly" name="resetCycle" value="weekly">
+                                        <label for="resetCycleWeekly">每週</label>
+                                    </div>
+                                    <div class="radio-item">
+                                        <input type="radio" id="resetCycleDaily" name="resetCycle" value="daily">
+                                        <label for="resetCycleDaily">每日</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="monthlyResetDay">月重置日</label>
+                                <input type="number" id="monthlyResetDay" class="form-control" min="1" max="31" value="1">
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" id="autoCalculateBudget" class="form-checkbox">
+                                <label for="autoCalculateBudget">自動計算 (類別預算總和)</label>
+                            </div>
+                        </div>
+                        <button id="saveBudgetSettingsButton" class="btn btn-primary">創建預算</button>
+                    </div>
+                </div>
+                <!-- 預算歷史記錄卡片 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📜 預算歷史</h3>
+                    </div>
+                    <div id="budgetHistoryList" class="budget-history-list">
+                        <p class="empty-message">尚無預算歷史記錄</p>
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="categoryBudgetAmount">預算金額</label>
-                <input type="number" id="categoryBudgetAmount" class="form-control" min="0" step="0.01">
-            </div>
-        </div>
-        <button id="addCategoryBudgetButton" class="btn btn-primary">添加</button>
-    </div>
-    <div id="categoryBudgetsList" class="category-budgets-list">
-        <p class="empty-message">尚未設置類別預算</p>
-    </div>
-</div>
-<div class="card">
-    <div class="card-header">
-        <h3>⚙️ 預算設定</h3>
-    </div>
-    <div class="budget-form">
-        <div class="form-row">
-            <div class="form-group">
-                <label for="budgetName">預算名稱</label>
-                <input type="text" id="budgetName" class="form-control" placeholder="例如: 2025年3月預算">
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="budgetStartDate">開始日期</label>
-                <input type="date" id="budgetStartDate" class="form-control">
-            </div>
-            <div class="form-group">
-                <label for="budgetEndDate">結束日期</label>
-                <input type="date" id="budgetEndDate" class="form-control">
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="totalBudget">總預算金額</label>
-                <input type="number" id="totalBudget" class="form-control" min="0" step="0.01">
-            </div>
-            <!-- 在表單的適當位置添加，例如在自動計算選項之前 -->
-<div class="form-row">
-    <div class="form-group">
-        <label>預算重設週期</label>
-        <div class="radio-group">
-            <div class="radio-item">
-                <input type="radio" id="resetCycleMonthly" name="resetCycle" value="monthly" checked>
-                <label for="resetCycleMonthly">每月</label>
-            </div>
-            <div class="radio-item">
-                <input type="radio" id="resetCycleWeekly" name="resetCycle" value="weekly">
-                <label for="resetCycleWeekly">每週</label>
-            </div>
-            <div class="radio-item">
-                <input type="radio" id="resetCycleDaily" name="resetCycle" value="daily">
-                <label for="resetCycleDaily">每日</label>
-            </div>
-        </div>
-    </div>
-    <div class="form-group">
-        <label for="monthlyResetDay">月重置日</label>
-        <input type="number" id="monthlyResetDay" class="form-control" min="1" max="31" value="1">
-    </div>
-</div>
-            <div class="form-group checkbox-group">
-                <input type="checkbox" id="autoCalculateBudget" class="form-checkbox">
-                <label for="autoCalculateBudget">自動計算 (類別預算總和)</label>
-            </div>
-        </div>
-        <button id="saveBudgetSettingsButton" class="btn btn-primary">創建預算</button>
-    </div>
-</div>
-
-<!-- 添加預算歷史記錄卡片 -->
-<div class="card">
-    <div class="card-header">
-        <h3>📜 預算歷史</h3>
-    </div>
-    <div id="budgetHistoryList" class="budget-history-list">
-        <p class="empty-message">尚無預算歷史記錄</p>
-    </div>
-</div>
-               
 
             <!-- 類別管理 -->
             <div id="categories" class="tab-content">
@@ -751,18 +752,12 @@
         </div>
     </div>
 
+    <!-- 貨幣管理模態框會在JS中動態創建 -->
+
     <!-- 通知提示Toast -->
     <div id="toast" class="toast hidden"></div>
 
-    <!-- 引入Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- 引入Firebase相關JS --
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>-->
-    
-    <!-- 自定義JS -->
+    <!-- 自定義JS - 這是最後加載的 -->
     <script src="script.js"></script>
 </body>
 </html>
