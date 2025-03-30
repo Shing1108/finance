@@ -487,7 +487,53 @@ function setupEventListeners() {
     console.log("事件監聽器設置完成");
 }
 
+// 檢查並初始化類別標籤
+function checkAndInitializeCategoryTabs() {
+    const incomeCategoryTabButton = document.getElementById('incomeCategoryTabButton');
+    const expenseCategoryTabButton = document.getElementById('expenseCategoryTabButton');
+    const incomeCategoryTab = document.getElementById('incomeCategoryTab');
+    const expenseCategoryTab = document.getElementById('expenseCategoryTab');
+    
+    if (!incomeCategoryTabButton || !expenseCategoryTabButton || !incomeCategoryTab || !expenseCategoryTab) {
+        console.error("類別標籤元素缺失");
+        return;
+    }
+    
+    // 預設激活收入標籤（如果沒有其他標籤被激活）
+    if (!incomeCategoryTab.classList.contains('active') && !expenseCategoryTab.classList.contains('active')) {
+        incomeCategoryTabButton.classList.add('active');
+        incomeCategoryTab.classList.add('active');
+        expenseCategoryTabButton.classList.remove('active');
+        expenseCategoryTab.classList.remove('active');
+    }
+    
+    // 確保視圖切換按鈕正確初始化
+    const incomeCategoryCardView = document.getElementById('incomeCategoryCardView');
+    const incomeCategoryListView = document.getElementById('incomeCategoryListView');
+    const expenseCategoryCardView = document.getElementById('expenseCategoryCardView');
+    const expenseCategoryListView = document.getElementById('expenseCategoryListView');
+    
+    if (incomeCategoryCardView && incomeCategoryListView) {
+        incomeCategoryCardView.classList.add('active');
+        incomeCategoryListView.classList.remove('active');
+        const incomeCategoriesList = document.getElementById('incomeCategoriesList');
+        if (incomeCategoriesList) {
+            incomeCategoriesList.className = 'categories-list card-view';
+        }
+    }
+    
+    if (expenseCategoryCardView && expenseCategoryListView) {
+        expenseCategoryCardView.classList.add('active');
+        expenseCategoryListView.classList.remove('active');
+        const expenseCategoriesList = document.getElementById('expenseCategoriesList');
+        if (expenseCategoriesList) {
+            expenseCategoriesList.className = 'categories-list card-view';
+        }
+    }
+}
+
 // 顯示指定的選項卡內容
+// 在showTabContent中確保正確處理categories標籤
 function showTabContent(tabId) {
     console.log(`切換到${tabId}選項卡`);
 
@@ -517,8 +563,17 @@ function showTabContent(tabId) {
             return;
         }
 
-        // 根據當前標簽更新UI
+        // 根據當前標簽更新UI - 特別處理categories標籤
         switch (tabId) {
+            case 'categories':
+                // 在切換到categories時，確保標籤按鈕存在並正確執行
+                checkAndInitializeCategoryTabs();
+                // 然後再更新類別UI
+                setTimeout(() => {
+                    updateCategoriesUI();
+                }, 100);
+                break;
+            // 其他標籤處理...
             case 'dashboard':
                 updateDashboardUI();
                 break;
@@ -533,99 +588,11 @@ function showTabContent(tabId) {
             case 'budgets':
                 updateBudgetsUI();
                 break;
-            case 'categories':
-                try {
-                    updateCategoriesUI();
-                } catch (error) {
-                    console.error("更新類別UI時發生錯誤:", error);
-                    
-                    // 應急處理：直接添加基本內容
-                    try {
-                        // 確保收入類別顯示區域有內容
-                        const incomeCategoriesList = document.getElementById('incomeCategoriesList');
-                        if (incomeCategoriesList) {
-                            incomeCategoriesList.innerHTML = `
-                                <div class="category-add-card">
-                                    <button id="addIncomeCategoryButton" class="btn btn-add">+ 新增</button>
-                                </div>
-                                <p class="empty-message">載入類別時出錯，請重新載入頁面試試</p>
-                            `;
-                        }
-                        
-                        // 確保支出類別顯示區域有內容
-                        const expenseCategoriesList = document.getElementById('expenseCategoriesList');
-                        if (expenseCategoriesList) {
-                            expenseCategoriesList.innerHTML = `
-                                <div class="category-add-card">
-                                    <button id="addExpenseCategoryButton" class="btn btn-add">+ 新增</button>
-                                </div>
-                                <p class="empty-message">載入類別時出錯，請重新載入頁面試試</p>
-                            `;
-                        }
-                        
-                        // 重新綁定按鈕事件
-                        document.querySelectorAll('#addIncomeCategoryButton, #addExpenseCategoryButton').forEach(button => {
-                            button.addEventListener('click', function() {
-                                const type = this.id === 'addIncomeCategoryButton' ? 'income' : 'expense';
-                                document.getElementById('categoryType').value = type;
-                                openModal('addCategoryModal');
-                            });
-                        });
-                    } catch (e) {
-                        console.error("應急處理類別UI也失敗:", e);
-                    }
-                }
-                break;
             case 'statistics':
-                try {
-                    updateStatisticsUI();
-                } catch (error) {
-                    console.error("更新統計UI時發生錯誤:", error);
-                    
-                    // 應急處理
-                    try {
-                        const incomeChart = document.getElementById('incomeChart');
-                        const expenseChart = document.getElementById('expenseChart');
-                        
-                        if (incomeChart) {
-                            incomeChart.innerHTML = '<p class="error-message">載入收入統計圖表時發生錯誤，請重新載入頁面試試</p>';
-                        }
-                        
-                        if (expenseChart) {
-                            expenseChart.innerHTML = '<p class="error-message">載入支出統計圖表時發生錯誤，請重新載入頁面試試</p>';
-                        }
-                    } catch (e) {
-                        console.error("應急處理統計UI也失敗:", e);
-                    }
-                }
+                updateStatisticsUI();
                 break;
             case 'sync':
-                try {
-                    updateSyncUI();
-                } catch (error) {
-                    console.error("更新同步UI時發生錯誤:", error);
-                    
-                    // 應急處理
-                    try {
-                        const syncTab = document.getElementById('sync');
-                        if (syncTab) {
-                            // 確保能顯示基本內容
-                            const syncStatus = syncTab.querySelector('.sync-status');
-                            if (syncStatus) {
-                                syncStatus.innerHTML = `
-                                    <div id="loginStatus">載入狀態時出錯</div>
-                                    <div class="sync-actions">
-                                        <button class="btn" onclick="location.reload()">
-                                            <i class="fas fa-sync"></i> 重新載入頁面
-                                        </button>
-                                    </div>
-                                `;
-                            }
-                        }
-                    } catch (e) {
-                        console.error("應急處理同步UI也失敗:", e);
-                    }
-                }
+                updateSyncUI();
                 break;
         }
     } catch (error) {
@@ -3527,55 +3494,93 @@ function deleteCategoryBudget(budgetId) {
 
 // 更新類別UI
 function updateCategoriesUI() {
-    console.log("更新類別UI");
+    console.log("更新類別UI - 開始");
 
     try {
+        // 確保收入和支出類別陣列已初始化
+        if (!appState.categories.income) {
+            appState.categories.income = [];
+        }
+        if (!appState.categories.expense) {
+            appState.categories.expense = [];
+        }
+
+        // 檢查DOM元素是否存在
+        const incomeCategoriesList = document.getElementById('incomeCategoriesList');
+        const expenseCategoriesList = document.getElementById('expenseCategoriesList');
+        
+        if (!incomeCategoriesList || !expenseCategoriesList) {
+            console.error("找不到類別列表元素", { 
+                incomeCategoriesList: !!incomeCategoriesList, 
+                expenseCategoriesList: !!expenseCategoriesList 
+            });
+            return;
+        }
+
+        // 先清空列表，以防止重複添加
+        // 同時保留「新增」按鈕
+        const incomeAddCard = '<div class="category-add-card"><button id="addIncomeCategoryButton" class="btn btn-add">+ 新增</button></div>';
+        const expenseAddCard = '<div class="category-add-card"><button id="addExpenseCategoryButton" class="btn btn-add">+ 新增</button></div>';
+        
         // 更新收入類別列表
-        updateIncomeCategoriesList();
+        updateIncomeCategoriesList(incomeCategoriesList, incomeAddCard);
 
         // 更新支出類別列表
-        updateExpenseCategoriesList();
+        updateExpenseCategoriesList(expenseCategoriesList, expenseAddCard);
+
+        console.log("更新類別UI - 完成");
     } catch (error) {
         console.error("更新類別UI時發生錯誤:", error);
-        throw error;
+        
+        // 緊急修復 - 添加基本顯示內容
+        const incomeCategoriesList = document.getElementById('incomeCategoriesList');
+        const expenseCategoriesList = document.getElementById('expenseCategoriesList');
+        
+        if (incomeCategoriesList) {
+            incomeCategoriesList.innerHTML = `
+                <div class="category-add-card">
+                    <button id="addIncomeCategoryButton" class="btn btn-add">+ 新增</button>
+                </div>
+                <p class="empty-message">載入收入類別時出錯，請重新載入頁面</p>
+            `;
+        }
+        
+        if (expenseCategoriesList) {
+            expenseCategoriesList.innerHTML = `
+                <div class="category-add-card">
+                    <button id="addExpenseCategoryButton" class="btn btn-add">+ 新增</button>
+                </div>
+                <p class="empty-message">載入支出類別時出錯，請重新載入頁面</p>
+            `;
+        }
+        
+        // 重新綁定按鈕事件
+        setupCategoryButtons();
     }
 }
 
-// 更新收入類別列表
-function updateIncomeCategoriesList() {
+// 更新收入類別列表 - 重構為接受參數的版本
+function updateIncomeCategoriesList(container, addCardHtml) {
     console.log("更新收入類別列表");
 
     try {
-        const incomeCategoriesList = document.getElementById('incomeCategoriesList');
-
-        if (!incomeCategoriesList) {
-            console.error("找不到收入類別列表元素");
+        if (!container) {
+            console.error("收入類別容器不存在");
             return;
         }
 
         // 確定視圖類型
-        const isCardView = incomeCategoriesList.classList.contains('card-view');
+        const isCardView = container.classList.contains('card-view');
 
-        // 檢查是否有收入類別（排除添加卡片）
-        const addCardHtml = '<div class="category-add-card"><button id="addIncomeCategoryButton" class="btn btn-add">+ 新增</button></div>';
-
+        // 檢查是否有收入類別
         if (!appState.categories.income || appState.categories.income.length === 0) {
-            incomeCategoriesList.innerHTML = addCardHtml + '<p class="empty-message">尚未設置收入類別</p>';
-
-            // 重新添加點擊事件
-            const addButton = document.getElementById('addIncomeCategoryButton');
-            if (addButton) {
-                addButton.addEventListener('click', function () {
-                    document.getElementById('categoryType').value = 'income';
-                    openModal('addCategoryModal');
-                });
-            }
-
+            container.innerHTML = addCardHtml + '<p class="empty-message">尚未設置收入類別</p>';
+            setupCategoryButtons();
             return;
         }
 
         // 排序類別（按照order）
-        const sortedCategories = [...appState.categories.income].sort((a, b) => a.order - b.order);
+        const sortedCategories = [...appState.categories.income].sort((a, b) => (a.order || 0) - (b.order || 0));
 
         let html = addCardHtml;
 
@@ -3584,8 +3589,8 @@ function updateIncomeCategoriesList() {
             sortedCategories.forEach(category => {
                 html += `
                     <div class="category-card" data-id="${category.id}">
-                        <div class="category-icon" style="color: ${category.color}">
-                            <i class="${category.icon}"></i>
+                        <div class="category-icon" style="color: ${category.color || '#4CAF50'}">
+                            <i class="${category.icon || 'fas fa-tag'}"></i>
                         </div>
                         <div class="category-name">${category.name}</div>
                         <div class="category-actions">
@@ -3604,8 +3609,8 @@ function updateIncomeCategoriesList() {
             sortedCategories.forEach(category => {
                 html += `
                     <div class="category-list-item" data-id="${category.id}">
-                        <div class="category-list-icon" style="color: ${category.color}">
-                            <i class="${category.icon}"></i>
+                        <div class="category-list-icon" style="color: ${category.color || '#4CAF50'}">
+                            <i class="${category.icon || 'fas fa-tag'}"></i>
                         </div>
                         <div class="category-name">${category.name}</div>
                         <div class="category-actions">
@@ -3621,75 +3626,38 @@ function updateIncomeCategoriesList() {
             });
         }
 
-        incomeCategoriesList.innerHTML = html;
-
-        // 添加新增按鈕的事件監聽器
-        const addButton = document.getElementById('addIncomeCategoryButton');
-        if (addButton) {
-            addButton.addEventListener('click', function () {
-                document.getElementById('categoryType').value = 'income';
-                openModal('addCategoryModal');
-            });
-        }
-
-        // 添加編輯和刪除按鈕的事件監聽器
-        incomeCategoriesList.querySelectorAll('.edit-category').forEach(button => {
-            button.addEventListener('click', function () {
-                const categoryId = this.getAttribute('data-id');
-                const categoryType = this.getAttribute('data-type');
-                editCategory(categoryId, categoryType);
-            });
-        });
-
-        incomeCategoriesList.querySelectorAll('.delete-category').forEach(button => {
-            button.addEventListener('click', function () {
-                const categoryId = this.getAttribute('data-id');
-                const categoryType = this.getAttribute('data-type');
-                const message = '確定要刪除此類別嗎？相關交易將保留，但類別將顯示為"未知類別"。';
-                showConfirmDialog(message, () => deleteCategory(categoryId, categoryType));
-            });
-        });
+        container.innerHTML = html;
+        setupCategoryButtons();
     } catch (error) {
         console.error("更新收入類別列表時發生錯誤:", error);
-        throw error;
+        container.innerHTML = addCardHtml + '<p class="error-message">載入收入類別時出錯</p>';
+        setupCategoryButtons();
     }
 }
 
-// 更新支出類別列表
-function updateExpenseCategoriesList() {
+
+// 更新支出類別列表 - 重構為接受參數的版本
+function updateExpenseCategoriesList(container, addCardHtml) {
     console.log("更新支出類別列表");
 
     try {
-        const expenseCategoriesList = document.getElementById('expenseCategoriesList');
-
-        if (!expenseCategoriesList) {
-            console.error("找不到支出類別列表元素");
+        if (!container) {
+            console.error("支出類別容器不存在");
             return;
         }
 
         // 確定視圖類型
-        const isCardView = expenseCategoriesList.classList.contains('card-view');
+        const isCardView = container.classList.contains('card-view');
 
-        // 檢查是否有支出類別（排除添加卡片）
-        const addCardHtml = '<div class="category-add-card"><button id="addExpenseCategoryButton" class="btn btn-add">+ 新增</button></div>';
-
+        // 檢查是否有支出類別
         if (!appState.categories.expense || appState.categories.expense.length === 0) {
-            expenseCategoriesList.innerHTML = addCardHtml + '<p class="empty-message">尚未設置支出類別</p>';
-
-            // 重新添加點擊事件
-            const addButton = document.getElementById('addExpenseCategoryButton');
-            if (addButton) {
-                addButton.addEventListener('click', function () {
-                    document.getElementById('categoryType').value = 'expense';
-                    openModal('addCategoryModal');
-                });
-            }
-
+            container.innerHTML = addCardHtml + '<p class="empty-message">尚未設置支出類別</p>';
+            setupCategoryButtons();
             return;
         }
 
         // 排序類別（按照order）
-        const sortedCategories = [...appState.categories.expense].sort((a, b) => a.order - b.order);
+        const sortedCategories = [...appState.categories.expense].sort((a, b) => (a.order || 0) - (b.order || 0));
 
         let html = addCardHtml;
 
@@ -3698,8 +3666,8 @@ function updateExpenseCategoriesList() {
             sortedCategories.forEach(category => {
                 html += `
                     <div class="category-card" data-id="${category.id}">
-                        <div class="category-icon" style="color: ${category.color}">
-                            <i class="${category.icon}"></i>
+                        <div class="category-icon" style="color: ${category.color || '#e74c3c'}">
+                            <i class="${category.icon || 'fas fa-tag'}"></i>
                         </div>
                         <div class="category-name">${category.name}</div>
                         <div class="category-actions">
@@ -3718,8 +3686,8 @@ function updateExpenseCategoriesList() {
             sortedCategories.forEach(category => {
                 html += `
                     <div class="category-list-item" data-id="${category.id}">
-                        <div class="category-list-icon" style="color: ${category.color}">
-                            <i class="${category.icon}"></i>
+                        <div class="category-list-icon" style="color: ${category.color || '#e74c3c'}">
+                            <i class="${category.icon || 'fas fa-tag'}"></i>
                         </div>
                         <div class="category-name">${category.name}</div>
                         <div class="category-actions">
@@ -3735,38 +3703,51 @@ function updateExpenseCategoriesList() {
             });
         }
 
-        expenseCategoriesList.innerHTML = html;
-
-        // 添加新增按鈕的事件監聽器
-        const addButton = document.getElementById('addExpenseCategoryButton');
-        if (addButton) {
-            addButton.addEventListener('click', function () {
-                document.getElementById('categoryType').value = 'expense';
-                openModal('addCategoryModal');
-            });
-        }
-
-        // 添加編輯和刪除按鈕的事件監聽器
-        expenseCategoriesList.querySelectorAll('.edit-category').forEach(button => {
-            button.addEventListener('click', function () {
-                const categoryId = this.getAttribute('data-id');
-                const categoryType = this.getAttribute('data-type');
-                editCategory(categoryId, categoryType);
-            });
-        });
-
-        expenseCategoriesList.querySelectorAll('.delete-category').forEach(button => {
-            button.addEventListener('click', function () {
-                const categoryId = this.getAttribute('data-id');
-                const categoryType = this.getAttribute('data-type');
-                const message = '確定要刪除此類別嗎？相關交易將保留，但類別將顯示為"未知類別"。';
-                showConfirmDialog(message, () => deleteCategory(categoryId, categoryType));
-            });
-        });
+        container.innerHTML = html;
+        setupCategoryButtons();
     } catch (error) {
         console.error("更新支出類別列表時發生錯誤:", error);
-        throw error;
+        container.innerHTML = addCardHtml + '<p class="error-message">載入支出類別時出錯</p>';
+        setupCategoryButtons();
     }
+}
+
+// 設置類別按鈕事件
+function setupCategoryButtons() {
+    // 添加新增按鈕的事件監聽器
+    const addIncomeButton = document.getElementById('addIncomeCategoryButton');
+    if (addIncomeButton) {
+        addIncomeButton.addEventListener('click', function () {
+            document.getElementById('categoryType').value = 'income';
+            openModal('addCategoryModal');
+        });
+    }
+
+    const addExpenseButton = document.getElementById('addExpenseCategoryButton');
+    if (addExpenseButton) {
+        addExpenseButton.addEventListener('click', function () {
+            document.getElementById('categoryType').value = 'expense';
+            openModal('addCategoryModal');
+        });
+    }
+
+    // 添加編輯和刪除按鈕的事件監聽器
+    document.querySelectorAll('.edit-category').forEach(button => {
+        button.addEventListener('click', function () {
+            const categoryId = this.getAttribute('data-id');
+            const categoryType = this.getAttribute('data-type');
+            editCategory(categoryId, categoryType);
+        });
+    });
+
+    document.querySelectorAll('.delete-category').forEach(button => {
+        button.addEventListener('click', function () {
+            const categoryId = this.getAttribute('data-id');
+            const categoryType = this.getAttribute('data-type');
+            const message = '確定要刪除此類別嗎？相關交易將保留，但類別將顯示為"未知類別"。';
+            showConfirmDialog(message, () => deleteCategory(categoryId, categoryType));
+        });
+    });
 }
 
 // 編輯類別
