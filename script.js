@@ -6615,3 +6615,15 @@ window.addEventListener('error', function(event) {
         console.error("錯誤恢復失敗:", e);
     }
 });
+
+// 確保在頁面完全加載後再次更新所有UI
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        try {
+            updateAllUI();
+            console.log("頁面加載完成後，再次更新所有UI");
+        } catch (error) {
+            console.error("再次更新UI時出錯:", error);
+        }
+    }, 1000);
+});
