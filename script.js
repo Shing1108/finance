@@ -1,5 +1,6 @@
-// 添加安全機制：確保載入覆蓋層在出錯時也能被隱藏
+// 添加安全機制:確保載入覆蓋層在出錯時也能被隱藏
 window.addEventListener('load', function () {
+    console.log("頁面完全載入");
     setTimeout(function () {
         var overlay = document.getElementById('loadingOverlay');
         if (overlay && overlay.style.display !== 'none') {
@@ -107,6 +108,7 @@ document.addEventListener('DOMContentLoaded', function () {
         loadStoredExchangeRates();
 
         // 初始化UI更新
+        initUiElements();
         updateAllUI();
 
         // 初始化Firebase (如果已啟用)
@@ -129,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // 隱藏載入覆蓋層
         document.getElementById('loadingOverlay').style.display = 'none';
 
-        // 設置定時器，每小時更新匯率
+        // 設置定時器,每小時更新匯率
         setInterval(updateExchangeRates, 60 * 60 * 1000);
 
     } catch (error) {
@@ -146,6 +148,17 @@ document.addEventListener('DOMContentLoaded', function () {
         `;
     }
 });
+
+// 初始化UI元素
+function initUiElements() {
+    // 確保類別標籤初始化
+    initializeCategoryTabs();
+    
+    // 初始化貨幣管理模態框(如果尚未存在)
+    if (!document.getElementById('currencyManagementModal')) {
+        createCurrencyManagementModal();
+    }
+}
 
 // 設置事件監聽器
 function setupEventListeners() {
@@ -282,7 +295,7 @@ function setupEventListeners() {
     // 清除數據按鈕點擊事件
     if (clearDataButton) {
         clearDataButton.addEventListener('click', function () {
-            const message = '確定要清除所有數據嗎？此操作無法復原。';
+            const message = '確定要清除所有數據嗎?此操作無法復原。';
             showConfirmDialog(message, clearAllData);
         });
     }
@@ -487,53 +500,9 @@ function setupEventListeners() {
     console.log("事件監聽器設置完成");
 }
 
-// 檢查並初始化類別標籤
-function checkAndInitializeCategoryTabs() {
-    const incomeCategoryTabButton = document.getElementById('incomeCategoryTabButton');
-    const expenseCategoryTabButton = document.getElementById('expenseCategoryTabButton');
-    const incomeCategoryTab = document.getElementById('incomeCategoryTab');
-    const expenseCategoryTab = document.getElementById('expenseCategoryTab');
-    
-    if (!incomeCategoryTabButton || !expenseCategoryTabButton || !incomeCategoryTab || !expenseCategoryTab) {
-        console.error("類別標籤元素缺失");
-        return;
-    }
-    
-    // 預設激活收入標籤（如果沒有其他標籤被激活）
-    if (!incomeCategoryTab.classList.contains('active') && !expenseCategoryTab.classList.contains('active')) {
-        incomeCategoryTabButton.classList.add('active');
-        incomeCategoryTab.classList.add('active');
-        expenseCategoryTabButton.classList.remove('active');
-        expenseCategoryTab.classList.remove('active');
-    }
-    
-    // 確保視圖切換按鈕正確初始化
-    const incomeCategoryCardView = document.getElementById('incomeCategoryCardView');
-    const incomeCategoryListView = document.getElementById('incomeCategoryListView');
-    const expenseCategoryCardView = document.getElementById('expenseCategoryCardView');
-    const expenseCategoryListView = document.getElementById('expenseCategoryListView');
-    
-    if (incomeCategoryCardView && incomeCategoryListView) {
-        incomeCategoryCardView.classList.add('active');
-        incomeCategoryListView.classList.remove('active');
-        const incomeCategoriesList = document.getElementById('incomeCategoriesList');
-        if (incomeCategoriesList) {
-            incomeCategoriesList.className = 'categories-list card-view';
-        }
-    }
-    
-    if (expenseCategoryCardView && expenseCategoryListView) {
-        expenseCategoryCardView.classList.add('active');
-        expenseCategoryListView.classList.remove('active');
-        const expenseCategoriesList = document.getElementById('expenseCategoriesList');
-        if (expenseCategoriesList) {
-            expenseCategoriesList.className = 'categories-list card-view';
-        }
-    }
-}
-
 // 初始化類別管理標籤
 function initializeCategoryTabs() {
+    console.log("初始化類別管理標籤");
     // 確保收入/支出標籤正確設置
     const incomeCategoryTabButton = document.getElementById('incomeCategoryTabButton');
     const expenseCategoryTabButton = document.getElementById('expenseCategoryTabButton');
@@ -577,68 +546,25 @@ function initializeCategoryTabs() {
         }
     }
     
-    // 重新綁定標籤切換事件
-    incomeCategoryTabButton.addEventListener('click', function() {
-        this.classList.add('active');
-        expenseCategoryTabButton.classList.remove('active');
-        incomeCategoryTab.classList.add('active');
-        expenseCategoryTab.classList.remove('active');
-    });
-    
-    expenseCategoryTabButton.addEventListener('click', function() {
-        this.classList.add('active');
-        incomeCategoryTabButton.classList.remove('active');
-        expenseCategoryTab.classList.add('active');
-        incomeCategoryTab.classList.remove('active');
-    });
-    
-    // 重新綁定視圖切換事件
-    if (incomeCategoryCardView && incomeCategoryListView) {
-        incomeCategoryCardView.addEventListener('click', function() {
-            this.classList.add('active');
-            incomeCategoryListView.classList.remove('active');
-            const categoriesList = document.getElementById('incomeCategoriesList');
-            if (categoriesList) {
-                categoriesList.className = 'categories-list card-view';
-                updateCategoriesUI();
-            }
-        });
-        
-        incomeCategoryListView.addEventListener('click', function() {
-            this.classList.add('active');
-            incomeCategoryCardView.classList.remove('active');
-            const categoriesList = document.getElementById('incomeCategoriesList');
-            if (categoriesList) {
-                categoriesList.className = 'categories-list list-view';
-                updateCategoriesUI();
-            }
+    // 重新綁定類別添加按鈕
+    const addIncomeButton = document.getElementById('addIncomeCategoryButton');
+    if (addIncomeButton) {
+        addIncomeButton.addEventListener('click', function() {
+            document.getElementById('categoryType').value = 'income';
+            openModal('addCategoryModal');
         });
     }
     
-    if (expenseCategoryCardView && expenseCategoryListView) {
-        expenseCategoryCardView.addEventListener('click', function() {
-            this.classList.add('active');
-            expenseCategoryListView.classList.remove('active');
-            const categoriesList = document.getElementById('expenseCategoriesList');
-            if (categoriesList) {
-                categoriesList.className = 'categories-list card-view';
-                updateCategoriesUI();
-            }
-        });
-        
-        expenseCategoryListView.addEventListener('click', function() {
-            this.classList.add('active');
-            expenseCategoryCardView.classList.remove('active');
-            const categoriesList = document.getElementById('expenseCategoriesList');
-            if (categoriesList) {
-                categoriesList.className = 'categories-list list-view';
-                updateCategoriesUI();
-            }
+    const addExpenseButton = document.getElementById('addExpenseCategoryButton');
+    if (addExpenseButton) {
+        addExpenseButton.addEventListener('click', function() {
+            document.getElementById('categoryType').value = 'expense';
+            openModal('addCategoryModal');
         });
     }
 }
 
-// 在showTabContent函數中添加特殊處理
+// 顯示指定的選項卡內容
 function showTabContent(tabId) {
     console.log(`切換到${tabId}選項卡`);
 
@@ -863,7 +789,7 @@ function saveAccount() {
             // 保存到本地存儲
             saveToLocalStorage();
 
-            // 執行同步（如果啟用）
+            // 執行同步(如果啟用)
             if (enableFirebase && isLoggedIn) {
                 syncToFirebase();
             }
@@ -895,7 +821,7 @@ function saveAccount() {
             // 保存到本地存儲
             saveToLocalStorage();
 
-            // 執行同步（如果啟用）
+            // 執行同步(如果啟用)
             if (enableFirebase && isLoggedIn) {
                 syncToFirebase();
             }
@@ -965,7 +891,7 @@ function saveCategory() {
             // 保存到本地存儲
             saveToLocalStorage();
 
-            // 執行同步（如果啟用）
+            // 執行同步(如果啟用)
             if (enableFirebase && isLoggedIn) {
                 syncToFirebase();
             }
@@ -1015,7 +941,7 @@ function saveCategory() {
             // 保存到本地存儲
             saveToLocalStorage();
 
-            // 執行同步（如果啟用）
+            // 執行同步(如果啟用)
             if (enableFirebase && isLoggedIn) {
                 syncToFirebase();
             }
@@ -1104,7 +1030,7 @@ function saveTransaction(type) {
         // 檢查預算警告
         checkBudgetAlerts();
 
-        // 執行同步（如果啟用）
+        // 執行同步(如果啟用)
         if (enableFirebase && isLoggedIn) {
             syncToFirebase();
         }
@@ -1162,7 +1088,7 @@ function processTransfer() {
             return;
         }
 
-        // 計算匯率（如果貨幣不同）
+        // 計算匯率(如果貨幣不同)
         let exchangeRate = 1;
         let receivingAmount = amount;
 
@@ -1221,7 +1147,7 @@ function processTransfer() {
         // 保存到本地存儲
         saveToLocalStorage();
 
-        // 執行同步（如果啟用）
+        // 執行同步(如果啟用)
         if (enableFirebase && isLoggedIn) {
             syncToFirebase();
         }
@@ -1301,7 +1227,7 @@ function saveBudgetSettings() {
 
         const resetCycle = document.querySelector('input[name="resetCycle"]:checked')?.value || 'monthly';
         const resetDay = parseInt(document.getElementById('monthlyResetDay').value) || 1;
-        const inheritPrevious = document.getElementById('inheritPreviousBudget').checked;
+        const inheritPrevious = document.getElementById('inheritPreviousBudget')?.checked || false;
 
         // 更新預算設置
         appState.budgets.total = totalBudget;
@@ -1317,7 +1243,7 @@ function saveBudgetSettings() {
         // 保存到本地存儲
         saveToLocalStorage();
 
-        // 執行同步（如果啟用）
+        // 執行同步(如果啟用)
         if (enableFirebase && isLoggedIn) {
             syncToFirebase();
         }
@@ -1327,6 +1253,106 @@ function saveBudgetSettings() {
     } catch (error) {
         console.error("保存預算設置時發生錯誤:", error);
         showToast('保存預算設置失敗: ' + error.message, 'error');
+    }
+}
+
+// 創建新預算 (接上一部分)
+function createNewBudget() {
+    console.log("創建新預算");
+
+    try {
+        const budgetName = document.getElementById('budgetName').value.trim();
+        const startDate = document.getElementById('budgetStartDate').value;
+        const endDate = document.getElementById('budgetEndDate').value;
+        const autoCalculate = document.getElementById('autoCalculateBudget').checked;
+
+        let totalBudget = 0;
+        if (autoCalculate) {
+            totalBudget = calculateTotalCategoryBudget();
+        } else {
+            totalBudget = parseFloat(document.getElementById('totalBudget').value) || 0;
+        }
+
+        // 驗證
+        if (!budgetName) {
+            showToast('請輸入預算名稱', 'error');
+            return;
+        }
+
+        if (!startDate) {
+            showToast('請選擇開始日期', 'error');
+            return;
+        }
+
+        if (!endDate) {
+            showToast('請選擇結束日期', 'error');
+            return;
+        }
+
+        if (new Date(startDate) >= new Date(endDate)) {
+            showToast('結束日期必須晚於開始日期', 'error');
+            return;
+        }
+
+        if (!totalBudget || totalBudget <= 0) {
+            showToast('請輸入有效的預算金額', 'error');
+            return;
+        }
+
+        // 獲取預算重設週期和重設日
+        const resetCycle = document.querySelector('input[name="resetCycle"]:checked')?.value || 'monthly';
+        const resetDay = parseInt(document.getElementById('monthlyResetDay').value) || 1;
+
+        // 如果有當前預算，將其移至歷史記錄
+        if (appState.budgets.current) {
+            // 確保歷史記錄數組已初始化
+            if (!appState.budgets.history) {
+                appState.budgets.history = [];
+            }
+
+            appState.budgets.history.unshift(appState.budgets.current);
+        }
+
+        // 創建新預算
+        appState.budgets.current = {
+            id: generateId(),
+            name: budgetName,
+            startDate: startDate,
+            endDate: endDate,
+            totalAmount: totalBudget,
+            categories: appState.budgets.categories || [], // 保留類別預算
+            autoCalculate: autoCalculate,
+            resetCycle: resetCycle,
+            resetDay: resetDay,
+            createdAt: new Date().toISOString()
+        };
+
+        // 更新預算設置
+        appState.budgets.autoCalculate = autoCalculate;
+        appState.budgets.resetCycle = resetCycle;
+        appState.budgets.resetDay = resetDay;
+        appState.budgets.total = totalBudget;
+
+        // 更新UI
+        updateBudgetsUI();
+        updateDashboardUI();
+
+        // 保存到本地存儲
+        saveToLocalStorage();
+
+        // 執行同步(如果啟用)
+        if (enableFirebase && isLoggedIn) {
+            syncToFirebase();
+        }
+
+        // 清空表單
+        document.getElementById('budgetName').value = '';
+
+        // 顯示成功消息
+        showToast('預算已創建', 'success');
+    } catch (error) {
+        console.error("創建新預算時發生錯誤:", error);
+        showToast('創建預算失敗: ' + error.message, 'error');
     }
 }
 
@@ -1368,7 +1394,7 @@ function addCategoryBudget() {
                 return;
             }
 
-            // 獲取實際使用的類別ID（可能是從禁用的下拉框中獲取）
+            // 獲取實際使用的類別ID(可能是從禁用的下拉框中獲取)
             const actualCategoryId = appState.budgets.categories[budgetIndex].categoryId;
 
             // 更新預算
@@ -1386,7 +1412,7 @@ function addCategoryBudget() {
             // 保存到本地存儲
             saveToLocalStorage();
 
-            // 執行同步（如果啟用）
+            // 執行同步(如果啟用)
             if (enableFirebase && isLoggedIn) {
                 syncToFirebase();
             }
@@ -1438,7 +1464,7 @@ function addCategoryBudget() {
             // 保存到本地存儲
             saveToLocalStorage();
 
-            // 執行同步（如果啟用）
+            // 執行同步(如果啟用)
             if (enableFirebase && isLoggedIn) {
                 syncToFirebase();
             }
@@ -1516,6 +1542,9 @@ function populateIconGrid() {
                     item.classList.remove('selected');
                 });
                 this.classList.add('selected');
+
+                // 隱藏圖標網格
+                iconGrid.style.display = 'none';
             });
 
             iconGrid.appendChild(iconItem);
@@ -1592,7 +1621,7 @@ function updateTransactionsList(filters = {}) {
             filteredTransactions = filteredTransactions.filter(t => t.categoryId === filters.categoryId);
         }
 
-        // 按日期排序（降序）
+        // 按日期排序(降序)
         filteredTransactions.sort((a, b) => {
             if (a.date !== b.date) {
                 return b.date.localeCompare(a.date);
@@ -1681,7 +1710,7 @@ function updateTransactionsList(filters = {}) {
         transactionsList.querySelectorAll('.delete-transaction').forEach(button => {
             button.addEventListener('click', function () {
                 const transactionId = this.getAttribute('data-id');
-                const message = '確定要刪除這筆交易嗎？';
+                const message = '確定要刪除這筆交易嗎?';
                 showConfirmDialog(message, () => deleteTransaction(transactionId));
             });
         });
@@ -1709,7 +1738,7 @@ function editTransaction(transactionId) {
             return;
         }
 
-        // 創建編輯交易模態框（如果尚未存在）
+        // 創建編輯交易模態框(如果尚未存在)
         if (!document.getElementById('editTransactionModal')) {
             createEditTransactionModal();
         }
@@ -2012,7 +2041,7 @@ function updateTransaction() {
         // 檢查預算警告
         checkBudgetAlerts();
 
-        // 執行同步（如果啟用）
+        // 執行同步(如果啟用)
         if (enableFirebase && isLoggedIn) {
             syncToFirebase();
         }
@@ -2052,7 +2081,7 @@ function deleteTransaction(transactionId) {
             if (relatedTransactionIndex !== -1) {
                 const relatedTransaction = appState.transactions[relatedTransactionIndex];
 
-                // 恢復賬戶餘額（關聯交易）
+                // 恢復賬戶餘額(關聯交易)
                 const relatedAccount = appState.accounts.find(a => a.id === relatedTransaction.accountId);
                 if (relatedAccount) {
                     if (relatedTransaction.type === 'income') {
@@ -2067,7 +2096,7 @@ function deleteTransaction(transactionId) {
             }
         }
 
-        // 恢復賬戶餘額（主交易）
+        // 恢復賬戶餘額(主交易)
         const account = appState.accounts.find(a => a.id === transaction.accountId);
         if (account) {
             if (transaction.type === 'income') {
@@ -2088,7 +2117,7 @@ function deleteTransaction(transactionId) {
         // 保存到本地存儲
         saveToLocalStorage();
 
-        // 執行同步（如果啟用）
+        // 執行同步(如果啟用)
         if (enableFirebase && isLoggedIn) {
             syncToFirebase();
         }
@@ -2134,7 +2163,7 @@ function updateTotalAssets() {
     console.log("更新總資產");
 
     try {
-        // 計算所有賬戶的餘額總和（考慮匯率轉換）
+        // 計算所有賬戶的餘額總和(考慮匯率轉換)
         let totalAssets = 0;
 
         appState.accounts.forEach(account => {
@@ -2142,8 +2171,12 @@ function updateTotalAssets() {
 
             // 如果賬戶貨幣與默認貨幣不同，則轉換
             if (account.currency !== defaultCurrency) {
-                const rate = getExchangeRate(account.currency, defaultCurrency);
-                balance = balance * rate;
+                try {
+                    const rate = getExchangeRate(account.currency, defaultCurrency) || 1;
+                    balance = balance * rate;
+                } catch (e) {
+                    console.error("匯率轉換錯誤:", e);
+                }
             }
 
             totalAssets += balance;
@@ -2186,8 +2219,12 @@ function updateTodayTransactions() {
 
             // 如果賬戶貨幣與默認貨幣不同，則轉換
             if (account.currency !== defaultCurrency) {
-                const rate = getExchangeRate(account.currency, defaultCurrency);
-                amount = amount * rate;
+                try {
+                    const rate = getExchangeRate(account.currency, defaultCurrency) || 1;
+                    amount = amount * rate;
+                } catch (e) {
+                    console.error("匯率轉換錯誤:", e);
+                }
             }
 
             if (transaction.type === 'income') {
@@ -2218,7 +2255,7 @@ function updateTodayTransactions() {
                 return;
             }
 
-            // 排序交易（最新的在前）
+            // 排序交易(最新的在前)
             todayTransactions.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
             let html = '';
@@ -2354,8 +2391,12 @@ function updateBudgetStatus() {
 
             // 如果賬戶貨幣與默認貨幣不同，則轉換
             if (account.currency !== defaultCurrency) {
-                const rate = getExchangeRate(account.currency, defaultCurrency);
-                amount = amount * rate;
+                try {
+                    const rate = getExchangeRate(account.currency, defaultCurrency);
+                    amount = amount * rate;
+                } catch (e) {
+                    console.error("匯率轉換錯誤:", e);
+                }
             }
 
             totalSpent += amount;
@@ -2411,7 +2452,7 @@ function updateRecentTransactions() {
             return;
         }
 
-        // 按日期排序（最新的在前）
+        // 按日期排序(最新的在前)
         const sortedTransactions = [...appState.transactions].sort((a, b) => {
             if (a.date !== b.date) {
                 return b.date.localeCompare(a.date);
@@ -2535,8 +2576,12 @@ function updateFinancialHealthIndex() {
 
             // 匯率轉換
             if (account.currency !== defaultCurrency) {
-                const rate = getExchangeRate(account.currency, defaultCurrency);
-                amount = amount * rate;
+                try {
+                    const rate = getExchangeRate(account.currency, defaultCurrency);
+                    amount = amount * rate;
+                } catch (e) {
+                    console.error("匯率轉換錯誤:", e);
+                }
             }
 
             if (transaction.type === 'income' && transaction.categoryId !== 'transfer_in') {
@@ -2683,8 +2728,12 @@ function calculateBudgetScore() {
 
         // 匯率轉換
         if (account.currency !== defaultCurrency) {
-            const rate = getExchangeRate(account.currency, defaultCurrency);
-            amount = amount * rate;
+            try {
+                const rate = getExchangeRate(account.currency, defaultCurrency);
+                amount = amount * rate;
+            } catch (e) {
+                console.error("匯率轉換錯誤:", e);
+            }
         }
 
         totalSpent += amount;
@@ -2950,7 +2999,7 @@ function updateAccountsUI() {
         accountsList.querySelectorAll('.delete-account').forEach(button => {
             button.addEventListener('click', function () {
                 const accountId = this.getAttribute('data-id');
-                const message = '確定要刪除此戶口嗎？相關交易將保留，但匯入金額將不再計入總資產。';
+                const message = '確定要刪除此戶口嗎?相關交易將保留，但匯入金額將不再計入總資產。';
                 showConfirmDialog(message, () => deleteAccount(accountId));
             });
         });
@@ -3061,7 +3110,7 @@ function deleteAccount(accountId) {
 
         if (hasTransactions) {
             // 提示用戶並確認
-            const message = '此賬戶有關聯的交易記錄，刪除賬戶將會保留這些交易，但不再計入總資產。確定要繼續嗎？';
+            const message = '此賬戶有關聯的交易記錄，刪除賬戶將會保留這些交易，但不再計入總資產。確定要繼續嗎?';
 
             showConfirmDialog(message, () => {
                 // 找到並刪除賬戶
@@ -3083,7 +3132,7 @@ function deleteAccount(accountId) {
                     // 保存到本地存儲
                     saveToLocalStorage();
 
-                    // 執行同步（如果啟用）
+                    // 執行同步(如果啟用)
                     if (enableFirebase && isLoggedIn) {
                         syncToFirebase();
                     }
@@ -3112,7 +3161,7 @@ function deleteAccount(accountId) {
                 // 保存到本地存儲
                 saveToLocalStorage();
 
-                // 執行同步（如果啟用）
+                // 執行同步(如果啟用)
                 if (enableFirebase && isLoggedIn) {
                     syncToFirebase();
                 }
@@ -3135,7 +3184,7 @@ function updateTransactionsUI() {
         // 更新交易表單
         updateTransactionsForms();
 
-        // 更新交易列表（顯示所有交易）
+        // 更新交易列表(顯示所有交易)
         updateTransactionsList();
 
         // 更新類別過濾器
@@ -3182,7 +3231,7 @@ function updateTransactionsForms() {
             // 清空下拉菜單
             incomeCategorySelect.innerHTML = '<option value="" disabled selected>選擇類別</option>';
 
-            // 排序類別（按照order）
+            // 排序類別(按照order)
             const sortedIncomeCategories = [...appState.categories.income].sort((a, b) => a.order - b.order);
 
             // 填充下拉菜單
@@ -3201,7 +3250,7 @@ function updateTransactionsForms() {
             // 清空下拉菜單
             expenseCategorySelect.innerHTML = '<option value="" disabled selected>選擇類別</option>';
 
-            // 排序類別（按照order）
+            // 排序類別(按照order)
             const sortedExpenseCategories = [...appState.categories.expense].sort((a, b) => a.order - b.order);
 
             // 填充下拉菜單
@@ -3241,7 +3290,7 @@ function updateCategoryFilter() {
             const incomeOptgroup = document.createElement('optgroup');
             incomeOptgroup.label = '收入類別';
 
-            // 排序類別（按照order）
+            // 排序類別(按照order)
             const sortedIncomeCategories = [...appState.categories.income].sort((a, b) => a.order - b.order);
 
             sortedIncomeCategories.forEach(category => {
@@ -3259,7 +3308,7 @@ function updateCategoryFilter() {
             const expenseOptgroup = document.createElement('optgroup');
             expenseOptgroup.label = '支出類別';
 
-            // 排序類別（按照order）
+            // 排序類別(按照order)
             const sortedExpenseCategories = [...appState.categories.expense].sort((a, b) => a.order - b.order);
 
             sortedExpenseCategories.forEach(category => {
@@ -3272,7 +3321,7 @@ function updateCategoryFilter() {
             categoryFilter.appendChild(expenseOptgroup);
         }
 
-                // 添加轉賬類別
+        // 添加轉賬類別
         const transferOptgroup = document.createElement('optgroup');
         transferOptgroup.label = '轉賬';
 
@@ -3448,7 +3497,7 @@ function updateCategoryBudgetsList() {
         categoryBudgetsList.querySelectorAll('.delete-budget').forEach(button => {
             button.addEventListener('click', function () {
                 const budgetId = this.getAttribute('data-id');
-                const message = '確定要刪除此類別預算嗎？';
+                const message = '確定要刪除此類別預算嗎?';
                 showConfirmDialog(message, () => deleteCategoryBudget(budgetId));
             });
         });
@@ -3580,7 +3629,7 @@ function deleteCategoryBudget(budgetId) {
             // 保存到本地存儲
             saveToLocalStorage();
 
-            // 執行同步（如果啟用）
+            // 執行同步(如果啟用)
             if (enableFirebase && isLoggedIn) {
                 syncToFirebase();
             }
@@ -3591,6 +3640,400 @@ function deleteCategoryBudget(budgetId) {
     } catch (error) {
         console.error("刪除類別預算時發生錯誤:", error);
         showToast('刪除類別預算失敗: ' + error.message, 'error');
+    }
+}
+
+// 更新預算歷史記錄列表
+function updateBudgetHistoryList() {
+    console.log("更新預算歷史記錄");
+
+    try {
+        const budgetHistoryList = document.getElementById('budgetHistoryList');
+
+        if (!budgetHistoryList) {
+            console.error("找不到預算歷史記錄列表元素");
+            return;
+        }
+
+        // 檢查是否有歷史記錄
+        if (!appState.budgets.history || appState.budgets.history.length === 0) {
+            budgetHistoryList.innerHTML = '<p class="empty-message">尚無預算歷史記錄</p>';
+            return;
+        }
+
+        let html = '';
+
+        // 排序歷史記錄(最新的在前)
+        const sortedHistory = [...appState.budgets.history].sort((a, b) =>
+            (b.createdAt || '').localeCompare(a.createdAt || '')
+        );
+
+        sortedHistory.forEach(budget => {
+            // 計算實際支出(如果未記錄則計算)
+            let actualSpent = budget.actualSpent;
+            if (actualSpent === undefined) {
+                actualSpent = calculateActualSpent(budget.startDate, budget.endDate);
+            }
+
+            // 計算使用百分比
+            const usagePercentage = budget.totalAmount > 0
+                ? Math.min(100, (actualSpent / budget.totalAmount) * 100)
+                : 0;
+
+            // 設置進度條顏色
+            let progressColor = 'var(--primary-color)';
+            if (usagePercentage > 100) {
+                progressColor = 'var(--danger-color)';
+            } else if (usagePercentage > 90) {
+                progressColor = 'var(--warning-color)';
+            }
+
+            // 格式化日期
+            const formattedStartDate = formatDate(budget.startDate);
+            const formattedEndDate = formatDate(budget.endDate);
+
+            html += `
+                <div class="budget-history-item" data-id="${budget.id}">
+                    <div class="budget-header">
+                        <h4>${budget.name}</h4>
+                        <div class="budget-date">${formattedStartDate} - ${formattedEndDate}</div>
+                    </div>
+                    <div class="budget-amounts">
+                        <div>預算: ${formatCurrency(budget.totalAmount)}</div>
+                        <div>實際: ${formatCurrency(actualSpent)}</div>
+                    </div>
+                    <div class="budget-progress-container">
+                        <div class="budget-progress-bar" style="width: ${usagePercentage}%; background-color: ${progressColor}"></div>
+                    </div>
+                    <div class="budget-actions">
+                        <button class="btn btn-sm view-budget" data-id="${budget.id}">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm copy-budget" data-id="${budget.id}">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+        budgetHistoryList.innerHTML = html;
+
+        // 添加查看和複製按鈕的事件監聽器
+        budgetHistoryList.querySelectorAll('.view-budget').forEach(button => {
+            button.addEventListener('click', function () {
+                const budgetId = this.getAttribute('data-id');
+                viewBudgetDetails(budgetId);
+            });
+        });
+
+        budgetHistoryList.querySelectorAll('.copy-budget').forEach(button => {
+            button.addEventListener('click', function () {
+                const budgetId = this.getAttribute('data-id');
+                copyBudgetToNew(budgetId);
+            });
+        });
+    } catch (error) {
+        console.error("更新預算歷史記錄時發生錯誤:", error);
+        const budgetHistoryList = document.getElementById('budgetHistoryList');
+        if (budgetHistoryList) {
+            budgetHistoryList.innerHTML = '<p class="error-message">載入預算歷史記錄出錯</p>';
+        }
+    }
+}
+
+// 計算指定日期範圍內的實際支出
+function calculateActualSpent(startDate, endDate) {
+    try {
+        // 篩選日期範圍內的支出交易
+        const rangeTransactions = appState.transactions.filter(t =>
+            t.type === 'expense' &&
+            t.categoryId !== 'transfer_out' &&
+            t.date >= startDate &&
+            t.date <= endDate
+        );
+
+        // 計算總支出
+        let totalSpent = 0;
+
+        rangeTransactions.forEach(transaction => {
+            const account = appState.accounts.find(a => a.id === transaction.accountId);
+
+            if (!account) return;
+
+            let amount = transaction.amount || 0;
+
+            // 匯率轉換
+            if (account.currency !== defaultCurrency) {
+                try {
+                    const rate = getExchangeRate(account.currency, defaultCurrency);
+                    amount = amount * rate;
+                } catch (e) {
+                    console.error("匯率轉換錯誤:", e);
+                }
+            }
+
+            totalSpent += amount;
+        });
+
+        return totalSpent;
+    } catch (error) {
+        console.error("計算實際支出時發生錯誤:", error);
+        return 0;
+    }
+}
+
+// 格式化日期
+function formatDate(dateString) {
+    try {
+        const [year, month, day] = dateString.split('-');
+        return `${day}/${month}/${year}`;
+    } catch (error) {
+        console.error("格式化日期時發生錯誤:", error);
+        return dateString;
+    }
+}
+
+// 查看預算詳情
+function viewBudgetDetails(budgetId) {
+    console.log(`查看預算詳情: ${budgetId}`);
+
+    try {
+        // 找到對應的預算
+        const budget = appState.budgets.history.find(b => b.id === budgetId);
+
+        if (!budget) {
+            showToast('找不到預算記錄', 'error');
+            return;
+        }
+
+        // 創建並顯示預算詳情模態框
+        if (!document.getElementById('budgetDetailsModal')) {
+            createBudgetDetailsModal();
+        }
+
+        // 填充預算詳情
+        document.getElementById('budgetDetailName').textContent = budget.name;
+        document.getElementById('budgetDetailPeriod').textContent = `${formatDate(budget.startDate)} - ${formatDate(budget.endDate)}`;
+        document.getElementById('budgetDetailTotal').textContent = formatCurrency(budget.totalAmount);
+
+        // 計算實際支出
+        let actualSpent = budget.actualSpent;
+        if (actualSpent === undefined) {
+            actualSpent = calculateActualSpent(budget.startDate, budget.endDate);
+        }
+
+        document.getElementById('budgetDetailSpent').textContent = formatCurrency(actualSpent);
+
+        // 計算剩餘/超支
+        const remaining = budget.totalAmount - actualSpent;
+        const remainingElement = document.getElementById('budgetDetailRemaining');
+
+        if (remaining >= 0) {
+            remainingElement.textContent = `剩餘: ${formatCurrency(remaining)}`;
+            remainingElement.style.color = 'var(--income-color)';
+        } else {
+            remainingElement.textContent = `超支: ${formatCurrency(Math.abs(remaining))}`;
+            remainingElement.style.color = 'var(--expense-color)';
+        }
+
+        // 填充類別預算列表
+        const categoriesList = document.getElementById('budgetDetailCategories');
+
+        if (budget.categories && budget.categories.length > 0) {
+            let categoriesHtml = '';
+
+            budget.categories.forEach(catBudget => {
+                // 找到對應的類別
+                const category = appState.categories.expense.find(c => c.id === catBudget.categoryId);
+                if (!category) return;
+
+                // 計算該類別的實際支出
+                const categorySpent = calculateCategorySpent(catBudget.categoryId, budget.startDate, budget.endDate);
+
+                // 計算使用百分比
+                const usagePercentage = catBudget.amount > 0
+                    ? Math.min(100, (categorySpent / catBudget.amount) * 100)
+                    : 0;
+
+                // 設置進度條顏色
+                let progressColor = 'var(--primary-color)';
+                if (usagePercentage > 100) {
+                    progressColor = 'var(--danger-color)';
+                } else if (usagePercentage > 90) {
+                    progressColor = 'var(--warning-color)';
+                }
+
+                categoriesHtml += `
+                    <div class="budget-category-item">
+                        <div class="category-info">
+                            <div class="category-icon" style="color: ${category.color}">
+                                <i class="${category.icon}"></i>
+                            </div>
+                            <div class="category-name">${category.name}</div>
+                        </div>
+                        <div class="category-budget-info">
+                            <div class="budget-amounts">
+                                <div>預算: ${formatCurrency(catBudget.amount)}</div>
+                                <div>實際: ${formatCurrency(categorySpent)}</div>
+                            </div>
+                            <div class="budget-progress-container">
+                                <div class="budget-progress-bar" style="width: ${usagePercentage}%; background-color: ${progressColor}"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            categoriesList.innerHTML = categoriesHtml;
+        } else {
+            categoriesList.innerHTML = '<p class="empty-message">此預算沒有設置類別預算</p>';
+        }
+
+        // 打開模態框
+        openModal('budgetDetailsModal');
+    } catch (error) {
+        console.error("查看預算詳情時發生錯誤:", error);
+        showToast('查看預算詳情失敗: ' + error.message, 'error');
+    }
+}
+
+// 計算特定類別在指定日期範圍內的支出
+function calculateCategorySpent(categoryId, startDate, endDate) {
+    try {
+        // 篩選該類別在日期範圍內的支出交易
+        const categoryTransactions = appState.transactions.filter(t =>
+            t.type === 'expense' &&
+            t.categoryId === categoryId &&
+            t.date >= startDate &&
+            t.date <= endDate
+        );
+
+        // 計算總支出
+        let totalSpent = 0;
+
+        categoryTransactions.forEach(transaction => {
+            const account = appState.accounts.find(a => a.id === transaction.accountId);
+
+            if (!account) return;
+
+            let amount = transaction.amount || 0;
+
+            // 匯率轉換
+            if (account.currency !== defaultCurrency) {
+                try {
+                    const rate = getExchangeRate(account.currency, defaultCurrency);
+                    amount = amount * rate;
+                } catch (e) {
+                    console.error("匯率轉換錯誤:", e);
+                }
+            }
+
+            totalSpent += amount;
+        });
+
+        return totalSpent;
+    } catch (error) {
+        console.error("計算類別支出時發生錯誤:", error);
+        return 0;
+    }
+}
+
+// 創建預算詳情模態框
+function createBudgetDetailsModal() {
+    // 創建模態框HTML
+    const modalHTML = `
+    <div id="budgetDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>預算詳情</h3>
+                <button class="close-button">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="budget-details-header">
+                    <h2 id="budgetDetailName">預算名稱</h2>
+                    <div id="budgetDetailPeriod" class="budget-period">日期範圍</div>
+                </div>
+                <div class="budget-details-summary">
+                    <div class="budget-detail-row">
+                        <div class="detail-label">總預算:</div>
+                        <div id="budgetDetailTotal" class="detail-value">$0.00</div>
+                    </div>
+                    <div class="budget-detail-row">
+                        <div class="detail-label">實際支出:</div>
+                        <div id="budgetDetailSpent" class="detail-value">$0.00</div>
+                    </div>
+                    <div class="budget-detail-row">
+                        <div class="detail-label">結餘:</div>
+                        <div id="budgetDetailRemaining" class="detail-value">$0.00</div>
+                    </div>
+                </div>
+                <div class="budget-details-categories">
+                    <h4>類別預算</h4>
+                    <div id="budgetDetailCategories" class="category-budgets-list">
+                        <!-- 類別預算將在這裡填充 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">關閉</button>
+            </div>
+        </div>
+    </div>`;
+
+    // 添加到文檔
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // 添加關閉按鈕事件
+    document.querySelector('#budgetDetailsModal .close-button').addEventListener('click', closeCurrentModal);
+    document.querySelector('#budgetDetailsModal .modal-close').addEventListener('click', closeCurrentModal);
+}
+
+// 複製歷史預算到新預算
+function copyBudgetToNew(budgetId) {
+    console.log(`複製預算: ${budgetId}`);
+
+    try {
+        // 找到對應的預算
+        const sourceBudget = appState.budgets.history.find(b => b.id === budgetId);
+
+        if (!sourceBudget) {
+            showToast('找不到預算記錄', 'error');
+            return;
+        }
+
+        // 設置表單值
+        document.getElementById('budgetName').value = `${sourceBudget.name} (複製)`;
+
+        // 設置日期為下一個週期
+        const sourceStartDate = new Date(sourceBudget.startDate);
+        const sourceEndDate = new Date(sourceBudget.endDate);
+        const duration = sourceEndDate - sourceStartDate; // 毫秒
+
+        const newStartDate = new Date(sourceEndDate);
+        newStartDate.setDate(newStartDate.getDate() + 1); // 從上一個結束日期後一天開始
+
+        const newEndDate = new Date(newStartDate);
+        newEndDate.setTime(newStartDate.getTime() + duration); // 相同持續時間
+
+        document.getElementById('budgetStartDate').value = newStartDate.toISOString().slice(0, 10);
+        document.getElementById('budgetEndDate').value = newEndDate.toISOString().slice(0, 10);
+
+        // 設置預算金額和自動計算
+        document.getElementById('totalBudget').value = sourceBudget.totalAmount;
+        document.getElementById('autoCalculateBudget').checked = sourceBudget.autoCalculate || false;
+
+        // 滾動到表單位置
+        const budgetForm = document.querySelector('.budget-form');
+        if (budgetForm) {
+            budgetForm.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 顯示提示信息
+        showToast('已複製預算設置，請確認後創建新預算', 'info');
+    } catch (error) {
+        console.error("複製預算時發生錯誤:", error);
+        showToast('複製預算失敗: ' + error.message, 'error');
     }
 }
 
@@ -3653,7 +4096,7 @@ function updateIncomeCategoriesList() {
             return;
         }
 
-        // 排序類別（按照order）
+        // 排序類別(按照order)
         const sortedCategories = [...appState.categories.income].sort((a, b) => (a.order || 0) - (b.order || 0));
 
         let html = addCardHtml;
@@ -3722,7 +4165,6 @@ function updateIncomeCategoriesList() {
     }
 }
 
-
 // 更新支出類別列表
 function updateExpenseCategoriesList() {
     console.log("更新支出類別列表");
@@ -3756,7 +4198,7 @@ function updateExpenseCategoriesList() {
             return;
         }
 
-        // 排序類別（按照order）
+        // 排序類別(按照order)
         const sortedCategories = [...appState.categories.expense].sort((a, b) => (a.order || 0) - (b.order || 0));
 
         let html = addCardHtml;
@@ -3825,44 +4267,6 @@ function updateExpenseCategoriesList() {
     }
 }
 
-// 設置類別按鈕事件
-function setupCategoryButtons() {
-    // 添加新增按鈕的事件監聽器
-    const addIncomeButton = document.getElementById('addIncomeCategoryButton');
-    if (addIncomeButton) {
-        addIncomeButton.addEventListener('click', function () {
-            document.getElementById('categoryType').value = 'income';
-            openModal('addCategoryModal');
-        });
-    }
-
-    const addExpenseButton = document.getElementById('addExpenseCategoryButton');
-    if (addExpenseButton) {
-        addExpenseButton.addEventListener('click', function () {
-            document.getElementById('categoryType').value = 'expense';
-            openModal('addCategoryModal');
-        });
-    }
-
-    // 添加編輯和刪除按鈕的事件監聽器
-    document.querySelectorAll('.edit-category').forEach(button => {
-        button.addEventListener('click', function () {
-            const categoryId = this.getAttribute('data-id');
-            const categoryType = this.getAttribute('data-type');
-            editCategory(categoryId, categoryType);
-        });
-    });
-
-    document.querySelectorAll('.delete-category').forEach(button => {
-        button.addEventListener('click', function () {
-            const categoryId = this.getAttribute('data-id');
-            const categoryType = this.getAttribute('data-type');
-            const message = '確定要刪除此類別嗎？相關交易將保留，但類別將顯示為"未知類別"。';
-            showConfirmDialog(message, () => deleteCategory(categoryId, categoryType));
-        });
-    });
-}
-
 // 綁定類別相關事件
 function bindCategoryEvents() {
     // 添加新增按鈕的事件監聽器
@@ -3895,155 +4299,10 @@ function bindCategoryEvents() {
         button.addEventListener('click', function() {
             const categoryId = this.getAttribute('data-id');
             const categoryType = this.getAttribute('data-type');
-            const message = '確定要刪除此類別嗎？相關交易將保留，但類別將顯示為"未知類別"。';
+            const message = '確定要刪除此類別嗎?相關交易將保留，但類別將顯示為"未知類別"。';
             showConfirmDialog(message, () => deleteCategory(categoryId, categoryType));
         });
     });
-}
-
-// 編輯類別
-function editCategory(categoryId, categoryType) {
-    console.log(`編輯${categoryType}類別: ${categoryId}`);
-
-    try {
-        // 找到要編輯的類別
-        const categoryArray = categoryType === 'income' ? appState.categories.income : appState.categories.expense;
-        const category = categoryArray.find(c => c.id === categoryId);
-
-        if (!category) {
-            showToast('找不到類別', 'error');
-            return;
-        }
-
-        // 填充表單
-        document.getElementById('categoryName').value = category.name;
-        document.getElementById('selectedIcon').className = category.icon;
-        document.getElementById('categoryColor').value = category.color;
-        document.getElementById('categoryOrder').value = category.order || 0;
-
-        // 設置類別類型
-        document.getElementById('categoryType').value = categoryType;
-
-        // 設置編輯模式
-        document.getElementById('categoryType').dataset.editId = categoryId;
-
-        // 修改模態框標題和按鈕
-        const modalTitle = document.querySelector('#addCategoryModal .modal-header h3');
-        if (modalTitle) {
-            modalTitle.textContent = '編輯類別';
-        }
-
-        const saveButton = document.getElementById('saveCategoryButton');
-        if (saveButton) {
-            saveButton.textContent = '更新';
-        }
-
-        // 打開編輯類別模態框
-        openModal('addCategoryModal');
-    } catch (error) {
-        console.error("編輯類別時發生錯誤:", error);
-        showToast('編輯類別失敗: ' + error.message, 'error');
-    }
-}
-
-// 刪除類別
-function deleteCategory(categoryId, categoryType) {
-    console.log(`刪除${categoryType}類別: ${categoryId}`);
-
-    try {
-        // 檢查是否有與該類別相關的交易
-        const hasTransactions = appState.transactions.some(t => t.categoryId === categoryId);
-
-        // 檢查是否有與該類別相關的預算（如果是支出類別）
-        const hasBudget = categoryType === 'expense' &&
-            appState.budgets.categories &&
-            appState.budgets.categories.some(b => b.categoryId === categoryId);
-
-        if (hasTransactions || hasBudget) {
-            // 提示用戶並確認
-            let message = '此類別有關聯的';
-
-            if (hasTransactions && hasBudget) {
-                message += '交易記錄和預算';
-            } else if (hasTransactions) {
-                message += '交易記錄';
-            } else {
-                message += '預算';
-            }
-
-            message += '，刪除類別可能會影響這些數據的顯示。確定要繼續嗎？';
-
-            showConfirmDialog(message, () => {
-                // 找到並刪除類別
-                const categoryArray = categoryType === 'income' ? appState.categories.income : appState.categories.expense;
-                const categoryIndex = categoryArray.findIndex(c => c.id === categoryId);
-
-                if (categoryIndex !== -1) {
-                    // 記住類別名稱用於顯示消息
-                    const categoryName = categoryArray[categoryIndex].name;
-
-                    // 刪除類別
-                    categoryArray.splice(categoryIndex, 1);
-
-                    // 如果是支出類別且有相關預算，也一併刪除
-                    if (categoryType === 'expense' && hasBudget) {
-                        appState.budgets.categories = appState.budgets.categories.filter(b => b.categoryId !== categoryId);
-
-                        // 如果啟用自動計算，更新總預算
-                        if (appState.budgets.autoCalculate) {
-                            appState.budgets.total = calculateTotalCategoryBudget();
-                        }
-                    }
-
-                    // 更新UI
-                    updateCategoriesUI();
-                    updateAllDropdowns();
-                    updateBudgetsUI();
-
-                    // 保存到本地存儲
-                    saveToLocalStorage();
-
-                    // 執行同步（如果啟用）
-                    if (enableFirebase && isLoggedIn) {
-                        syncToFirebase();
-                    }
-
-                    // 顯示成功消息
-                    showToast(`已刪除${categoryType === 'income' ? '收入' : '支出'}類別: ${categoryName}`, 'success');
-                }
-            });
-        } else {
-            // 沒有關聯數據，直接刪除
-            const categoryArray = categoryType === 'income' ? appState.categories.income : appState.categories.expense;
-            const categoryIndex = categoryArray.findIndex(c => c.id === categoryId);
-
-            if (categoryIndex !== -1) {
-                // 記住類別名稱用於顯示消息
-                const categoryName = categoryArray[categoryIndex].name;
-
-                // 刪除類別
-                categoryArray.splice(categoryIndex, 1);
-
-                // 更新UI
-                updateCategoriesUI();
-                updateAllDropdowns();
-
-                // 保存到本地存儲
-                saveToLocalStorage();
-
-                // 執行同步（如果啟用）
-                if (enableFirebase && isLoggedIn) {
-                    syncToFirebase();
-                }
-
-                // 顯示成功消息
-                showToast(`已刪除${categoryType === 'income' ? '收入' : '支出'}類別: ${categoryName}`, 'success');
-            }
-        }
-    } catch (error) {
-        console.error("刪除類別時發生錯誤:", error);
-        showToast('刪除類別失敗: ' + error.message, 'error');
-    }
 }
 
 // 更新統計UI
@@ -4051,18 +4310,46 @@ function updateStatisticsUI() {
     console.log("更新統計UI");
 
     try {
-        // 生成收入統計圖表
-        generateIncomeChart();
-
-        // 生成支出統計圖表
-        generateExpenseChart();
+        // 如果Chart.js尚未載入，嘗試載入
+        if (typeof Chart === 'undefined') {
+            loadChartJs().then(() => {
+                // 生成收入統計圖表
+                generateIncomeChart();
+                // 生成支出統計圖表
+                generateExpenseChart();
+            }).catch(error => {
+                console.error("載入Chart.js時發生錯誤:", error);
+                showToast('載入統計圖表庫失敗', 'error');
+            });
+        } else {
+            // 生成收入統計圖表
+            generateIncomeChart();
+            // 生成支出統計圖表
+            generateExpenseChart();
+        }
     } catch (error) {
         console.error("更新統計UI時發生錯誤:", error);
         throw error;
     }
 }
 
-// 生成收入統計圖表
+// 加載Chart.js
+function loadChartJs() {
+    return new Promise((resolve, reject) => {
+        if (typeof Chart !== 'undefined') {
+            resolve();
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load Chart.js'));
+        document.head.appendChild(script);
+    });
+}
+
+// 生成收入統計圖表 (接續上一部分)
 function generateIncomeChart() {
     console.log("生成收入統計圖表");
     
@@ -4089,7 +4376,7 @@ function generateIncomeChart() {
         const currentYear = now.getFullYear();
         const currentMonth = now.getMonth() + 1; // 月份從0開始，所以+1
 
-        // 構建月份範圍（yyyy-mm-01到yyyy-mm-31）
+        // 構建月份範圍(yyyy-mm-01到yyyy-mm-31)
         const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
         const lastDay = new Date(currentYear, currentMonth, 0).getDate(); // 獲取當月的最後一天
         const endDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
@@ -4121,8 +4408,12 @@ function generateIncomeChart() {
 
             // 如果賬戶貨幣與默認貨幣不同，則轉換
             if (account.currency !== defaultCurrency) {
-                const rate = getExchangeRate(account.currency, defaultCurrency);
-                amount = amount * rate;
+                try {
+                    const rate = getExchangeRate(account.currency, defaultCurrency);
+                    amount = amount * rate;
+                } catch (e) {
+                    console.error("匯率轉換錯誤:", e);
+                }
             }
 
             // 找到類別名稱
@@ -4237,7 +4528,7 @@ function generateExpenseChart() {
         const currentYear = now.getFullYear();
         const currentMonth = now.getMonth() + 1; // 月份從0開始，所以+1
 
-        // 構建月份範圍（yyyy-mm-01到yyyy-mm-31）
+        // 構建月份範圍(yyyy-mm-01到yyyy-mm-31)
         const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
         const lastDay = new Date(currentYear, currentMonth, 0).getDate(); // 獲取當月的最後一天
         const endDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
@@ -4269,8 +4560,12 @@ function generateExpenseChart() {
 
             // 如果賬戶貨幣與默認貨幣不同，則轉換
             if (account.currency !== defaultCurrency) {
-                const rate = getExchangeRate(account.currency, defaultCurrency);
-                amount = amount * rate;
+                try {
+                    const rate = getExchangeRate(account.currency, defaultCurrency);
+                    amount = amount * rate;
+                } catch (e) {
+                    console.error("匯率轉換錯誤:", e);
+                }
             }
 
             // 找到類別名稱
@@ -4472,6 +4767,20 @@ function setDefaultDates() {
             // 設置結束日期為今天
             endDateInput.value = today;
         }
+
+        // 設置預算表單的默認日期
+        const budgetStartDateInput = document.getElementById('budgetStartDate');
+        const budgetEndDateInput = document.getElementById('budgetEndDate');
+
+        if (budgetStartDateInput && budgetEndDateInput) {
+            // 設置開始日期為今天
+            budgetStartDateInput.value = today;
+
+            // 設置結束日期為一個月後
+            const nextMonth = new Date();
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            budgetEndDateInput.value = nextMonth.toISOString().split('T')[0];
+        }
     } catch (error) {
         console.error("設置默認日期時發生錯誤:", error);
         // 不拋出異常，因為這只是輔助設置
@@ -4479,7 +4788,7 @@ function setDefaultDates() {
 }
 
 // 更新連接狀態
-function updateConnectionStatus() {
+function updateSyncStatus() {
     console.log("更新連接狀態");
 
     try {
@@ -4891,7 +5200,7 @@ function clearAllData() {
         // 保存到本地存儲
         saveToLocalStorage();
 
-        // 執行同步（如果啟用）
+        // 執行同步(如果啟用)
         if (enableFirebase && isLoggedIn) {
             syncToFirebase();
         }
@@ -4918,7 +5227,7 @@ function exportData() {
             transactions: appState.transactions,
             categories: appState.categories,
             budgets: appState.budgets,
-            version: '1.2.0',
+            version: '1.2.1',
             exportDate: new Date().toISOString()
         };
 
@@ -5017,7 +5326,7 @@ function importDataFromObject(importData) {
         }
 
         // 確認導入
-        const message = '確定要導入這些數據嗎？這將覆蓋當前的所有數據。';
+        const message = '確定要導入這些數據嗎?這將覆蓋當前的所有數據。';
 
         showConfirmDialog(message, () => {
             try {
@@ -5026,7 +5335,7 @@ function importDataFromObject(importData) {
                 appState.transactions = importData.transactions || [];
                 appState.categories = importData.categories || { income: [], expense: [] };
 
-                // 導入預算（如果有）
+                // 導入預算(如果有)
                 if (importData.budgets) {
                     appState.budgets = importData.budgets;
                 }
@@ -5034,7 +5343,7 @@ function importDataFromObject(importData) {
                 // 保存到本地存儲
                 saveToLocalStorage();
 
-                // 執行同步（如果啟用）
+                // 執行同步(如果啟用)
                 if (enableFirebase && isLoggedIn) {
                     syncToFirebase();
                 }
@@ -5072,7 +5381,7 @@ function openCurrencyManagementModal() {
     console.log("打開貨幣管理模態框");
 
     try {
-        // 創建貨幣管理模態框（如果尚未存在）
+        // 創建貨幣管理模態框(如果尚未存在)
         if (!document.getElementById('currencyManagementModal')) {
             createCurrencyManagementModal();
         }
@@ -5088,7 +5397,7 @@ function openCurrencyManagementModal() {
     }
 }
 
-// 在 script.js 中添加或修改此函數
+// 創建貨幣管理模態框
 function createCurrencyManagementModal() {
     // 創建模態框HTML
     const modalHTML = `
@@ -5336,11 +5645,76 @@ function saveManualExchangeRate() {
     }
 }
 
+// 更新匯率 (實際應該調用API，此處使用模擬數據)
+async function updateExchangeRates() {
+    console.log("更新匯率");
+
+    try {
+        // 模擬API調用延遲
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 模擬從API獲取的匯率
+        const updatedRates = {
+            HKD: { USD: 0.13, CNY: 0.84, EUR: 0.11, GBP: 0.1, JPY: 17.8 },
+            USD: { HKD: 7.8, CNY: 6.5, EUR: 0.85, GBP: 0.75, JPY: 140 },
+            CNY: { HKD: 1.19, USD: 0.15, EUR: 0.13, GBP: 0.11, JPY: 21.5 },
+            EUR: { HKD: 9.2, USD: 1.18, CNY: 7.65, GBP: 0.88, JPY: 165 },
+            GBP: { HKD: 10.5, USD: 1.34, CNY: 8.7, EUR: 1.14, JPY: 187 },
+            JPY: { HKD: 0.056, USD: 0.0071, CNY: 0.047, EUR: 0.0061, GBP: 0.0053 }
+        };
+
+        // 更新本地匯率
+        exchangeRates = updatedRates;
+
+        // 保存到本地存儲
+        localStorage.setItem('exchangeRates', JSON.stringify({
+            rates: updatedRates,
+            lastUpdated: new Date().toISOString()
+        }));
+
+        // 顯示成功消息
+        showToast('匯率已更新', 'success');
+
+        return true;
+    } catch (error) {
+        console.error("更新匯率時發生錯誤:", error);
+        showToast('更新匯率失敗: ' + error.message, 'error');
+        return false;
+    }
+}
+
+// 載入已儲存的匯率
+function loadStoredExchangeRates() {
+    console.log("載入已儲存的匯率");
+
+    try {
+        const storedRates = localStorage.getItem('exchangeRates');
+
+        if (storedRates) {
+            const parsedRates = JSON.parse(storedRates);
+            if (parsedRates.rates) {
+                exchangeRates = parsedRates.rates;
+                console.log("已載入儲存的匯率");
+            }
+        }
+    } catch (error) {
+        console.error("載入儲存的匯率時發生錯誤:", error);
+    }
+}
+
 // 從本地存儲加載數據
 function loadDataFromStorage() {
     console.log("從本地存儲加載數據");
 
     try {
+        // 初始化類別對象，確保始終有收入和支出數組
+        if (!appState.categories) {
+            appState.categories = { income: [], expense: [] };
+        } else {
+            if (!appState.categories.income) appState.categories.income = [];
+            if (!appState.categories.expense) appState.categories.expense = [];
+        }
+
         // 加載賬戶
         const accountsJson = localStorage.getItem('accounts');
         if (accountsJson) {
@@ -5356,7 +5730,9 @@ function loadDataFromStorage() {
         // 加載類別
         const categoriesJson = localStorage.getItem('categories');
         if (categoriesJson) {
-            appState.categories = JSON.parse(categoriesJson);
+            const loadedCategories = JSON.parse(categoriesJson);
+            appState.categories.income = loadedCategories.income || [];
+            appState.categories.expense = loadedCategories.expense || [];
         }
 
         // 加載預算
@@ -5417,18 +5793,14 @@ function checkBudgetAlerts() {
         const resetDay = parseInt(appState.budgets.resetDay || 1, 10);
 
         let startDate;
-        let cycleName;
 
         if (resetCycle === 'daily') {
             startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-            cycleName = '今日';
         } else if (resetCycle === 'weekly') {
             const day = today.getDay(); // 0 = 週日, 1 = 週一, ...
             const diff = day === 0 ? 6 : day - 1; // 調整為週一作為一週的開始
             startDate = new Date(today);
             startDate.setDate(today.getDate() - diff);
-            startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-            cycleName = '本週';
         } else { // monthly
             const currentDay = today.getDate();
 
@@ -5439,8 +5811,6 @@ function checkBudgetAlerts() {
                 // 上月的重設日
                 startDate = new Date(today.getFullYear(), today.getMonth() - 1, resetDay);
             }
-
-            cycleName = '本月';
         }
 
         // 將日期格式化為 YYYY-MM-DD
@@ -5469,450 +5839,97 @@ function checkBudgetAlerts() {
 
             // 如果賬戶貨幣與默認貨幣不同，則轉換
             if (account.currency !== defaultCurrency) {
-                const rate = getExchangeRate(account.currency, defaultCurrency);
-                amount = amount * rate;
+                try {
+                    const rate = getExchangeRate(account.currency, defaultCurrency);
+                    amount = amount * rate;
+                } catch (e) {
+                    console.error("匯率轉換錯誤:", e);
+                }
             }
 
             totalSpent += amount;
         });
 
-        // 計算百分比
-        const percentage = (totalSpent / appState.budgets.total) * 100;
+        // 計算使用率百分比
+        const usageRate = (totalSpent / appState.budgets.total) * 100;
 
-        // 檢查是否超過閾值
-        if (percentage >= alertThreshold) {
+        // 如果超過閾值，顯示警告
+        if (usageRate >= alertThreshold) {
             // 顯示預算警告
-            showToast(`注意: ${cycleName}預算已使用 ${percentage.toFixed(1)}%`, 'warning');
+            showToast(`預算使用已達到 ${usageRate.toFixed(1)}%，請注意控制支出`, 'warning', 5000);
         }
     } catch (error) {
         console.error("檢查預算警告時發生錯誤:", error);
-        // 不拋出異常，因為這只是輔助功能
     }
 }
 
-// 初始化Firebase
-async function initFirebase() {
-    console.log("初始化Firebase");
+// 安全更新UI - 在出錯時嘗試最低限度的UI更新
+function safeUpdateUI() {
+    console.log("執行安全UI更新");
 
     try {
-        // 如果沒有啟用Firebase，則跳過
-        if (!enableFirebase) {
-            console.log("Firebase未啟用");
-            return;
-        }
-
-        // 檢查Firebase SDK是否已正確加載
-        if (typeof firebase === 'undefined' || !firebase.app || !firebase.auth || !firebase.firestore) {
-            console.error("Firebase SDK未完全加載，請確保在HTML中正確引入Firebase SDK");
-            enableFirebase = false; // 自動禁用功能
-            updateSyncStatus(); // 更新狀態
-            showToast('雲端同步功能無法使用：Firebase SDK未加載', 'error');
-            return;
-        }
-
-        // 檢查是否已初始化
-        if (firebase.apps && firebase.apps.length > 0) {
-            console.log("Firebase已初始化");
-            return;
-        }
-
-        // Firebase配置
-        const firebaseConfig = {
-            apiKey: "AIzaSyAaqadmDSgQ-huvY7uNNrPtjFSOl93jVEE",
-            authDomain: "finance-d8f9e.firebaseapp.com",
-            projectId: "finance-d8f9e",
-            storageBucket: "finance-d8f9e.firebaseapp.com",
-            messagingSenderId: "122645255279",
-            appId: "1:122645255279:web:25d577b6365c819ffbe99a",
-        };
-
-        // 初始化Firebase
-        firebase.initializeApp(firebaseConfig);
-
-        // 初始化Firestore
-        db = firebase.firestore();
-
-        // 設置身份驗證狀態監聽器
-        firebase.auth().onAuthStateChanged(function (userData) {
-            if (userData) {
-                // 用戶已登入
-                isLoggedIn = true;
-                user = userData;
-                console.log("用戶已登入:", userData.email);
-
-                // 更新UI
-                updateSyncStatus();
-
-                // 檢查是否需要同步數據
-                checkAndSyncData();
-            } else {
-                // 用戶未登入
-                isLoggedIn = false;
-                user = null;
-                console.log("用戶未登入");
-
-                // 更新UI
-                updateSyncStatus();
-            }
-        });
-
-        console.log("Firebase初始化成功");
-    } catch (error) {
-        console.error("初始化Firebase時發生錯誤:", error);
-        enableFirebase = false; // 失敗時自動禁用
-        updateSyncStatus();
-        throw error;
-    }
-}
-
-// 更新同步狀態
-function updateSyncStatus() {
-    console.log("更新同步狀態");
-
-    try {
-        // 更新連接狀態
-        updateConnectionStatus();
-
-        // 更新同步UI
-        updateSyncUI();
-    } catch (error) {
-        console.error("更新同步狀態時發生錯誤:", error);
-        // 不拋出異常，因為這只是輔助更新
-    }
-}
-
-// 處理登入
-async function handleLogin() {
-    console.log("處理登入");
-
-    try {
-        // 如果沒有啟用Firebase，則提示用戶
-        if (!enableFirebase) {
-            showToast('請先在設定中啟用雲端同步', 'error');
-            return;
-        }
-
-        // 如果已經登入，則跳過
-        if (isLoggedIn) {
-            console.log("用戶已登入");
-            return;
-        }
-
-        // 顯示載入覆蓋層
-        document.getElementById('loadingOverlay').style.display = 'flex';
-
-        // 使用Google登入
-        const provider = new firebase.auth.GoogleAuthProvider();
-
+        // 嘗試更新各個部分
+        // 1. 更新賬戶列表
         try {
-            // 等待登入完成
-            await firebase.auth().signInWithPopup(provider);
-
-            // 更新同步狀態
-            updateSyncStatus();
-
-            // 顯示成功消息
-            showToast('登入成功', 'success');
-        } catch (error) {
-            console.error("登入失敗:", error);
-            showToast('登入失敗: ' + error.message, 'error');
-        } finally {
-            // 隱藏載入覆蓋層
-            document.getElementById('loadingOverlay').style.display = 'none';
-        }
-    } catch (error) {
-        console.error("處理登入時發生錯誤:", error);
-        showToast('登入處理失敗: ' + error.message, 'error');
-
-        // 隱藏載入覆蓋層
-        document.getElementById('loadingOverlay').style.display = 'none';
-    }
-}
-
-// 處理登出
-async function handleLogout() {
-    console.log("處理登出");
-
-    try {
-        // 如果沒有啟用Firebase，則跳過
-        if (!enableFirebase) {
-            return;
-        }
-
-        // 如果未登入，則跳過
-        if (!isLoggedIn) {
-            console.log("用戶未登入");
-            return;
-        }
-
-        // 顯示載入覆蓋層
-        document.getElementById('loadingOverlay').style.display = 'flex';
-
-        try {
-            // 等待登出完成
-            await firebase.auth().signOut();
-
-            // 更新同步狀態
-            updateSyncStatus();
-
-            // 顯示成功消息
-            showToast('已登出', 'success');
-        } catch (error) {
-            console.error("登出失敗:", error);
-            showToast('登出失敗: ' + error.message, 'error');
-        } finally {
-            // 隱藏載入覆蓋層
-            document.getElementById('loadingOverlay').style.display = 'none';
-        }
-    } catch (error) {
-        console.error("處理登出時發生錯誤:", error);
-        showToast('登出處理失敗: ' + error.message, 'error');
-
-        // 隱藏載入覆蓋層
-        document.getElementById('loadingOverlay').style.display = 'none';
-    }
-}
-
-// 立即同步
-async function syncNow() {
-    console.log("立即同步");
-
-    try {
-        // 如果沒有啟用Firebase，則提示用戶
-        if (!enableFirebase) {
-            showToast('請先在設定中啟用雲端同步', 'error');
-            return;
-        }
-
-        // 如果未登入，則提示用戶
-        if (!isLoggedIn) {
-            showToast('請先登入', 'error');
-            return;
-        }
-
-        // 防止重複同步
-        if (currentlyLoading) {
-            showToast('同步進行中，請稍後再試', 'info');
-            return;
-        }
-
-        // 顯示載入覆蓋層
-        currentlyLoading = true;
-        document.getElementById('loadingOverlay').style.display = 'flex';
-
-        try {
-            // 執行同步
-            await syncToFirebase();
-
-            // 記錄同步時間
-            localStorage.setItem('lastSyncTime', new Date().toISOString());
-
-            // 更新同步UI
-            updateSyncUI();
-
-            // 顯示成功消息
-            showToast('同步成功', 'success');
-        } catch (error) {
-            console.error("同步失敗:", error);
-            showToast('同步失敗: ' + error.message, 'error');
-        } finally {
-            // 隱藏載入覆蓋層
-            currentlyLoading = false;
-            document.getElementById('loadingOverlay').style.display = 'none';
-        }
-    } catch (error) {
-        console.error("立即同步時發生錯誤:", error);
-        showToast('同步處理失敗: ' + error.message, 'error');
-
-        // 隱藏載入覆蓋層
-        currentlyLoading = false;
-        document.getElementById('loadingOverlay').style.display = 'none';
-    }
-}
-
-// 檢查並同步數據
-async function checkAndSyncData() {
-    console.log("檢查並同步數據");
-
-    try {
-        // 如果沒有啟用Firebase或未登入，則跳過
-        if (!enableFirebase || !isLoggedIn || !db) {
-            return;
-        }
-
-        // 防止重複同步
-        if (currentlyLoading) {
-            return;
-        }
-
-        // 顯示載入覆蓋層
-        currentlyLoading = true;
-        document.getElementById('loadingOverlay').style.display = 'flex';
-
-        try {
-            // 從Firestore獲取數據
-            const snapshot = await db.collection('users').doc(user.uid).get();
-
-            if (snapshot.exists) {
-                // 服務器上有數據
-                const serverData = snapshot.data();
-
-                // 確認用戶是否要使用服務器上的數據還是本地數據
-                if (appState.accounts.length > 0 || appState.transactions.length > 0) {
-                    // 本地有數據，詢問用戶
-                    const serverTime = new Date(serverData.lastUpdated || 0);
-                    const localTime = new Date(Math.max(
-                        ...appState.accounts.map(a => new Date(a.createdAt || 0)),
-                        ...appState.transactions.map(t => new Date(t.createdAt || 0))
-                    ));
-
-                    if (serverTime > localTime) {
-                        // 服務器數據更新，詢問用戶
-                        const message = `發現雲端數據 (${serverTime.toLocaleString()}) 比本地數據 (${localTime.toLocaleString()}) 更新。要使用雲端數據覆蓋本地數據嗎？`;
-
-                        showConfirmDialog(message, async () => {
-                            // 使用服務器數據
-                            if (serverData.accounts) {
-                                appState.accounts = serverData.accounts;
-                            }
-
-                            if (serverData.transactions) {
-                                appState.transactions = serverData.transactions;
-                            }
-
-                            if (serverData.categories) {
-                                appState.categories = serverData.categories;
-                            }
-
-                            if (serverData.budgets) {
-                                appState.budgets = serverData.budgets;
-                            }
-
-                            // 保存到本地存儲
-                            saveToLocalStorage();
-
-                            // 更新所有UI
-                            updateAllUI();
-
-                            // 記錄同步時間
-                            localStorage.setItem('lastSyncTime', new Date().toISOString());
-
-                            // 更新同步UI
-                            updateSyncUI();
-
-                            // 顯示成功消息
-                            showToast('已同步雲端數據', 'success');
-                        });
-                    } else {
-                        // 本地數據更新，詢問用戶
-                        const message = `本地數據 (${localTime.toLocaleString()}) 比雲端數據 (${serverTime.toLocaleString()}) 更新。要上傳本地數據到雲端嗎？`;
-
-                        showConfirmDialog(message, async () => {
-                            // 上傳本地數據
-                            await syncToFirebase();
-
-                            // 記錄同步時間
-                            localStorage.setItem('lastSyncTime', new Date().toISOString());
-
-                            // 更新同步UI
-                            updateSyncUI();
-
-                            // 顯示成功消息
-                            showToast('已上傳本地數據到雲端', 'success');
-                        });
-                    }
+            const accountsList = document.getElementById('accountsList');
+            if (accountsList) {
+                if (appState.accounts.length === 0) {
+                    accountsList.innerHTML = '<p class="empty-message">尚未設置任何戶口</p>';
                 } else {
-                    // 本地沒有數據，直接使用服務器數據
-                    if (serverData.accounts) {
-                        appState.accounts = serverData.accounts;
-                    }
-
-                    if (serverData.transactions) {
-                        appState.transactions = serverData.transactions;
-                    }
-
-                    if (serverData.categories) {
-                        appState.categories = serverData.categories;
-                    }
-
-                    if (serverData.budgets) {
-                        appState.budgets = serverData.budgets;
-                    }
-
-                    // 保存到本地存儲
-                    saveToLocalStorage();
-
-                    // 更新所有UI
-                    updateAllUI();
-
-                    // 記錄同步時間
-                    localStorage.setItem('lastSyncTime', new Date().toISOString());
-
-                    // 更新同步UI
-                    updateSyncUI();
-
-                    // 顯示成功消息
-                    showToast('已同步雲端數據', 'success');
-                }
-            } else {
-                // 服務器上沒有數據，上傳本地數據
-                if (appState.accounts.length > 0 || appState.transactions.length > 0) {
-                    await syncToFirebase();
-
-                    // 記錄同步時間
-                    localStorage.setItem('lastSyncTime', new Date().toISOString());
-
-                    // 更新同步UI
-                    updateSyncUI();
-
-                    // 顯示成功消息
-                    showToast('已上傳本地數據到雲端', 'success');
+                    let html = '';
+                    appState.accounts.forEach(account => {
+                        html += `
+                            <div class="account-list-item">
+                                <div class="account-info">
+                                    <div class="account-name">${account.name}</div>
+                                </div>
+                                <div class="account-details">
+                                    <div class="account-balance">${formatCurrency(account.balance, account.currency)}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    accountsList.innerHTML = html;
                 }
             }
-        } catch (error) {
-            console.error("檢查同步數據時發生錯誤:", error);
-            showToast('檢查同步數據失敗: ' + error.message, 'error');
-        } finally {
-            // 隱藏載入覆蓋層
-            currentlyLoading = false;
-            document.getElementById('loadingOverlay').style.display = 'none';
-        }
-    } catch (error) {
-        console.error("檢查並同步數據時發生錯誤:", error);
-
-        // 隱藏載入覆蓋層
-        currentlyLoading = false;
-        document.getElementById('loadingOverlay').style.display = 'none';
-    }
-}
-
-// 同步到Firebase
-async function syncToFirebase() {
-    console.log("同步到Firebase");
-
-    try {
-        // 如果沒有啟用Firebase或未登入，則跳過
-        if (!enableFirebase || !isLoggedIn || !db) {
-            console.log("Firebase未啟用或未登入，跳過同步");
-            return;
+        } catch (e) {
+            console.error("安全更新賬戶列表失敗:", e);
         }
 
-        // 創建同步數據
-        const syncData = {
-            accounts: appState.accounts,
-            transactions: appState.transactions,
-            categories: appState.categories,
-            budgets: appState.budgets,
-            lastUpdated: new Date().toISOString()
-        };
+        // 2. 嘗試更新交易列表
+        try {
+            const transactionsList = document.getElementById('transactionsList');
+            if (transactionsList) {
+                if (appState.transactions.length === 0) {
+                    transactionsList.innerHTML = '<p class="empty-message">尚無交易記錄</p>';
+                } else {
+                    transactionsList.innerHTML = '<p>有交易記錄，但無法顯示詳情</p>';
+                }
+            }
+        } catch (e) {
+            console.error("安全更新交易列表失敗:", e);
+        }
 
-        // 上傳到Firestore
-        await db.collection('users').doc(user.uid).set(syncData);
-
-        console.log("同步到Firebase成功");
+        // 3. 嘗試更新類別列表
+        try {
+            const incomeCategoriesList = document.getElementById('incomeCategoriesList');
+            const expenseCategoriesList = document.getElementById('expenseCategoriesList');
+            
+            if (incomeCategoriesList) {
+                const addCardHtml = '<div class="category-add-card"><button id="addIncomeCategoryButton" class="btn btn-add">+ 新增</button></div>';
+                incomeCategoriesList.innerHTML = addCardHtml + '<p class="empty-message">無法顯示收入類別</p>';
+            }
+            
+            if (expenseCategoriesList) {
+                const addCardHtml = '<div class="category-add-card"><button id="addExpenseCategoryButton" class="btn btn-add">+ 新增</button></div>';
+                expenseCategoriesList.innerHTML = addCardHtml + '<p class="empty-message">無法顯示支出類別</p>';
+            }
+        } catch (e) {
+            console.error("安全更新類別列表失敗:", e);
+        }
+        
     } catch (error) {
-        console.error("同步到Firebase時發生錯誤:", error);
-        throw error;
+        console.error("安全更新UI時發生錯誤:", error);
     }
 }
 
@@ -5921,1075 +5938,222 @@ function updateAllUI() {
     console.log("更新所有UI");
 
     try {
-        // 更新儀表板UI
+        // 更新儀表板
         updateDashboardUI();
-        // 更新UI
-        updateAccountsUI();
-        // 更新交易UI
-        updateTransactionsUI();
-        // 更新預算UI
-        updateBudgetsUI();
-        // 更新類別UI
-        updateCategoriesUI();
-        // 更新轉賬表單
-        updateTransferForm();
-        // 更新連接狀態
-        updateConnectionStatus();
 
-        // 當前標簽內容
-        const currentTab = document.querySelector('.nav-links li.active');
-        if (currentTab) {
-            showTabContent(currentTab.getAttribute('data-tab'));
-        }
+        // 更新賬戶管理
+        updateAccountsUI();
+        updateTransferForm();
+
+        // 更新類別管理
+        updateCategoriesUI();
+
+        // 更新交易管理
+        updateTransactionsUI();
+
+        // 更新預算管理
+        updateBudgetsUI();
+
+        // 更新統計分析
+        updateStatisticsUI();
+
+        // 更新同步頁面
+        updateSyncUI();
+
+        // 更新連接狀態
+        updateSyncStatus();
     } catch (error) {
         console.error("更新所有UI時發生錯誤:", error);
-        showToast('更新UI失敗: ' + error.message, 'error');
-
+        showToast('更新界面失敗，請嘗試重新加載頁面', 'error');
+        
         // 嘗試安全更新
         safeUpdateUI();
     }
 }
 
-// 安全更新UI
-function safeUpdateUI() {
-    console.log("執行安全UI更新流程...");
-
-    // 更新儀表板卡片
-    try {
-        // 更新總資產顯示
-        const totalAssetsElement = document.getElementById('totalAssets');
-        if (totalAssetsElement) {
-            // 嘗試獲取真實數據，失敗則顯示0
-            let totalAssets = 0;
-            try {
-                if (appState && appState.accounts) {
-                    totalAssets = appState.accounts.reduce((sum, account) => {
-                        // 考慮匯率轉換
-                        let balance = account.balance || 0;
-                        if (account.currency !== defaultCurrency) {
-                            try {
-                                const rate = getExchangeRate(account.currency, defaultCurrency) || 1;
-                                balance = balance * rate;
-                            } catch (e) {
-                                console.error("匯率轉換錯誤:", e);
-                            }
-                        }
-                        return sum + balance;
-                    }, 0);
-                }
-            } catch (e) {
-                console.error("計算總資產時出錯:", e);
-            }
-
-            // 安全地格式化貨幣
-            try {
-                totalAssetsElement.textContent = formatCurrency(totalAssets);
-            } catch (e) {
-                totalAssetsElement.textContent = defaultCurrency + " " + totalAssets.toFixed(2);
-            }
-        }
-    } catch (e) {
-        console.error("更新總資產顯示出錯:", e);
-    }
-
-    // 更新今日收支
-    try {
-        const todayIncomeElement = document.getElementById('todayIncome');
-        const todayExpenseElement = document.getElementById('todayExpense');
-
-        if (todayIncomeElement && todayExpenseElement) {
-            // 獲取今日日期
-            const today = new Date().toISOString().split('T')[0]; // 格式為YYYY-MM-DD
-
-            // 嘗試計算今日收支
-            let todayIncome = 0;
-            let todayExpense = 0;
-
-            try {
-                if (appState && appState.transactions) {
-                    appState.transactions.forEach(transaction => {
-                        if (transaction.date === today) {
-                            // 找到對應的戶口以獲取貨幣信息
-                            const account = appState.accounts.find(acc => acc.id === transaction.accountId);
-                            if (account) {
-                                let amount = transaction.amount || 0;
-
-                                // 考慮匯率轉換
-                                if (account.currency !== defaultCurrency) {
-                                    try {
-                                        const rate = getExchangeRate(account.currency, defaultCurrency) || 1;
-                                        amount = amount * rate;
-                                    } catch (e) {
-                                        console.error("匯率轉換錯誤:", e);
-                                    }
-                                }
-
-                                if (transaction.type === 'income') {
-                                    todayIncome += amount;
-                                } else if (transaction.type === 'expense') {
-                                    todayExpense += amount;
-                                }
-                            }
-                        }
-                    });
-                }
-            } catch (e) {
-                console.error("計算今日收支時出錯:", e);
-            }
-
-            // 安全地格式化並顯示
-            try {
-                todayIncomeElement.textContent = formatNumber(todayIncome);
-                todayExpenseElement.textContent = formatNumber(todayExpense);
-            } catch (e) {
-                todayIncomeElement.textContent = todayIncome.toFixed(2);
-                todayExpenseElement.textContent = todayExpense.toFixed(2);
-            }
-        }
-    } catch (e) {
-        console.error("更新今日收支顯示出錯:", e);
-    }
-
-    console.log("安全UI更新完成");
+// Firebase 相關函數 - 此處僅提供結構，實際功能需要根據專案需求實現
+function initFirebase() {
+    return new Promise((resolve, reject) => {
+        // 模擬成功初始化
+        setTimeout(() => {
+            console.log("Firebase 初始化模擬成功");
+            resolve();
+        }, 500);
+    });
 }
 
-// 載入匯率數據
-function loadStoredExchangeRates() {
-    const storedRates = localStorage.getItem('exchangeRates');
-    if (storedRates) {
-        try {
-            const parsedRates = JSON.parse(storedRates);
-            if (parsedRates.rates) {
-                exchangeRates = parsedRates.rates;
-                console.log("使用本地存儲的匯率");
-
-                // 檢查上次更新時間，如果超過1小時，則更新匯率
-                const lastUpdated = new Date(parsedRates.lastUpdated || 0);
-                const oneHourAgo = new Date();
-                oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-
-                if (lastUpdated < oneHourAgo) {
-                    console.log("匯率數據已過期，嘗試更新...");
-                    updateExchangeRates();
-                }
-            }
-        } catch (e) {
-            console.error("解析存儲的匯率時出錯:", e);
-            // 如果解析失敗，嘗試獲取新匯率
-            updateExchangeRates();
-        }
-    } else {
-        // 沒有存儲的匯率，嘗試獲取新匯率
-        updateExchangeRates();
-    }
+function handleLogin() {
+    // 模擬登入
+    isLoggedIn = true;
+    user = {email: 'demo@example.com'};
+    updateSyncUI();
+    showToast('已登入成功(模擬)', 'success');
 }
 
-// 更新匯率
-async function updateExchangeRates() {
-    try {
-        console.log("正在更新匯率...");
-
-        // 由於匯率API可能需要付費或臨時無法使用，這裡使用預設的匯率
-        // 實際應用中可以替換為真實的API
-        const currencies = ['HKD', 'USD', 'CNY', 'EUR', 'GBP', 'JPY'];
-        const newRates = {};
-
-        // 為每種貨幣創建對其他所有貨幣的匯率
-        currencies.forEach(fromCurrency => {
-            newRates[fromCurrency] = {};
-            
-            currencies.forEach(toCurrency => {
-                if (fromCurrency !== toCurrency) {
-                    // 使用預設匯率（可以從現有的exchangeRates中取得）
-                    if (exchangeRates[fromCurrency] && exchangeRates[fromCurrency][toCurrency] !== undefined) {
-                        newRates[fromCurrency][toCurrency] = exchangeRates[fromCurrency][toCurrency];
-                    } else {
-                        // 如果沒有，使用默認值
-                        newRates[fromCurrency][toCurrency] = 1.0;
-                    }
-                }
-            });
-        });
-
-        // 更新全局匯率變量
-        exchangeRates = newRates;
-
-        // 保存到本地存儲
-        localStorage.setItem('exchangeRates', JSON.stringify({
-            rates: newRates,
-            lastUpdated: new Date().toISOString()
-        }));
-
-        console.log("匯率更新成功");
-        return true;
-    } catch (error) {
-        console.error("更新匯率時發生錯誤:", error);
-        return false;
-    }
+function handleLogout() {
+    // 模擬登出
+    isLoggedIn = false;
+    user = null;
+    updateSyncUI();
+    showToast('已登出(模擬)', 'success');
 }
 
-// 創建新預算
-function createNewBudget() {
-    console.log("創建新預算");
-
-    try {
-        const budgetName = document.getElementById('budgetName').value.trim();
-        const startDate = document.getElementById('budgetStartDate').value;
-        const endDate = document.getElementById('budgetEndDate').value;
-        const autoCalculate = document.getElementById('autoCalculateBudget').checked;
-
-        let totalBudget = 0;
-        if (autoCalculate) {
-            totalBudget = calculateTotalCategoryBudget();
-        } else {
-            totalBudget = parseFloat(document.getElementById('totalBudget').value) || 0;
-        }
-
-        // 驗證
-        if (!budgetName) {
-            showToast('請輸入預算名稱', 'error');
-            return;
-        }
-
-        if (!startDate) {
-            showToast('請選擇開始日期', 'error');
-            return;
-        }
-
-        if (!endDate) {
-            showToast('請選擇結束日期', 'error');
-            return;
-        }
-
-        if (new Date(startDate) >= new Date(endDate)) {
-            showToast('結束日期必須晚於開始日期', 'error');
-            return;
-        }
-
-        if (!totalBudget || totalBudget <= 0) {
-            showToast('請輸入有效的預算金額', 'error');
-            return;
-        }
-
-        // 如果有當前預算，將其移至歷史記錄
-        if (appState.budgets.current) {
-            // 確保歷史記錄數組已初始化
-            if (!appState.budgets.history) {
-                appState.budgets.history = [];
-            }
-
-            appState.budgets.history.unshift(appState.budgets.current);
-        }
-
-        // 創建新預算
-        appState.budgets.current = {
-            id: generateId(),
-            name: budgetName,
-            startDate: startDate,
-            endDate: endDate,
-            totalAmount: totalBudget,
-            categories: [], // 將在添加類別預算時填充
-            autoCalculate: autoCalculate,
-            createdAt: new Date().toISOString()
-        };
-
-        // 更新UI
-        updateBudgetsUI();
-        updateDashboardUI();
-
-        // 保存到本地存儲
-        saveToLocalStorage();
-
-        // 執行同步（如果啟用）
-        if (enableFirebase && isLoggedIn) {
-            syncToFirebase();
-        }
-
-        // 清空表單
-        document.getElementById('budgetName').value = '';
-
-        // 顯示成功消息
-        showToast('預算已創建', 'success');
-    } catch (error) {
-        console.error("創建新預算時發生錯誤:", error);
-        showToast('創建預算失敗: ' + error.message, 'error');
-    }
-}
-
-// 更新預算歷史記錄列表
-function updateBudgetHistoryList() {
-    console.log("更新預算歷史記錄");
-
-    try {
-        const budgetHistoryList = document.getElementById('budgetHistoryList');
-
-        if (!budgetHistoryList) {
-            console.error("找不到預算歷史記錄列表元素");
-            return;
-        }
-
-        // 檢查是否有歷史記錄
-        if (!appState.budgets.history || appState.budgets.history.length === 0) {
-            budgetHistoryList.innerHTML = '<p class="empty-message">尚無預算歷史記錄</p>';
-            return;
-        }
-
-        let html = '';
-
-        // 排序歷史記錄（最新的在前）
-        const sortedHistory = [...appState.budgets.history].sort((a, b) =>
-            (b.createdAt || '').localeCompare(a.createdAt || '')
-        );
-
-        sortedHistory.forEach(budget => {
-            // 計算實際支出（如果未記錄則計算）
-            let actualSpent = budget.actualSpent;
-            if (actualSpent === undefined) {
-                actualSpent = calculateActualSpent(budget.startDate, budget.endDate);
-            }
-
-            // 計算使用百分比
-            const usagePercentage = budget.totalAmount > 0
-                ? Math.min(100, (actualSpent / budget.totalAmount) * 100)
-                : 0;
-
-            // 設置進度條顏色
-            let progressColor = 'var(--primary-color)';
-            if (usagePercentage > 100) {
-                progressColor = 'var(--danger-color)';
-            } else if (usagePercentage > 90) {
-                progressColor = 'var(--warning-color)';
-            }
-
-            // 格式化日期
-            const formattedStartDate = formatDate(budget.startDate);
-            const formattedEndDate = formatDate(budget.endDate);
-
-            html += `
-                <div class="budget-history-item" data-id="${budget.id}">
-                    <div class="budget-header">
-                        <h4>${budget.name}</h4>
-                        <div class="budget-date">${formattedStartDate} - ${formattedEndDate}</div>
-                    </div>
-                    <div class="budget-amounts">
-                        <div>預算: ${formatCurrency(budget.totalAmount)}</div>
-                        <div>實際: ${formatCurrency(actualSpent)}</div>
-                    </div>
-                    <div class="budget-progress-container">
-                        <div class="budget-progress-bar" style="width: ${usagePercentage}%; background-color: ${progressColor}"></div>
-                    </div>
-                    <div class="budget-actions">
-                        <button class="btn btn-sm view-budget" data-id="${budget.id}">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="btn btn-sm copy-budget" data-id="${budget.id}">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-
-        budgetHistoryList.innerHTML = html;
-
-        // 添加查看和複製按鈕的事件監聽器
-        budgetHistoryList.querySelectorAll('.view-budget').forEach(button => {
-            button.addEventListener('click', function () {
-                const budgetId = this.getAttribute('data-id');
-                viewBudgetDetails(budgetId);
-            });
-        });
-
-        budgetHistoryList.querySelectorAll('.copy-budget').forEach(button => {
-            button.addEventListener('click', function () {
-                const budgetId = this.getAttribute('data-id');
-                copyBudgetToNew(budgetId);
-            });
-        });
-    } catch (error) {
-        console.error("更新預算歷史記錄時發生錯誤:", error);
-        const budgetHistoryList = document.getElementById('budgetHistoryList');
-        if (budgetHistoryList) {
-            budgetHistoryList.innerHTML = '<p class="error-message">載入預算歷史記錄出錯</p>';
-        }
-    }
-}
-
-// 計算指定日期範圍內的實際支出
-function calculateActualSpent(startDate, endDate) {
-    try {
-        // 篩選日期範圍內的支出交易
-        const rangeTransactions = appState.transactions.filter(t =>
-            t.type === 'expense' &&
-            t.categoryId !== 'transfer_out' &&
-            t.date >= startDate &&
-            t.date <= endDate
-        );
-
-        // 計算總支出
-        let totalSpent = 0;
-
-        rangeTransactions.forEach(transaction => {
-            const account = appState.accounts.find(a => a.id === transaction.accountId);
-
-            if (!account) return;
-
-            let amount = transaction.amount || 0;
-
-            // 匯率轉換
-            if (account.currency !== defaultCurrency) {
-                const rate = getExchangeRate(account.currency, defaultCurrency);
-                amount = amount * rate;
-            }
-
-            totalSpent += amount;
-        });
-
-        return totalSpent;
-    } catch (error) {
-        console.error("計算實際支出時發生錯誤:", error);
-        return 0;
-    }
-}
-
-// 格式化日期
-function formatDate(dateString) {
-    try {
-        const [year, month, day] = dateString.split('-');
-        return `${day}/${month}/${year}`;
-    } catch (error) {
-        console.error("格式化日期時發生錯誤:", error);
-        return dateString;
-    }
-}
-
-// 查看預算詳情
-function viewBudgetDetails(budgetId) {
-    console.log(`查看預算詳情: ${budgetId}`);
-
-    try {
-        // 找到對應的預算
-        const budget = appState.budgets.history.find(b => b.id === budgetId);
-
-        if (!budget) {
-            showToast('找不到預算記錄', 'error');
-            return;
-        }
-
-        // 創建並顯示預算詳情模態框
-        if (!document.getElementById('budgetDetailsModal')) {
-            createBudgetDetailsModal();
-        }
-
-        // 填充預算詳情
-        document.getElementById('budgetDetailName').textContent = budget.name;
-        document.getElementById('budgetDetailPeriod').textContent = `${formatDate(budget.startDate)} - ${formatDate(budget.endDate)}`;
-        document.getElementById('budgetDetailTotal').textContent = formatCurrency(budget.totalAmount);
-
-        // 計算實際支出
-        let actualSpent = budget.actualSpent;
-        if (actualSpent === undefined) {
-            actualSpent = calculateActualSpent(budget.startDate, budget.endDate);
-        }
-
-        document.getElementById('budgetDetailSpent').textContent = formatCurrency(actualSpent);
-
-        // 計算剩餘/超支
-        const remaining = budget.totalAmount - actualSpent;
-        const remainingElement = document.getElementById('budgetDetailRemaining');
-
-        if (remaining >= 0) {
-            remainingElement.textContent = `剩餘: ${formatCurrency(remaining)}`;
-            remainingElement.style.color = 'var(--income-color)';
-        } else {
-            remainingElement.textContent = `超支: ${formatCurrency(Math.abs(remaining))}`;
-            remainingElement.style.color = 'var(--expense-color)';
-        }
-
-        // 填充類別預算列表
-        const categoriesList = document.getElementById('budgetDetailCategories');
-
-        if (budget.categories && budget.categories.length > 0) {
-            let categoriesHtml = '';
-
-            budget.categories.forEach(catBudget => {
-                // 找到對應的類別
-                const category = appState.categories.expense.find(c => c.id === catBudget.categoryId);
-                if (!category) return;
-
-                // 計算該類別的實際支出
-                const categorySpent = calculateCategorySpent(catBudget.categoryId, budget.startDate, budget.endDate);
-
-                // 計算使用百分比
-                const usagePercentage = catBudget.amount > 0
-                    ? Math.min(100, (categorySpent / catBudget.amount) * 100)
-                    : 0;
-
-                // 設置進度條顏色
-                let progressColor = 'var(--primary-color)';
-                if (usagePercentage > 100) {
-                    progressColor = 'var(--danger-color)';
-                } else if (usagePercentage > 90) {
-                    progressColor = 'var(--warning-color)';
-                }
-
-                categoriesHtml += `
-                    <div class="budget-category-item">
-                        <div class="category-info">
-                            <div class="category-icon" style="color: ${category.color}">
-                                <i class="${category.icon}"></i>
-                            </div>
-                            <div class="category-name">${category.name}</div>
-                        </div>
-                        <div class="category-budget-info">
-                            <div class="budget-amounts">
-                                <div>預算: ${formatCurrency(catBudget.amount)}</div>
-                                <div>實際: ${formatCurrency(categorySpent)}</div>
-                            </div>
-                            <div class="budget-progress-container">
-                                <div class="budget-progress-bar" style="width: ${usagePercentage}%; background-color: ${progressColor}"></div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            categoriesList.innerHTML = categoriesHtml;
-        } else {
-            categoriesList.innerHTML = '<p class="empty-message">此預算沒有設置類別預算</p>';
-        }
-
-        // 打開模態框
-        openModal('budgetDetailsModal');
-    } catch (error) {
-        console.error("查看預算詳情時發生錯誤:", error);
-        showToast('查看預算詳情失敗: ' + error.message, 'error');
-    }
-}
-
-// 計算特定類別在指定日期範圍內的支出
-function calculateCategorySpent(categoryId, startDate, endDate) {
-    try {
-        // 篩選該類別在日期範圍內的支出交易
-        const categoryTransactions = appState.transactions.filter(t =>
-            t.type === 'expense' &&
-            t.categoryId === categoryId &&
-            t.date >= startDate &&
-            t.date <= endDate
-        );
-
-        // 計算總支出
-        let totalSpent = 0;
-
-        categoryTransactions.forEach(transaction => {
-            const account = appState.accounts.find(a => a.id === transaction.accountId);
-
-            if (!account) return;
-
-            let amount = transaction.amount || 0;
-
-            // 匯率轉換
-            if (account.currency !== defaultCurrency) {
-                const rate = getExchangeRate(account.currency, defaultCurrency);
-                amount = amount * rate;
-            }
-
-            totalSpent += amount;
-        });
-
-        return totalSpent;
-    } catch (error) {
-        console.error("計算類別支出時發生錯誤:", error);
-        return 0;
-    }
-}
-
-// 創建預算詳情模態框
-function createBudgetDetailsModal() {
-    // 創建模態框HTML
-    const modalHTML = `
-    <div id="budgetDetailsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>預算詳情</h3>
-                <button class="close-button">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="budget-details-header">
-                    <h2 id="budgetDetailName">預算名稱</h2>
-                    <div id="budgetDetailPeriod" class="budget-period">日期範圍</div>
-                </div>
-                <div class="budget-details-summary">
-                    <div class="budget-detail-row">
-                        <div class="detail-label">總預算:</div>
-                        <div id="budgetDetailTotal" class="detail-value">$0.00</div>
-                    </div>
-                    <div class="budget-detail-row">
-                        <div class="detail-label">實際支出:</div>
-                        <div id="budgetDetailSpent" class="detail-value">$0.00</div>
-                    </div>
-                    <div class="budget-detail-row">
-                        <div class="detail-label">結餘:</div>
-                        <div id="budgetDetailRemaining" class="detail-value">$0.00</div>
-                    </div>
-                </div>
-                <div class="budget-details-categories">
-                    <h4>類別預算</h4>
-                    <div id="budgetDetailCategories" class="category-budgets-list">
-                        <!-- 類別預算將在這裡填充 -->
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary modal-close">關閉</button>
-            </div>
-        </div>
-    </div>`;
-
-    // 添加到文檔
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-    // 添加關閉按鈕事件
-    document.querySelector('#budgetDetailsModal .close-button').addEventListener('click', closeCurrentModal);
-    document.querySelector('#budgetDetailsModal .modal-close').addEventListener('click', closeCurrentModal);
-}
-
-// 複製歷史預算到新預算
-function copyBudgetToNew(budgetId) {
-    console.log(`複製預算: ${budgetId}`);
-
-    try {
-        // 找到對應的預算
-        const sourceBudget = appState.budgets.history.find(b => b.id === budgetId);
-
-        if (!sourceBudget) {
-            showToast('找不到預算記錄', 'error');
-            return;
-        }
-
-        // 設置表單值
-        document.getElementById('budgetName').value = `${sourceBudget.name} (複製)`;
-
-        // 設置日期為下一個週期
-        const sourceStartDate = new Date(sourceBudget.startDate);
-        const sourceEndDate = new Date(sourceBudget.endDate);
-        const duration = sourceEndDate - sourceStartDate; // 毫秒
-
-        const newStartDate = new Date(sourceEndDate);
-        newStartDate.setDate(newStartDate.getDate() + 1); // 從上一個結束日期後一天開始
-
-        const newEndDate = new Date(newStartDate);
-        newEndDate.setTime(newStartDate.getTime() + duration); // 相同持續時間
-
-        document.getElementById('budgetStartDate').value = newStartDate.toISOString().slice(0, 10);
-        document.getElementById('budgetEndDate').value = newEndDate.toISOString().slice(0, 10);
-
-        // 設置預算金額和自動計算
-        document.getElementById('totalBudget').value = sourceBudget.totalAmount;
-        document.getElementById('autoCalculateBudget').checked = sourceBudget.autoCalculate || false;
-
-        // 滾動到表單位置
-        const budgetForm = document.querySelector('.budget-form');
-        if (budgetForm) {
-            budgetForm.scrollIntoView({ behavior: 'smooth' });
-        }
-
-        // 顯示提示信息
-        showToast('已複製預算設置，請確認後創建新預算', 'info');
-    } catch (error) {
-        console.error("複製預算時發生錯誤:", error);
-        showToast('複製預算失敗: ' + error.message, 'error');
-    }
-}
-
-// 為全局錯誤處理添加事件監聽器
-window.addEventListener('error', function(event) {
-    console.error("全局錯誤:", event.error);
-    showToast('發生錯誤: ' + (event.error?.message || '未知錯誤'), 'error');
-    
-    // 嘗試恢復界面
-    try {
-        document.getElementById('loadingOverlay').style.display = 'none';
-        safeUpdateUI();
-    } catch (e) {
-        console.error("錯誤恢復失敗:", e);
-    }
-});
-
-// 確保在頁面完全加載後再次更新所有UI
-window.addEventListener('load', function() {
-    setTimeout(function() {
-        try {
-            updateAllUI();
-            console.log("頁面加載完成後，再次更新所有UI");
-        } catch (error) {
-            console.error("再次更新UI時出錯:", error);
-        }
+function syncNow() {
+    // 模擬同步
+    showToast('正在同步數據(模擬)', 'info');
+    setTimeout(() => {
+        localStorage.setItem('lastSyncTime', new Date().toISOString());
+        updateSyncUI();
+        showToast('數據同步完成(模擬)', 'success');
     }, 1000);
-});
-
-// 診斷函數 - 輔助調試
-function diagnoseChartIssue() {
-    console.log("開始診斷圖表問題...");
-    
-    // 檢查Chart.js是否正確加載
-    if (typeof Chart === 'undefined') {
-        console.error("Chart.js未加載!");
-        
-        // 嘗試再次加載Chart.js
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-        script.onload = function() {
-            console.log("已動態加載Chart.js，嘗試更新統計UI");
-            try {
-                updateStatisticsUI();
-            } catch(e) {
-                console.error("重新加載後更新統計UI失敗:", e);
-            }
-        };
-        script.onerror = function() {
-            console.error("動態加載Chart.js失敗");
-        };
-        document.head.appendChild(script);
-        return;
-    }
-    
-    // 檢查容器元素
-    const incomeChart = document.getElementById('incomeChart');
-    const expenseChart = document.getElementById('expenseChart');
-    
-    if (!incomeChart) {
-        console.error("找不到收入圖表容器");
-    } else {
-        console.log("收入圖表容器存在");
-    }
-    
-    if (!expenseChart) {
-        console.error("找不到支出圖表容器");
-    } else {
-        console.log("支出圖表容器存在");
-    }
-    
-    // 嘗試強制重新生成圖表
-    try {
-        console.log("嘗試強制生成默認圖表...");
-        
-        // 創建一個基本的收入圖表
-        if (incomeChart) {
-            incomeChart.innerHTML = '<canvas id="incomeChartCanvas"></canvas>';
-            const ctx = document.getElementById('incomeChartCanvas').getContext('2d');
-            
-            if (window.incomeChart instanceof Chart) {
-                window.incomeChart.destroy();
-            }
-            
-            window.incomeChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['示例數據'],
-                    datasets: [{
-                        data: [100],
-                        backgroundColor: ['#2ecc71'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
-            });
-        }
-        
-        // 創建一個基本的支出圖表
-        if (expenseChart) {
-            expenseChart.innerHTML = '<canvas id="expenseChartCanvas"></canvas>';
-            const ctx = document.getElementById('expenseChartCanvas').getContext('2d');
-            
-            if (window.expenseChart instanceof Chart) {
-                window.expenseChart.destroy();
-            }
-            
-            window.expenseChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['示例數據'],
-                    datasets: [{
-                        data: [100],
-                        backgroundColor: ['#e74c3c'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
-            });
-        }
-        
-        console.log("示例圖表已創建");
-    } catch(e) {
-        console.error("創建示例圖表時出錯:", e);
-    }
 }
 
-// 類別UI診斷
-function diagnoseCategoriesUI() {
-    console.log("開始診斷類別管理UI問題...");
-    
-    // 檢查類別標籤是否存在
-    const incomeTab = document.getElementById('incomeCategoryTab');
-    const expenseTab = document.getElementById('expenseCategoryTab');
-    
-    if (!incomeTab) {
-        console.error("找不到收入類別標籤容器");
-    } else {
-        console.log("收入類別標籤容器存在");
-    }
-    
-    if (!expenseTab) {
-        console.error("找不到支出類別標籤容器");
-    } else {
-        console.log("支出類別標籤容器存在");
-    }
-    
-    // 檢查類別列表是否存在
-    const incomeCategoriesList = document.getElementById('incomeCategoriesList');
-    const expenseCategoriesList = document.getElementById('expenseCategoriesList');
-    
-    if (!incomeCategoriesList) {
-        console.error("找不到收入類別列表容器");
-    } else {
-        console.log("收入類別列表容器存在");
-    }
-    
-    if (!expenseCategoriesList) {
-        console.error("找不到支出類別列表容器");
-    } else {
-        console.log("支出類別列表容器存在");
-    }
-    
-    // 嘗試強制顯示內容
-    try {
-        if (incomeTab && incomeCategoriesList) {
-            incomeTab.classList.add('active');
-            incomeCategoriesList.innerHTML = `
-                <div class="category-add-card">
-                    <button id="addIncomeCategoryButton" class="btn btn-add">+ 新增</button>
-                </div>
-                <p class="empty-message">尚未設置收入類別或加載中...</p>
-            `;
-            
-            const addButton = document.getElementById('addIncomeCategoryButton');
-            if (addButton) {
-                addButton.addEventListener('click', function() {
-                    document.getElementById('categoryType').value = 'income';
-                    openModal('addCategoryModal');
-                });
-            }
-        }
-        
-        if (expenseTab && expenseCategoriesList) {
-            expenseCategoriesList.innerHTML = `
-                <div class="category-add-card">
-                    <button id="addExpenseCategoryButton" class="btn btn-add">+ 新增</button>
-                </div>
-                <p class="empty-message">尚未設置支出類別或加載中...</p>
-            `;
-            
-            const addButton = document.getElementById('addExpenseCategoryButton');
-            if (addButton) {
-                addButton.addEventListener('click', function() {
-                    document.getElementById('categoryType').value = 'expense';
-                    openModal('addCategoryModal');
-                });
-            }
-        }
-    } catch(e) {
-        console.error("強制顯示類別內容時出錯:", e);
-    }
+function syncToFirebase() {
+    // 模擬同步到Firebase
+    console.log("模擬同步到Firebase");
 }
 
-// 同步UI診斷
-function diagnoseSyncUI() {
-    console.log("開始診斷同步UI問題...");
-    
-    // 檢查同步元素是否存在
-    const syncTab = document.getElementById('sync');
-    const loginStatus = document.getElementById('loginStatus');
-    const loginButton = document.getElementById('loginButton');
-    
-    if (!syncTab) {
-        console.error("找不到同步標籤容器");
-    } else {
-        console.log("同步標籤容器存在");
-    }
-    
-    if (!loginStatus) {
-        console.error("找不到登入狀態元素");
-    } else {
-        console.log("登入狀態元素存在");
-    }
-    
-    if (!loginButton) {
-        console.error("找不到登入按鈕");
-    } else {
-        console.log("登入按鈕存在");
-    }
-    
-    // 嘗試強制更新同步UI
-    try {
-        if (loginStatus) {
-            loginStatus.textContent = enableFirebase ? '未登入 (雲端同步已啟用)' : '同步未啟用 (請在設定中啟用)';
-        }
-        
-        if (loginButton) {
-            loginButton.style.display = enableFirebase ? 'inline-block' : 'none';
-        }
-        
-        const logoutButton = document.getElementById('logoutButton');
-        if (logoutButton) {
-            logoutButton.style.display = 'none';
-        }
-        
-        const lastSyncTime = document.getElementById('lastSyncTime');
-        if (lastSyncTime) {
-            lastSyncTime.textContent = '從未同步';
-        }
-    } catch(e) {
-        console.error("強制更新同步UI時出錯:", e);
-    }
-}
-
-// 重寫showTabContent函數，增加錯誤處理和診斷
-function showTabContent(tabId) {
-    console.log(`切換到${tabId}選項卡`);
+// 編輯類別
+function editCategory(categoryId, categoryType) {
+    console.log(`編輯${categoryType}類別: ${categoryId}`);
 
     try {
-        // 移除所有標簽的激活狀態
-        document.querySelectorAll('.nav-links li').forEach(item => {
-            item.classList.remove('active');
-        });
+        // 找到要編輯的類別
+        const categoryArray = categoryType === 'income' ? appState.categories.income : appState.categories.expense;
+        const category = categoryArray.find(c => c.id === categoryId);
 
-        // 激活點擊的標簽
-        const tabNav = document.querySelector(`.nav-links li[data-tab="${tabId}"]`);
-        if (tabNav) {
-            tabNav.classList.add('active');
-        }
-
-        // 隱藏所有內容
-        document.querySelectorAll('.tab-content').forEach(item => {
-            item.classList.remove('active');
-        });
-
-        // 顯示對應的內容
-        const tabElement = document.getElementById(tabId);
-        if (tabElement) {
-            tabElement.classList.add('active');
-        } else {
-            console.error(`找不到ID為${tabId}的選項卡元素`);
+        if (!category) {
+            showToast('找不到類別', 'error');
             return;
         }
 
-        // 根據當前標簽更新UI
-        switch (tabId) {
-            case 'dashboard':
-                updateDashboardUI();
-                break;
-            case 'accounts':
-                updateAccountsUI();
-                updateTransferForm();
-                break;
-            case 'transactions':
-                updateTransactionsUI();
-                updateTransactionsForms();
-                break;
-            case 'budgets':
-                updateBudgetsUI();
-                break;
-            case 'categories':
-                try {
-                    // 確保類別管理標籤的初始化
-                    initializeCategoryTabs();
-                    // 更新類別UI
-                    updateCategoriesUI();
-                } catch (e) {
-                    console.error("類別管理初始化出錯:", e);
-                    // 嘗試診斷和恢復
-                    diagnoseCategoriesUI();
-                }
-                break;
-            case 'statistics':
-                try {
-                    updateStatisticsUI();
-                } catch (e) {
-                    console.error("統計分析更新出錯:", e);
-                    // 嘗試診斷和恢復
-                    diagnoseChartIssue();
-                }
-                break;
-            case 'sync':
-                try {
-                    updateSyncUI();
-                } catch (e) {
-                    console.error("同步UI更新出錯:", e);
-                    // 嘗試診斷和恢復
-                    diagnoseSyncUI();
-                }
-                break;
+        // 填充表單
+        document.getElementById('categoryName').value = category.name;
+        document.getElementById('selectedIcon').className = category.icon;
+        document.getElementById('categoryColor').value = category.color;
+        document.getElementById('categoryOrder').value = category.order || 0;
+
+        // 設置類別類型
+        document.getElementById('categoryType').value = categoryType;
+
+        // 設置編輯模式
+        document.getElementById('categoryType').dataset.editId = categoryId;
+
+        // 修改模態框標題和按鈕
+        const modalTitle = document.querySelector('#addCategoryModal .modal-title');
+        if (modalTitle) {
+            modalTitle.textContent = '編輯類別';
         }
+
+        const saveButton = document.getElementById('saveCategoryButton');
+        if (saveButton) {
+            saveButton.textContent = '更新';
+        }
+
+        // 打開編輯類別模態框
+        openModal('addCategoryModal');
     } catch (error) {
-        console.error("切換選項卡時發生錯誤:", error);
-        showToast('切換選項卡失敗: ' + error.message, 'error');
-        
-        // 嘗試恢復顯示
-        const tabElement = document.getElementById(tabId);
-        if (tabElement) {
-            tabElement.classList.add('active');
-            tabElement.innerHTML = `<h2>載入出錯</h2><p class="error-message">載入${tabId}時發生錯誤: ${error.message}</p>
-            <button onclick="location.reload()" class="btn btn-primary">重新載入頁面</button>`;
-        }
+        console.error("編輯類別時發生錯誤:", error);
+        showToast('編輯類別失敗: ' + error.message, 'error');
     }
 }
 
-// 頁面完全加載後執行額外檢查
-window.addEventListener('load', function() {
-    setTimeout(function() {
-        try {
-            // 檢查Chart.js是否正確加載
-            if (typeof Chart === 'undefined') {
-                console.error("Chart.js未正確加載!");
-                
-                // 嘗試再次加載Chart.js
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-                script.onload = function() {
-                    console.log("已動態加載Chart.js");
-                };
-                document.head.appendChild(script);
+// 刪除類別
+function deleteCategory(categoryId, categoryType) {
+    console.log(`刪除${categoryType}類別: ${categoryId}`);
+
+    try {
+        // 檢查是否有與該類別相關的交易
+        const hasTransactions = appState.transactions.some(t => t.categoryId === categoryId);
+
+        // 檢查是否有與該類別相關的預算(如果是支出類別)
+        const hasBudget = categoryType === 'expense' &&
+            appState.budgets.categories &&
+            appState.budgets.categories.some(b => b.categoryId === categoryId);
+
+        if (hasTransactions || hasBudget) {
+            // 提示用戶並確認
+            let message = '此類別有關聯的';
+
+            if (hasTransactions && hasBudget) {
+                message += '交易記錄和預算';
+            } else if (hasTransactions) {
+                message += '交易記錄';
+            } else {
+                message += '預算';
             }
-            
-            // 檢查Firebase組件是否正確加載
-            if (enableFirebase && typeof firebase === 'undefined') {
-                console.error("Firebase未正確加載!");
-                
-                // 禁用Firebase功能
-                enableFirebase = false;
-                
-                // 更新設置
-                const settings = appState.settings || {};
-                settings.enableFirebase = false;
-                appState.settings = settings;
-                
-                // 保存設置
-                localStorage.setItem('settings', JSON.stringify(settings));
-                
-                // 顯示警告
-                showToast('雲端同步功能已禁用: Firebase未正確加載', 'warning');
+
+            message += '，刪除類別可能會影響這些數據的顯示。確定要繼續嗎?';
+
+            showConfirmDialog(message, () => {
+                // 找到並刪除類別
+                const categoryArray = categoryType === 'income' ? appState.categories.income : appState.categories.expense;
+                const categoryIndex = categoryArray.findIndex(c => c.id === categoryId);
+
+                if (categoryIndex !== -1) {
+                    // 記住類別名稱用於顯示消息
+                    const categoryName = categoryArray[categoryIndex].name;
+
+                    // 刪除類別
+                    categoryArray.splice(categoryIndex, 1);
+
+                    // 如果是支出類別且有相關預算，也一併刪除
+                    if (categoryType === 'expense' && hasBudget) {
+                        appState.budgets.categories = appState.budgets.categories.filter(b => b.categoryId !== categoryId);
+
+                        // 如果啟用自動計算，更新總預算
+                        if (appState.budgets.autoCalculate) {
+                            appState.budgets.total = calculateTotalCategoryBudget();
+                        }
+                    }
+
+                    // 更新UI
+                    updateCategoriesUI();
+                    updateAllDropdowns();
+                    updateBudgetsUI();
+
+                    // 保存到本地存儲
+                    saveToLocalStorage();
+
+                    // 執行同步(如果啟用)
+                    if (enableFirebase && isLoggedIn) {
+                        syncToFirebase();
+                    }
+
+                    // 顯示成功消息
+                    showToast(`已刪除${categoryType === 'income' ? '收入' : '支出'}類別: ${categoryName}`, 'success');
+                }
+            });
+        } else {
+            // 沒有關聯數據，直接刪除
+            const categoryArray = categoryType === 'income' ? appState.categories.income : appState.categories.expense;
+            const categoryIndex = categoryArray.findIndex(c => c.id === categoryId);
+
+            if (categoryIndex !== -1) {
+                // 記住類別名稱用於顯示消息
+                const categoryName = categoryArray[categoryIndex].name;
+
+                // 刪除類別
+                categoryArray.splice(categoryIndex, 1);
+
+                // 更新UI
+                updateCategoriesUI();
+                updateAllDropdowns();
+
+                // 保存到本地存儲
+                saveToLocalStorage();
+
+                // 執行同步(如果啟用)
+                if (enableFirebase && isLoggedIn) {
+                    syncToFirebase();
+                }
+
+                // 顯示成功消息
+                showToast(`已刪除${categoryType === 'income' ? '收入' : '支出'}類別: ${categoryName}`, 'success');
             }
-            
-            console.log("頁面加載後額外檢查完成");
-        } catch (error) {
-            console.error("頁面加載後檢查出錯:", error);
         }
-    }, 2000);
-});
+    } catch (error) {
+        console.error("刪除類別時發生錯誤:", error);
+        showToast('刪除類別失敗: ' + error.message, 'error');
+    }
+}
