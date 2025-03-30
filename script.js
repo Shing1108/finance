@@ -1353,126 +1353,127 @@ case 'sync':
         }
     }
 
-    // 添加類別預算
-    function addCategoryBudget() {
-        console.log("添加/更新類別預算");
+// 添加類別預算
+function addCategoryBudget() {
+    console.log("添加/更新類別預算");
 
-        try {
-            const categoryBudgetSelect = document.getElementById('categoryBudgetSelect');
-            const categoryId = categoryBudgetSelect.value;
-            const budgetAmount = parseFloat(document.getElementById('categoryBudgetAmount').value);
+    try {
+        const categoryBudgetSelect = document.getElementById('categoryBudgetSelect');
+        const categoryId = categoryBudgetSelect.value;
+        const budgetAmount = parseFloat(document.getElementById('categoryBudgetAmount').value);
 
-            // 檢查是否是編輯模式
-            const editBudgetId = categoryBudgetSelect.dataset.editId;
+        // 檢查是否是編輯模式
+        const editBudgetId = categoryBudgetSelect.dataset.editId;
 
-            // 基本驗證
-            if (!editBudgetId && !categoryId) {
-                showToast('請選擇類別', 'error');
+        // 基本驗證
+        if (!editBudgetId && !categoryId) {
+            showToast('請選擇類別', 'error');
+            return;
+        }
+
+        if (!budgetAmount || budgetAmount <= 0) {
+            showToast('請輸入有效金額', 'error');
+            return;
+        }
+
+        // 在這裡添加額外的檢查：
+        if (isNaN(budgetAmount)) {
+            showToast('請輸入有效的預算金額', 'error');
+            return;
+        }
+
+        if (editBudgetId) {
+            // 編輯現有預算
+            const budgetIndex = appState.budgets.categories.findIndex(b => b.id === editBudgetId);
+
+            if (budgetIndex === -1) {
+                showToast('找不到預算', 'error');
                 return;
             }
 
-            if (!budgetAmount || budgetAmount <= 0) {
-                showToast('請輸入有效金額', 'error');
-                return;
+            // 獲取實際使用的類別ID（可能是從禁用的下拉框中獲取）
+            const actualCategoryId = appState.budgets.categories[budgetIndex].categoryId;
 
-             // 在這裡添加額外的檢查：
-            if (isNaN(budgetAmount)) {
-                showToast('請輸入有效的預算金額', 'error');
-                return;
+            // 更新預算
+            appState.budgets.categories[budgetIndex].amount = budgetAmount;
+
+            // 如果啟用自動計算，更新總預算
+            if (appState.budgets.autoCalculate) {
+                appState.budgets.total = calculateTotalCategoryBudget();
             }
 
-            if (editBudgetId) {
-                // 編輯現有預算
-                const budgetIndex = appState.budgets.categories.findIndex(b => b.id === editBudgetId);
+            // 更新UI
+            updateBudgetsUI();
+            updateDashboardUI();
 
-                if (budgetIndex === -1) {
-                    showToast('找不到預算', 'error');
-                    return;
-                }
+            // 保存到本地存儲
+            saveToLocalStorage();
 
-                // 獲取實際使用的類別ID（可能是從禁用的下拉框中獲取）
-                const actualCategoryId = appState.budgets.categories[budgetIndex].categoryId;
+            // 執行同步（如果啟用）
+            if (enableFirebase && isLoggedIn) {
+                syncToFirebase();
+            }
 
-                // 更新預算
-                appState.budgets.categories[budgetIndex].amount = budgetAmount;
+            // 清空表單並重置編輯模式
+            document.getElementById('categoryBudgetAmount').value = '';
+            categoryBudgetSelect.disabled = false;
+            categoryBudgetSelect.dataset.editId = '';
 
-                // 如果啟用自動計算，更新總預算
-                if (appState.budgets.autoCalculate) {
-                    appState.budgets.total = calculateTotalCategoryBudget();
-                }
+            // 恢復按鈕文本
+            const addButton = document.getElementById('addCategoryBudgetButton');
+            if (addButton) {
+                addButton.textContent = '添加';
+            }
 
-                // 更新UI
-                updateBudgetsUI();
-                updateDashboardUI();
+            // 顯示成功消息
+            const category = appState.categories.expense.find(c => c.id === actualCategoryId);
+            const categoryName = category ? category.name : '未知類別';
+            showToast(`已更新${categoryName}預算`, 'success');
+        } else {
+            // 添加新預算
+            // 檢查類別是否已有預算
+            const existingIndex = appState.budgets.categories.findIndex(b => b.categoryId === categoryId);
 
-                // 保存到本地存儲
-                saveToLocalStorage();
-
-                // 執行同步（如果啟用）
-                if (enableFirebase && isLoggedIn) {
-                    syncToFirebase();
-                }
-
-                // 清空表單並重置編輯模式
-                document.getElementById('categoryBudgetAmount').value = '';
-                categoryBudgetSelect.disabled = false;
-                categoryBudgetSelect.dataset.editId = '';
-
-                // 恢復按鈕文本
-                const addButton = document.getElementById('addCategoryBudgetButton');
-                if (addButton) {
-                    addButton.textContent = '添加';
-                }
-
-                // 顯示成功消息
-                const category = appState.categories.expense.find(c => c.id === actualCategoryId);
-                const categoryName = category ? category.name : '未知類別';
-                showToast(`已更新${categoryName}預算`, 'success');
+            if (existingIndex !== -1) {
+                // 更新現有預算
+                appState.budgets.categories[existingIndex].amount = budgetAmount;
             } else {
                 // 添加新預算
-                // 檢查類別是否已有預算
-                const existingIndex = appState.budgets.categories.findIndex(b => b.categoryId === categoryId);
-
-                if (existingIndex !== -1) {
-                    // 更新現有預算
-                    appState.budgets.categories[existingIndex].amount = budgetAmount;
-                } else {
-                    // 添加新預算
-                    appState.budgets.categories.push({
-                        id: generateId(),
-                        categoryId: categoryId,
-                        amount: budgetAmount
-                    });
-                }
-
-                // 如果啟用自動計算，更新總預算
-                if (appState.budgets.autoCalculate) {
-                    appState.budgets.total = calculateTotalCategoryBudget();
-                }
-
-                // 更新UI
-                updateBudgetsUI();
-                updateDashboardUI();
-
-                // 清空表單
-                document.getElementById('categoryBudgetAmount').value = '';
-
-                // 保存到本地存儲
-                saveToLocalStorage();
-
-                // 執行同步（如果啟用）
-                if (enableFirebase && isLoggedIn) {
-                    syncToFirebase();
-                }
-
-                // 顯示成功消息
-                showToast('類別預算已添加', 'success');
+                appState.budgets.categories.push({
+                    id: generateId(),
+                    categoryId: categoryId,
+                    amount: budgetAmount
+                });
             }
-        } catch (error) {
-            console.error("添加/更新類別預算時發生錯誤:", error);
-            showToast('添加/更新類別預算失敗: ' + error.message, 'error');
+
+            // 如果啟用自動計算，更新總預算
+            if (appState.budgets.autoCalculate) {
+                appState.budgets.total = calculateTotalCategoryBudget();
+            }
+
+            // 更新UI
+            updateBudgetsUI();
+            updateDashboardUI();
+
+            // 清空表單
+            document.getElementById('categoryBudgetAmount').value = '';
+
+            // 保存到本地存儲
+            saveToLocalStorage();
+
+            // 執行同步（如果啟用）
+            if (enableFirebase && isLoggedIn) {
+                syncToFirebase();
+            }
+
+            // 顯示成功消息
+            showToast('類別預算已添加', 'success');
         }
+    } catch (error) {
+        console.error("添加/更新類別預算時發生錯誤:", error);
+        showToast('添加/更新類別預算失敗: ' + error.message, 'error');
     }
+}
 
     // 計算總類別預算
     function calculateTotalCategoryBudget() {
