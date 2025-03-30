@@ -1478,3 +1478,32 @@ a:hover {
     animation: spin 1s linear infinite;
     margin-bottom: 1rem;
 }
+
+/* 確保這些在 styles.css 中 */
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.data-table th, .data-table td {
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    text-align: center;
+}
+
+.data-table th {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.same-currency {
+    background-color: rgba(0, 0, 0, 0.05);
+}
