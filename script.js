@@ -6627,3 +6627,369 @@ window.addEventListener('load', function() {
         }
     }, 1000);
 });
+
+// 診斷函數 - 輔助調試
+function diagnoseChartIssue() {
+    console.log("開始診斷圖表問題...");
+    
+    // 檢查Chart.js是否正確加載
+    if (typeof Chart === 'undefined') {
+        console.error("Chart.js未加載!");
+        
+        // 嘗試再次加載Chart.js
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.onload = function() {
+            console.log("已動態加載Chart.js，嘗試更新統計UI");
+            try {
+                updateStatisticsUI();
+            } catch(e) {
+                console.error("重新加載後更新統計UI失敗:", e);
+            }
+        };
+        script.onerror = function() {
+            console.error("動態加載Chart.js失敗");
+        };
+        document.head.appendChild(script);
+        return;
+    }
+    
+    // 檢查容器元素
+    const incomeChart = document.getElementById('incomeChart');
+    const expenseChart = document.getElementById('expenseChart');
+    
+    if (!incomeChart) {
+        console.error("找不到收入圖表容器");
+    } else {
+        console.log("收入圖表容器存在");
+    }
+    
+    if (!expenseChart) {
+        console.error("找不到支出圖表容器");
+    } else {
+        console.log("支出圖表容器存在");
+    }
+    
+    // 嘗試強制重新生成圖表
+    try {
+        console.log("嘗試強制生成默認圖表...");
+        
+        // 創建一個基本的收入圖表
+        if (incomeChart) {
+            incomeChart.innerHTML = '<canvas id="incomeChartCanvas"></canvas>';
+            const ctx = document.getElementById('incomeChartCanvas').getContext('2d');
+            
+            if (window.incomeChart instanceof Chart) {
+                window.incomeChart.destroy();
+            }
+            
+            window.incomeChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['示例數據'],
+                    datasets: [{
+                        data: [100],
+                        backgroundColor: ['#2ecc71'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        
+        // 創建一個基本的支出圖表
+        if (expenseChart) {
+            expenseChart.innerHTML = '<canvas id="expenseChartCanvas"></canvas>';
+            const ctx = document.getElementById('expenseChartCanvas').getContext('2d');
+            
+            if (window.expenseChart instanceof Chart) {
+                window.expenseChart.destroy();
+            }
+            
+            window.expenseChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['示例數據'],
+                    datasets: [{
+                        data: [100],
+                        backgroundColor: ['#e74c3c'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        
+        console.log("示例圖表已創建");
+    } catch(e) {
+        console.error("創建示例圖表時出錯:", e);
+    }
+}
+
+// 類別UI診斷
+function diagnoseCategoriesUI() {
+    console.log("開始診斷類別管理UI問題...");
+    
+    // 檢查類別標籤是否存在
+    const incomeTab = document.getElementById('incomeCategoryTab');
+    const expenseTab = document.getElementById('expenseCategoryTab');
+    
+    if (!incomeTab) {
+        console.error("找不到收入類別標籤容器");
+    } else {
+        console.log("收入類別標籤容器存在");
+    }
+    
+    if (!expenseTab) {
+        console.error("找不到支出類別標籤容器");
+    } else {
+        console.log("支出類別標籤容器存在");
+    }
+    
+    // 檢查類別列表是否存在
+    const incomeCategoriesList = document.getElementById('incomeCategoriesList');
+    const expenseCategoriesList = document.getElementById('expenseCategoriesList');
+    
+    if (!incomeCategoriesList) {
+        console.error("找不到收入類別列表容器");
+    } else {
+        console.log("收入類別列表容器存在");
+    }
+    
+    if (!expenseCategoriesList) {
+        console.error("找不到支出類別列表容器");
+    } else {
+        console.log("支出類別列表容器存在");
+    }
+    
+    // 嘗試強制顯示內容
+    try {
+        if (incomeTab && incomeCategoriesList) {
+            incomeTab.classList.add('active');
+            incomeCategoriesList.innerHTML = `
+                <div class="category-add-card">
+                    <button id="addIncomeCategoryButton" class="btn btn-add">+ 新增</button>
+                </div>
+                <p class="empty-message">尚未設置收入類別或加載中...</p>
+            `;
+            
+            const addButton = document.getElementById('addIncomeCategoryButton');
+            if (addButton) {
+                addButton.addEventListener('click', function() {
+                    document.getElementById('categoryType').value = 'income';
+                    openModal('addCategoryModal');
+                });
+            }
+        }
+        
+        if (expenseTab && expenseCategoriesList) {
+            expenseCategoriesList.innerHTML = `
+                <div class="category-add-card">
+                    <button id="addExpenseCategoryButton" class="btn btn-add">+ 新增</button>
+                </div>
+                <p class="empty-message">尚未設置支出類別或加載中...</p>
+            `;
+            
+            const addButton = document.getElementById('addExpenseCategoryButton');
+            if (addButton) {
+                addButton.addEventListener('click', function() {
+                    document.getElementById('categoryType').value = 'expense';
+                    openModal('addCategoryModal');
+                });
+            }
+        }
+    } catch(e) {
+        console.error("強制顯示類別內容時出錯:", e);
+    }
+}
+
+// 同步UI診斷
+function diagnoseSyncUI() {
+    console.log("開始診斷同步UI問題...");
+    
+    // 檢查同步元素是否存在
+    const syncTab = document.getElementById('sync');
+    const loginStatus = document.getElementById('loginStatus');
+    const loginButton = document.getElementById('loginButton');
+    
+    if (!syncTab) {
+        console.error("找不到同步標籤容器");
+    } else {
+        console.log("同步標籤容器存在");
+    }
+    
+    if (!loginStatus) {
+        console.error("找不到登入狀態元素");
+    } else {
+        console.log("登入狀態元素存在");
+    }
+    
+    if (!loginButton) {
+        console.error("找不到登入按鈕");
+    } else {
+        console.log("登入按鈕存在");
+    }
+    
+    // 嘗試強制更新同步UI
+    try {
+        if (loginStatus) {
+            loginStatus.textContent = enableFirebase ? '未登入 (雲端同步已啟用)' : '同步未啟用 (請在設定中啟用)';
+        }
+        
+        if (loginButton) {
+            loginButton.style.display = enableFirebase ? 'inline-block' : 'none';
+        }
+        
+        const logoutButton = document.getElementById('logoutButton');
+        if (logoutButton) {
+            logoutButton.style.display = 'none';
+        }
+        
+        const lastSyncTime = document.getElementById('lastSyncTime');
+        if (lastSyncTime) {
+            lastSyncTime.textContent = '從未同步';
+        }
+    } catch(e) {
+        console.error("強制更新同步UI時出錯:", e);
+    }
+}
+
+// 重寫showTabContent函數，增加錯誤處理和診斷
+function showTabContent(tabId) {
+    console.log(`切換到${tabId}選項卡`);
+
+    try {
+        // 移除所有標簽的激活狀態
+        document.querySelectorAll('.nav-links li').forEach(item => {
+            item.classList.remove('active');
+        });
+
+        // 激活點擊的標簽
+        const tabNav = document.querySelector(`.nav-links li[data-tab="${tabId}"]`);
+        if (tabNav) {
+            tabNav.classList.add('active');
+        }
+
+        // 隱藏所有內容
+        document.querySelectorAll('.tab-content').forEach(item => {
+            item.classList.remove('active');
+        });
+
+        // 顯示對應的內容
+        const tabElement = document.getElementById(tabId);
+        if (tabElement) {
+            tabElement.classList.add('active');
+        } else {
+            console.error(`找不到ID為${tabId}的選項卡元素`);
+            return;
+        }
+
+        // 根據當前標簽更新UI
+        switch (tabId) {
+            case 'dashboard':
+                updateDashboardUI();
+                break;
+            case 'accounts':
+                updateAccountsUI();
+                updateTransferForm();
+                break;
+            case 'transactions':
+                updateTransactionsUI();
+                updateTransactionsForms();
+                break;
+            case 'budgets':
+                updateBudgetsUI();
+                break;
+            case 'categories':
+                try {
+                    // 確保類別管理標籤的初始化
+                    initializeCategoryTabs();
+                    // 更新類別UI
+                    updateCategoriesUI();
+                } catch (e) {
+                    console.error("類別管理初始化出錯:", e);
+                    // 嘗試診斷和恢復
+                    diagnoseCategoriesUI();
+                }
+                break;
+            case 'statistics':
+                try {
+                    updateStatisticsUI();
+                } catch (e) {
+                    console.error("統計分析更新出錯:", e);
+                    // 嘗試診斷和恢復
+                    diagnoseChartIssue();
+                }
+                break;
+            case 'sync':
+                try {
+                    updateSyncUI();
+                } catch (e) {
+                    console.error("同步UI更新出錯:", e);
+                    // 嘗試診斷和恢復
+                    diagnoseSyncUI();
+                }
+                break;
+        }
+    } catch (error) {
+        console.error("切換選項卡時發生錯誤:", error);
+        showToast('切換選項卡失敗: ' + error.message, 'error');
+        
+        // 嘗試恢復顯示
+        const tabElement = document.getElementById(tabId);
+        if (tabElement) {
+            tabElement.classList.add('active');
+            tabElement.innerHTML = `<h2>載入出錯</h2><p class="error-message">載入${tabId}時發生錯誤: ${error.message}</p>
+            <button onclick="location.reload()" class="btn btn-primary">重新載入頁面</button>`;
+        }
+    }
+}
+
+// 頁面完全加載後執行額外檢查
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        try {
+            // 檢查Chart.js是否正確加載
+            if (typeof Chart === 'undefined') {
+                console.error("Chart.js未正確加載!");
+                
+                // 嘗試再次加載Chart.js
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                script.onload = function() {
+                    console.log("已動態加載Chart.js");
+                };
+                document.head.appendChild(script);
+            }
+            
+            // 檢查Firebase組件是否正確加載
+            if (enableFirebase && typeof firebase === 'undefined') {
+                console.error("Firebase未正確加載!");
+                
+                // 禁用Firebase功能
+                enableFirebase = false;
+                
+                // 更新設置
+                const settings = appState.settings || {};
+                settings.enableFirebase = false;
+                appState.settings = settings;
+                
+                // 保存設置
+                localStorage.setItem('settings', JSON.stringify(settings));
+                
+                // 顯示警告
+                showToast('雲端同步功能已禁用: Firebase未正確加載', 'warning');
+            }
+            
+            console.log("頁面加載後額外檢查完成");
+        } catch (error) {
+            console.error("頁面加載後檢查出錯:", error);
+        }
+    }, 2000);
+});
