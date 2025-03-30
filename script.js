@@ -5970,35 +5970,32 @@ function updateAllUI() {
     }
 }
 
+// 在script.js中
+
+// 找到這些函數並修改
 function initFirebase() {
-    // Firebase 設定
-        const firebaseConfig = {
-            apiKey: "AIzaSyAaqadmDSgQ-huvY7uNNrPtjFSOl93jVEE",
-            authDomain: "finance-d8f9e.firebaseapp.com",
-            projectId: "finance-d8f9e",
-            storageBucket: "finance-d8f9e.firebasestorage.app",
-            messagingSenderId: "122645255279",
-            appId: "1:122645255279:web:25d577b6365c819ffbe99a",
-        };
-    
-    // 初始化 Firebase
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-    
-    // 檢查登錄狀態
-    return new Promise((resolve, reject) => {
-        firebase.auth().onAuthStateChanged((userObj) => {
-            if (userObj) {
-                isLoggedIn = true;
-                user = userObj;
-            } else {
-                isLoggedIn = false;
-                user = null;
-            }
-            updateSyncStatus();
-            resolve();
-        }, reject);
-    });
+    // 轉發到新的實現
+    return window.firebaseIntegration.initFirebase();
+}
+
+function handleLogin() {
+    return window.firebaseIntegration.handleLogin();
+}
+
+function handleLogout() {
+    return window.firebaseIntegration.handleLogout();
+}
+
+function syncToFirebase() {
+    return window.firebaseIntegration.syncToFirebase();
+}
+
+function syncNow() {
+    return window.firebaseIntegration.syncNow();
+}
+
+async function updateExchangeRates() {
+    return window.firebaseIntegration.updateExchangeRates();
 }
 
 function handleLogin() {
