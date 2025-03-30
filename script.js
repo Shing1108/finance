@@ -5645,36 +5645,35 @@ function saveManualExchangeRate() {
     }
 }
 
-// 更新匯率 (實際應該調用API，此處使用模擬數據)
 async function updateExchangeRates() {
-    console.log("更新匯率");
-
     try {
-        // 模擬API調用延遲
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // 模擬從API獲取的匯率
-        const updatedRates = {
-            HKD: { USD: 0.13, CNY: 0.84, EUR: 0.11, GBP: 0.1, JPY: 17.8 },
-            USD: { HKD: 7.8, CNY: 6.5, EUR: 0.85, GBP: 0.75, JPY: 140 },
-            CNY: { HKD: 1.19, USD: 0.15, EUR: 0.13, GBP: 0.11, JPY: 21.5 },
-            EUR: { HKD: 9.2, USD: 1.18, CNY: 7.65, GBP: 0.88, JPY: 165 },
-            GBP: { HKD: 10.5, USD: 1.34, CNY: 8.7, EUR: 1.14, JPY: 187 },
-            JPY: { HKD: 0.056, USD: 0.0071, CNY: 0.047, EUR: 0.0061, GBP: 0.0053 }
-        };
-
+        // 替換為您的API密鑰和URL
+        const apiKey = '7c54ea3dee46895c929cfeb0';
+        const response = await fetch(`https://api.exchangerate-api.com/v4/latest/USD?api_key=${apiKey}`);
+        
+        if (!response.ok) {
+            throw new Error('匯率API請求失敗');
+        }
+        
+        const data = await response.json();
+        
+        // 處理API返回的數據結構
+        const updatedRates = {}; 
+        // 將API數據轉換為應用所需的格式
+        
         // 更新本地匯率
         exchangeRates = updatedRates;
-
+        
         // 保存到本地存儲
         localStorage.setItem('exchangeRates', JSON.stringify({
             rates: updatedRates,
             lastUpdated: new Date().toISOString()
         }));
-
-        // 顯示成功消息
+        
+        // 更新UI
+        updateExchangeRateTable();
+        
         showToast('匯率已更新', 'success');
-
         return true;
     } catch (error) {
         console.error("更新匯率時發生錯誤:", error);
@@ -5971,23 +5970,55 @@ function updateAllUI() {
     }
 }
 
-// Firebase 相關函數 - 此處僅提供結構，實際功能需要根據專案需求實現
 function initFirebase() {
+    // Firebase 設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyAaqadmDSgQ-huvY7uNNrPtjFSOl93jVEE",
+            authDomain: "finance-d8f9e.firebaseapp.com",
+            projectId: "finance-d8f9e",
+            storageBucket: "finance-d8f9e.firebasestorage.app",
+            messagingSenderId: "122645255279",
+            appId: "1:122645255279:web:25d577b6365c819ffbe99a",
+        };
+    
+    // 初始化 Firebase
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    
+    // 檢查登錄狀態
     return new Promise((resolve, reject) => {
-        // 模擬成功初始化
-        setTimeout(() => {
-            console.log("Firebase 初始化模擬成功");
+        firebase.auth().onAuthStateChanged((userObj) => {
+            if (userObj) {
+                isLoggedIn = true;
+                user = userObj;
+            } else {
+                isLoggedIn = false;
+                user = null;
+            }
+            updateSyncStatus();
             resolve();
-        }, 500);
+        }, reject);
     });
 }
 
 function handleLogin() {
-    // 模擬登入
-    isLoggedIn = true;
-    user = {email: 'demo@example.com'};
-    updateSyncUI();
-    showToast('已登入成功(模擬)', 'success');
+    // 使用 Google 登錄提供者
+    const provider = new firebase.auth.GoogleAuthProvider();
+    
+    firebase.auth().signInWithPopup(provider)
+        .then((result) => {
+            user = result.user;
+            isLoggedIn = true;
+            updateSyncUI();
+            showToast('登入成功', 'success');
+            
+            // 立即同步數據
+            syncToFirebase();
+        })
+        .catch((error) => {
+            console.error("登入失敗:", error);
+            showToast('登入失敗: ' + error.message, 'error');
+        });
 }
 
 function handleLogout() {
@@ -6009,8 +6040,27 @@ function syncNow() {
 }
 
 function syncToFirebase() {
-    // 模擬同步到Firebase
-    console.log("模擬同步到Firebase");
+    if (!isLoggedIn || !db) return;
+    
+    const uid = user.uid;
+    
+    // 儲存數據到 Firestore
+    db.collection('users').doc(uid).set({
+        accounts: appState.accounts,
+        transactions: appState.transactions,
+        categories: appState.categories,
+        budgets: appState.budgets,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    })
+    .then(() => {
+        localStorage.setItem('lastSyncTime', new Date().toISOString());
+        updateSyncUI();
+        showToast('數據同步完成', 'success');
+    })
+    .catch((error) => {
+        console.error("同步失敗:", error);
+        showToast('同步失敗: ' + error.message, 'error');
+    });
 }
 
 // 編輯類別
