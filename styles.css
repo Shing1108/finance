@@ -163,7 +163,7 @@ input, select, textarea, button {
     100% { transform: rotate(360deg); }
 }
 
-/* 財務快照修改 - 改為左中右水平排序 */
+/* 財務快照 */
 .finances-snapshot {
     display: flex;
     flex-direction: row;
@@ -174,6 +174,10 @@ input, select, textarea, button {
     height: 184px; /* 固定高度 */
     width: 430px; /* 固定寬度 */
     margin: 0 auto; /* 置中顯示 */
+    margin-top: 20px; /* 添加頂部間距，避免與導航欄重疊 */
+    margin-bottom: 20px; /* 添加底部間距 */
+    z-index: 10; /* 確保正確的堆疊順序 */
+    position: relative; /* 提供定位上下文 */
 }
 
 .snapshot-item {
@@ -233,15 +237,13 @@ input, select, textarea, button {
 }
 
 .snapshot-actions {
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 15px;
-    gap: 10px;
     position: absolute;
     bottom: 10px;
     right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 11;
 }
 
 .snapshot-btn {
@@ -288,6 +290,8 @@ input, select, textarea, button {
     border-bottom: 1px solid var(--border-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     transition: background-color 0.3s;
+    position: relative;
+    z-index: 20; /* 確保導航欄在財務快照之上 */
 }
 
 .nav-tabs {
@@ -338,6 +342,8 @@ input, select, textarea, button {
     padding: var(--spacing-m);
     overflow-y: auto;
     position: relative;
+    z-index: 5; /* 低於導航欄和財務快照 */
+    margin-top: 0; /* 確保沒有額外的頂部間距 */
 }
 
 .tab-content {
