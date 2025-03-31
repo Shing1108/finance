@@ -6,6 +6,7 @@
     --danger-color: #e74c3c;
     --warning-color: #f39c12;
     --info-color: #1abc9c;
+    --non-active-color: #ffffff;
 
     /* 添加主題色的RGB值,用於透明度變化 */
     --primary-color-rgb: 52, 152, 219;
@@ -92,6 +93,12 @@ body {
     height: 100vh;
     overflow: hidden;
     transition: background-color 0.3s, color 0.3s;
+    /* 添加以支持iOS Safari */
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    /* iOS安全區域處理 */
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -163,7 +170,7 @@ input, select, textarea, button {
     100% { transform: rotate(360deg); }
 }
 
-/* 財務快照 - 修正順序和定位 */
+/* 財務快照 - 修正為左中右布局 */
 .finances-snapshot {
     display: flex;
     flex-direction: row;
@@ -173,14 +180,17 @@ input, select, textarea, button {
     transition: background-color 0.3s;
     height: 184px; /* 固定高度 */
     width: 430px; /* 固定寬度 */
-    margin: 0 auto; /* 置中顯示 */
-    z-index: 30; /* 確保財務快照在導航欄之上 */
+    margin: 10px auto; /* 置中顯示，添加上下間距 */
     position: relative; /* 提供定位上下文 */
-    margin-bottom: 10px; /* 與導航欄間距 */
+    z-index: 30; /* 確保財務快照在導航欄之上 */
+    border-radius: var(--border-radius);
+    overflow: hidden; /* 確保圓角生效 */
 }
 
+/* 確保財務快照內的項目為水平排列 */
 .snapshot-item {
-    flex: 1;
+    width: 33.333%; /* 平均分配寬度 */
+    height: 100%; /* 填滿容器高度 */
     padding: 15px;
     color: var(--text-color);
     position: relative;
@@ -235,14 +245,18 @@ input, select, textarea, button {
     opacity: 0.8;
 }
 
-.snapshot-actions {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
+/* 應用操作按鈕樣式 */
+.app-actions {
     display: flex;
+    justify-content: flex-end;
     align-items: center;
+    padding: 5px 10px;
     gap: 10px;
-    z-index: 11;
+    background-color: var(--bg-color);
+    position: relative;
+    z-index: 25; /* 在財務快照和導航欄之間 */
+    width: 430px; /* 與財務快照相同寬度 */
+    margin: 0 auto; /* 置中顯示 */
 }
 
 .snapshot-btn {
@@ -281,6 +295,7 @@ input, select, textarea, button {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    margin-top: 10px; /* 確保容器與財務快照有間距 */
 }
 
 /* 頂部導航欄 - 修正定位使其在財務快照下方 */
@@ -300,6 +315,7 @@ input, select, textarea, button {
     overflow-x: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--primary-color) transparent;
+    -webkit-overflow-scrolling: touch; /* 為iOS提供平滑滾動 */
 }
 
 .nav-tabs::-webkit-scrollbar {
@@ -344,6 +360,8 @@ input, select, textarea, button {
     position: relative;
     z-index: 5; /* 低於導航欄和財務快照 */
     margin-top: 0; /* 確保沒有額外的頂部間距 */
+    -webkit-overflow-scrolling: touch; /* 為iOS提供平滑滾動 */
+    padding-bottom: 70px; /* 為可能的底部工具欄提供空間 */
 }
 
 .tab-content {
@@ -505,6 +523,9 @@ input, select, textarea, button {
     background-color: var(--card-bg);
     color: var(--text-color);
     transition: border-color 0.3s, box-shadow 0.3s;
+    /* 修復iOS輸入框問題 */
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 .form-control:focus {
@@ -571,11 +592,14 @@ input, select, textarea, button {
     align-items: center;
     opacity: 0;
     transition: opacity 0.3s;
+    /* 修復iOS模態框問題 */
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal.active {
     display: flex;
     opacity: 1;
+    pointer-events: auto; /* 確保可點擊 */
 }
 
 .modal-content {
@@ -587,6 +611,9 @@ input, select, textarea, button {
     position: relative;
     transform: translateY(0);
     transition: transform 0.3s;
+    max-height: 90vh; /* 避免超出螢幕 */
+    display: flex;
+    flex-direction: column;
 }
 
 .modal.active .modal-content {
@@ -621,6 +648,8 @@ input, select, textarea, button {
     padding: var(--spacing-m);
     max-height: 70vh;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* 為iOS提供平滑滾動 */
+    flex: 1;
 }
 
 .modal-footer {
@@ -641,6 +670,8 @@ input, select, textarea, button {
     flex-direction: column;
     gap: 10px;
     max-width: 350px;
+    /* 確保通知在iOS安全區域之上 */
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
 }
 
 .toast {
@@ -897,6 +928,7 @@ input, select, textarea, button {
     border: none;
     background: none;
     cursor: pointer;
+    color: var(--non-active-color);
     font-size: var(--font-size-normal);
     border-bottom: 2px solid transparent;
     transition: color 0.3s, border-color 0.3s;
@@ -1512,6 +1544,7 @@ input, select, textarea, button {
     display: flex;
     gap: 10px;
     margin-bottom: var(--spacing-s);
+    flex-wrap: wrap; /* 允許在小屏幕上換行 */
 }
 
 .period-btn {
@@ -1539,6 +1572,7 @@ input, select, textarea, button {
     align-items: center;
     gap: 10px;
     margin-top: var(--spacing-s);
+    flex-wrap: wrap; /* 允許在小屏幕上換行 */
 }
 
 .analytics-dashboard {
@@ -1717,8 +1751,33 @@ input, select, textarea, button {
     color: var(--text-lighter);
 }
 
+/* 底部間距容器，防止內容被工具欄遮擋 */
+.bottom-spacer {
+    height: 70px;
+    width: 100%;
+    display: block;
+}
+
 /* 響應式設計 */
 @media (max-width: 768px) {
+    body {
+        /* 避免內容被工具列遮擋 */
+        padding-bottom: 70px; 
+    }
+    
+    .finances-snapshot {
+        width: 95%; /* 移動設備上適應寬度 */
+        min-height: 150px; /* 最小高度 */
+    }
+    
+    .snapshot-item {
+        width: 33.333%; /* 確保在小屏幕上仍然是三列 */
+    }
+    
+    .app-actions {
+        width: 95%; /* 與財務快照保持相同寬度 */
+    }
+
     .form-row {
         flex-direction: column;
         gap: var(--spacing-s);
@@ -1766,23 +1825,19 @@ input, select, textarea, button {
         justify-content: flex-end;
         margin-top: var(--spacing-xs);
     }
+
+    /* 確保模態窗口在移動設備上能正確顯示 */
+    .modal-content {
+        max-height: 80vh;
+    }
+    
+    /* 增加表單元素的可點擊區域 */
+    .form-control, .btn, select, input[type="date"], input[type="time"] {
+        min-height: 44px; /* iOS推薦的最小點擊區域 */
+    }
 }
 
 @media (max-width: 480px) {
-    .finances-snapshot {
-        flex-wrap: wrap;
-    }
-
-    .snapshot-item {
-        flex: 0 0 100%;
-    }
-
-    .snapshot-actions {
-        flex: 0 0 100%;
-        justify-content: space-between;
-        padding: var(--spacing-s) var(--spacing-m);
-    }
-
     .nav-tabs {
         justify-content: flex-start;
     }
@@ -1802,6 +1857,43 @@ input, select, textarea, button {
     .modal-content {
         width: 95%;
     }
+    
+    /* 確保在極小屏幕上財務快照仍然保持水平排列 */
+    .finances-snapshot {
+        height: auto; /* 高度自適應 */
+        padding: 10px 0;
+    }
+    
+    .snapshot-item {
+        padding: 10px 5px;
+    }
+    
+    .snapshot-value {
+        font-size: 18px;
+    }
+}
+
+/* 針對iOS Safari特定優化 */
+@supports (-webkit-touch-callout: none) {
+    body {
+        /* iOS Safari 特定調整 */
+        padding-bottom: 90px; /* 為iOS的底部工具欄留出更多空間 */
+        min-height: -webkit-fill-available; /* iOS Safari的高度修復 */
+    }
+    
+    .bottom-spacer {
+        height: 90px;
+    }
+    
+    /* 修復iOS上的點擊延遲 */
+    a, button, input, select, .btn, .nav-tabs li, .tab-button {
+        touch-action: manipulation;
+    }
+    
+    /* 修復iOS上的滾動問題 */
+    .main-content, .modal-body, .transactions-list, .categories-list, .goal-history-list {
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
 /* 移動設備上的增強 */
@@ -1809,30 +1901,9 @@ input, select, textarea, button {
     .transaction-actions, .category-actions {
         opacity: 1;
     }
-}
-
-/* 應用操作按鈕樣式 */
-.app-actions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    padding: 5px 10px;
-    gap: 10px;
-    background-color: var(--bg-color);
-    position: relative;
-    z-index: 25; /* 在財務快照和導航欄之間 */
-}
-
-/* 修復可能的移動設備樣式問題 */
-@media (max-width: 768px) {
-    .finances-snapshot {
-        width: 95%; /* 移動設備上適應寬度 */
-        height: auto; /* 自適應高度 */
-        min-height: 150px;
-        margin-top: 10px; /* 確保頁面頂部有間距 */
-    }
     
-    .app-actions {
-        padding: 5px 15px;
+    /* 在觸摸設備上禁用懸停效果，改用活動狀態 */
+    .card:active, .account-card:active, .category-card:active, .budget-item:active, .savings-goal-card:active {
+        transform: translateY(-2px);
     }
 }
