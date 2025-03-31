@@ -6,7 +6,6 @@
     --danger-color: #e74c3c;
     --warning-color: #f39c12;
     --info-color: #1abc9c;
-    --non-active-color: #ffffff;
 
     /* 添加主題色的RGB值,用於透明度變化 */
     --primary-color-rgb: 52, 152, 219;
@@ -170,15 +169,15 @@ input, select, textarea, button {
     100% { transform: rotate(360deg); }
 }
 
-/* 財務快照 - 修正為左中右布局 */
+/* 財務快照 - 修改為垂直排列 */
 .finances-snapshot {
     display: flex;
-    flex-direction: row;
+    flex-direction: column; /* 改為垂直排列 */
     background-color: var(--card-bg);
     border-bottom: 1px solid var(--border-color);
     box-shadow: var(--box-shadow);
     transition: background-color 0.3s;
-    height: 184px; /* 固定高度 */
+    height: auto; /* 自適應高度 */
     width: 430px; /* 固定寬度 */
     margin: 10px auto; /* 置中顯示，添加上下間距 */
     position: relative; /* 提供定位上下文 */
@@ -187,10 +186,9 @@ input, select, textarea, button {
     overflow: hidden; /* 確保圓角生效 */
 }
 
-/* 確保財務快照內的項目為水平排列 */
+/* 財務快照內的項目調整為垂直排列 */
 .snapshot-item {
-    width: 33.333%; /* 平均分配寬度 */
-    height: 100%; /* 填滿容器高度 */
+    width: 100%; /* 佔滿容器寬度 */
     padding: 15px;
     color: var(--text-color);
     position: relative;
@@ -200,21 +198,21 @@ input, select, textarea, button {
     justify-content: center;
     align-items: center;
     text-align: center;
-    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color); /* 改為底部邊框 */
 }
 
 .snapshot-item:last-child {
-    border-right: none;
+    border-bottom: none;
 }
 
-/* 修改指示器方向 - 從左側改為頂部 */
+/* 修改指示器方向 - 從頂部改為左側 */
 .snapshot-item::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 4px;
+    width: 4px; /* 左側指示器寬度 */
+    height: 100%; /* 填滿容器高度 */
 }
 
 .blue-item::before {
@@ -306,7 +304,7 @@ input, select, textarea, button {
     transition: background-color 0.3s;
     position: relative;
     z-index: 20; /* 低於財務快照 */
-    margin-top: 0; /* 確保沒有額外頂部間距 */
+    margin-top: 5px; /* 確保沒有額外頂部間距 */
 }
 
 .nav-tabs {
@@ -928,7 +926,6 @@ input, select, textarea, button {
     border: none;
     background: none;
     cursor: pointer;
-    color: var(--non-active-color);
     font-size: var(--font-size-normal);
     border-bottom: 2px solid transparent;
     transition: color 0.3s, border-color 0.3s;
