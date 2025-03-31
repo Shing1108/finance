@@ -21,7 +21,42 @@
         <div>處理中...</div>
     </div>
 
-    <!-- 頂部財務快照 -->
+<!-- 主應用容器 -->
+<div class="app-container">
+    <!-- 頂部導航欄 -->
+    <nav class="top-navigation">
+        <ul class="nav-tabs">
+            <li data-tab="dashboard" class="active">
+                <i class="fas fa-home"></i> 儀表板
+            </li>
+            <li data-tab="accounts">
+                <i class="fas fa-wallet"></i> 戶口
+            </li>
+            <li data-tab="transactions">
+                <i class="fas fa-exchange-alt"></i> 記賬
+            </li>
+            <li data-tab="budgets">
+                <i class="fas fa-chart-pie"></i> 預算
+            </li>
+            <li data-tab="categories">
+                <i class="fas fa-tags"></i> 類別
+            </li>
+            <li data-tab="statistics">
+                <i class="fas fa-chart-line"></i> 統計
+            </li>
+            <li data-tab="savingsGoals">
+                <i class="fas fa-piggy-bank"></i> 目標
+            </li>
+            <li data-tab="dataAnalytics">
+                <i class="fas fa-chart-bar"></i> 分析
+            </li>
+            <li data-tab="sync">
+                <i class="fas fa-cloud"></i> 同步
+            </li>
+        </ul>
+    </nav>
+
+    <!-- 財務快照 -->
     <div class="finances-snapshot">
         <div class="snapshot-item blue-item">
             <div class="snapshot-label">總資產</div>
@@ -41,50 +76,17 @@
                 <span class="currency-symbol">$</span> <span id="topTodayExpense">0.00</span>
             </div>
         </div>
-        <div class="snapshot-actions">
-            <button id="settingsButton" class="snapshot-btn">
-                <i class="fas fa-cog"></i>
-            </button>
-            <button id="startNewDayButton" class="snapshot-btn primary-btn">
-                <i class="fas fa-calendar-plus"></i> 開啟新的一天
-            </button>
-        </div>
     </div>
 
-    <!-- 主應用容器 -->
-    <div class="app-container">
-        <!-- 頂部導航欄 -->
-        <nav class="top-navigation">
-            <ul class="nav-tabs">
-                <li data-tab="dashboard" class="active">
-                    <i class="fas fa-home"></i> 儀表板
-                </li>
-                <li data-tab="accounts">
-                    <i class="fas fa-wallet"></i> 戶口
-                </li>
-                <li data-tab="transactions">
-                    <i class="fas fa-exchange-alt"></i> 記賬
-                </li>
-                <li data-tab="budgets">
-                    <i class="fas fa-chart-pie"></i> 預算
-                </li>
-                <li data-tab="categories">
-                    <i class="fas fa-tags"></i> 類別
-                </li>
-                <li data-tab="statistics">
-                    <i class="fas fa-chart-line"></i> 統計
-                </li>
-                <li data-tab="savingsGoals">
-                    <i class="fas fa-piggy-bank"></i> 目標
-                </li>
-                <li data-tab="dataAnalytics">
-                    <i class="fas fa-chart-bar"></i> 分析
-                </li>
-                <li data-tab="sync">
-                    <i class="fas fa-cloud"></i> 同步
-                </li>
-            </ul>
-        </nav>
+    <!-- 設定和日期按鈕 -->
+    <div class="app-actions">
+        <button id="settingsButton" class="snapshot-btn">
+            <i class="fas fa-cog"></i>
+        </button>
+        <button id="startNewDayButton" class="snapshot-btn primary-btn">
+            <i class="fas fa-calendar-plus"></i> 開啟新的一天
+        </button>
+    </div>
 
         <!-- 主內容區域 -->
         <main class="main-content">
