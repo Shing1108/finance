@@ -163,7 +163,7 @@ input, select, textarea, button {
     100% { transform: rotate(360deg); }
 }
 
-/* 財務快照 */
+/* 財務快照 - 修正順序和定位 */
 .finances-snapshot {
     display: flex;
     flex-direction: row;
@@ -174,10 +174,9 @@ input, select, textarea, button {
     height: 184px; /* 固定高度 */
     width: 430px; /* 固定寬度 */
     margin: 0 auto; /* 置中顯示 */
-    margin-top: 20px; /* 添加頂部間距，避免與導航欄重疊 */
-    margin-bottom: 20px; /* 添加底部間距 */
-    z-index: 10; /* 確保正確的堆疊順序 */
+    z-index: 30; /* 確保財務快照在導航欄之上 */
     position: relative; /* 提供定位上下文 */
+    margin-bottom: 10px; /* 與導航欄間距 */
 }
 
 .snapshot-item {
@@ -284,14 +283,15 @@ input, select, textarea, button {
     overflow: hidden;
 }
 
-/* 頂部導航欄 */
+/* 頂部導航欄 - 修正定位使其在財務快照下方 */
 .top-navigation {
     background-color: var(--card-bg);
     border-bottom: 1px solid var(--border-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     transition: background-color 0.3s;
     position: relative;
-    z-index: 20; /* 確保導航欄在財務快照之上 */
+    z-index: 20; /* 低於財務快照 */
+    margin-top: 0; /* 確保沒有額外頂部間距 */
 }
 
 .nav-tabs {
@@ -1811,43 +1811,28 @@ input, select, textarea, button {
     }
 }
 
-/* 為手機工具列添加調整 */
-@media (max-width: 768px) {
-    body {
-        /* 避免內容被工具列遮擋 */
-        padding-bottom: 70px; /* 調整這個值以適應不同瀏覽器工具列高度 */
-    }
-    
-    /* 針對iOS Safari修復 */
-    @supports (-webkit-touch-callout: none) {
-        body {
-            /* iOS Safari 特定調整 */
-            padding-bottom: 90px;
-            /* 避免內容被底部工具列遮擋 */
-            min-height: -webkit-fill-available;
-        }
-    }
-    
-    /* 確保最後一個容器有足夠的下方間距 */
-    .main-content {
-        padding-bottom: 100px;
-    }
-}
-
-/* 為底部添加一個固定的間距容器，確保滾動時內容不被工具列遮擋 */
-.bottom-spacer {
-    height: 70px;
-    width: 100%;
-}
-
 /* 應用操作按鈕樣式 */
 .app-actions {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    padding: 10px;
+    padding: 5px 10px;
     gap: 10px;
     background-color: var(--bg-color);
     position: relative;
-    z-index: 15;
+    z-index: 25; /* 在財務快照和導航欄之間 */
+}
+
+/* 修復可能的移動設備樣式問題 */
+@media (max-width: 768px) {
+    .finances-snapshot {
+        width: 95%; /* 移動設備上適應寬度 */
+        height: auto; /* 自適應高度 */
+        min-height: 150px;
+        margin-top: 10px; /* 確保頁面頂部有間距 */
+    }
+    
+    .app-actions {
+        padding: 5px 15px;
+    }
 }
