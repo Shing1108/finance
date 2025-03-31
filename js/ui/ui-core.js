@@ -130,7 +130,7 @@ function updateTabContent(tabId) {
 }
 
 /**
- * 打開模態框
+ * 打開模態框 - 修改確保正確顯示
  * @param {string} modalId 模態框ID
  */
 function openModal(modalId) {
@@ -143,7 +143,8 @@ function openModal(modalId) {
             return;
         }
 
-        // 添加平滑動畫效果
+        // 重置樣式
+        modal.style.pointerEvents = 'auto';
         modal.style.display = 'flex';
         modal.style.opacity = '0';
         
@@ -167,7 +168,7 @@ function openModal(modalId) {
 }
 
 /**
- * 關閉當前模態框
+ * 關閉當前模態框 - 修復無法完全關閉的問題
  */
 function closeCurrentModal() {
     console.log("關閉當前模態框");
@@ -180,6 +181,15 @@ function closeCurrentModal() {
             setTimeout(() => {
                 modal.classList.remove('active');
                 modal.style.opacity = '';
+                modal.style.display = 'none'; // 確保隱藏
+                
+                // 確保點擊事件能夠穿透
+                modal.style.pointerEvents = 'none';
+                
+                // 200ms 後重置 pointer-events，以便下次能夠打開
+                setTimeout(() => {
+                    modal.style.pointerEvents = '';
+                }, 200);
             }, 200);
         });
     } catch (error) {
@@ -188,6 +198,13 @@ function closeCurrentModal() {
         // 緊急關閉
         document.querySelectorAll('.modal.active').forEach(modal => {
             modal.classList.remove('active');
+            modal.style.display = 'none'; // 確保隱藏
+            modal.style.pointerEvents = 'none'; // 確保點擊事件能夠穿透
+            
+            // 重置 pointer-events
+            setTimeout(() => {
+                modal.style.pointerEvents = '';
+            }, 200);
         });
     }
 }
