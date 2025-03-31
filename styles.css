@@ -1804,3 +1804,32 @@ input, select, textarea, button {
         opacity: 1;
     }
 }
+
+/* 為手機工具列添加調整 */
+@media (max-width: 768px) {
+    body {
+        /* 避免內容被工具列遮擋 */
+        padding-bottom: 70px; /* 調整這個值以適應不同瀏覽器工具列高度 */
+    }
+    
+    /* 針對iOS Safari修復 */
+    @supports (-webkit-touch-callout: none) {
+        body {
+            /* iOS Safari 特定調整 */
+            padding-bottom: 90px;
+            /* 避免內容被底部工具列遮擋 */
+            min-height: -webkit-fill-available;
+        }
+    }
+    
+    /* 確保最後一個容器有足夠的下方間距 */
+    .main-content {
+        padding-bottom: 100px;
+    }
+}
+
+/* 為底部添加一個固定的間距容器，確保滾動時內容不被工具列遮擋 */
+.bottom-spacer {
+    height: 70px;
+    width: 100%;
+}
