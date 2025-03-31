@@ -23,7 +23,30 @@
 
 <!-- 主應用容器 -->
 <div class="app-container">
-    <!-- 頂部導航欄 -->
+   
+    <!-- 財務快照 -->
+    <div class="finances-snapshot">
+        <div class="snapshot-item blue-item">
+            <div class="snapshot-label">總資產</div>
+            <div class="snapshot-value">
+                <span class="currency-symbol">$</span> <span id="topTotalAssets">0.00</span>
+            </div>
+        </div>
+        <div class="snapshot-item green-item">
+            <div class="snapshot-label">今日收入</div>
+            <div class="snapshot-value">
+                <span class="currency-symbol">$</span> <span id="topTodayIncome">0.00</span>
+            </div>
+        </div>
+        <div class="snapshot-item red-item">
+            <div class="snapshot-label">今日支出</div>
+            <div class="snapshot-value">
+                <span class="currency-symbol">$</span> <span id="topTodayExpense">0.00</span>
+            </div>
+        </div>
+    </div>
+    
+     <!-- 頂部導航欄 -->
     <nav class="top-navigation">
         <ul class="nav-tabs">
             <li data-tab="dashboard" class="active">
@@ -55,28 +78,6 @@
             </li>
         </ul>
     </nav>
-
-    <!-- 財務快照 -->
-    <div class="finances-snapshot">
-        <div class="snapshot-item blue-item">
-            <div class="snapshot-label">總資產</div>
-            <div class="snapshot-value">
-                <span class="currency-symbol">$</span> <span id="topTotalAssets">0.00</span>
-            </div>
-        </div>
-        <div class="snapshot-item green-item">
-            <div class="snapshot-label">今日收入</div>
-            <div class="snapshot-value">
-                <span class="currency-symbol">$</span> <span id="topTodayIncome">0.00</span>
-            </div>
-        </div>
-        <div class="snapshot-item red-item">
-            <div class="snapshot-label">今日支出</div>
-            <div class="snapshot-value">
-                <span class="currency-symbol">$</span> <span id="topTodayExpense">0.00</span>
-            </div>
-        </div>
-    </div>
 
     <!-- 設定和日期按鈕 -->
     <div class="app-actions">
