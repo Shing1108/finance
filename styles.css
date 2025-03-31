@@ -6,6 +6,7 @@
     --danger-color: #e74c3c;
     --warning-color: #f39c12;
     --info-color: #1abc9c;
+    --nonActive-color: #ffffff;
 
     /* 添加主題色的RGB值,用於透明度變化 */
     --primary-color-rgb: 52, 152, 219;
@@ -169,17 +170,16 @@ input, select, textarea, button {
     100% { transform: rotate(360deg); }
 }
 
-/* 財務快照 - 垂直排列，確保在所有設備上一致 */
+/* 財務快照 - 修正為左中右布局 */
 .finances-snapshot {
     display: flex;
-    flex-direction: column; /* 明確指定垂直排列 */
+    flex-direction: row;
     background-color: var(--card-bg);
     border-bottom: 1px solid var(--border-color);
     box-shadow: var(--box-shadow);
     transition: background-color 0.3s;
-    height: auto; /* 自適應高度 */
-    width: 430px; /* 電腦上的寬度 */
-    max-width: 95%; /* 確保在小屏幕上不會溢出 */
+    height: 184px; /* 固定高度 */
+    width: 430px; /* 固定寬度 */
     margin: 10px auto; /* 置中顯示，添加上下間距 */
     position: relative; /* 提供定位上下文 */
     z-index: 30; /* 確保財務快照在導航欄之上 */
@@ -187,10 +187,10 @@ input, select, textarea, button {
     overflow: hidden; /* 確保圓角生效 */
 }
 
-/* 財務快照內的項目 - 強制垂直排列 */
+/* 確保財務快照內的項目為水平排列 */
 .snapshot-item {
-    width: 100% !important; /* 使用!important確保覆蓋其他定義 */
-    flex: none !important; /* 防止項目被拉伸 */
+    width: 33.333%; /* 平均分配寬度 */
+    height: 100%; /* 填滿容器高度 */
     padding: 15px;
     color: var(--text-color);
     position: relative;
@@ -200,22 +200,21 @@ input, select, textarea, button {
     justify-content: center;
     align-items: center;
     text-align: center;
-    border-bottom: 1px solid var(--border-color); /* 底部邊框 */
-    min-height: 60px; /* 確保最小高度 */
+    border-right: 1px solid var(--border-color);
 }
 
 .snapshot-item:last-child {
-    border-bottom: none;
+    border-right: none;
 }
 
-/* 修改指示器方向 - 左側指示器 */
+/* 修改指示器方向 - 從左側改為頂部 */
 .snapshot-item::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
-    width: 4px;
-    height: 100%; /* 填滿高度 */
+    width: 100%;
+    height: 4px;
 }
 
 .blue-item::before {
@@ -307,7 +306,7 @@ input, select, textarea, button {
     transition: background-color 0.3s;
     position: relative;
     z-index: 20; /* 低於財務快照 */
-    margin-top: 5px; /* 確保沒有額外頂部間距 */
+    margin-top: 0; /* 確保沒有額外頂部間距 */
 }
 
 .nav-tabs {
@@ -929,6 +928,7 @@ input, select, textarea, button {
     border: none;
     background: none;
     cursor: pointer;
+    color:var(--nonActive-color);
     font-size: var(--font-size-normal);
     border-bottom: 2px solid transparent;
     transition: color 0.3s, border-color 0.3s;
@@ -1766,13 +1766,12 @@ input, select, textarea, button {
     }
     
     .finances-snapshot {
-        width: 95%; /* 在移動設備上使用百分比寬度 */
-        flex-direction: column !important; /* 強制垂直排列 */
+        width: 95%; /* 移動設備上適應寬度 */
+        min-height: 150px; /* 最小高度 */
     }
     
     .snapshot-item {
-        border-right: none !important; /* 移除可能的右邊框 */
-        border-bottom: 1px solid var(--border-color); /* 添加底部邊框 */
+        width: 33.333%; /* 確保在小屏幕上仍然是三列 */
     }
     
     .app-actions {
@@ -1884,16 +1883,6 @@ input, select, textarea, button {
     
     .bottom-spacer {
         height: 90px;
-    }
-
-    .finances-snapshot {
-        flex-direction: column !important; /* 強制垂直排列 */
-    }
-    
-    .snapshot-item {
-        display: flex !important;
-        flex-direction: column !important;
-        width: 100% !important;
     }
     
     /* 修復iOS上的點擊延遲 */
