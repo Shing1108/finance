@@ -1839,3 +1839,15 @@ input, select, textarea, button {
     height: 70px;
     width: 100%;
 }
+
+/* 應用操作按鈕樣式 */
+.app-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px;
+    gap: 10px;
+    background-color: var(--bg-color);
+    position: relative;
+    z-index: 15;
+}
