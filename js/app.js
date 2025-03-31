@@ -211,13 +211,65 @@ function saveSettings() {
     console.log("保存設置");
     try {
         // 獲取設置表單值
-        const newDarkMode = document.getElementById('darkMode').checked;
-        const newFontSize = document.getElementById('fontSize').value;
-        const newDefaultCurrency = document.getElementById('defaultCurrency').value;
-        const newDecimalPlaces = parseInt(document.getElementById('decimalPlaces').value);
-        const newEnableBudgetAlerts = document.getElementById('enableBudgetAlerts').checked;
-        const newAlertThreshold = parseInt(document.getElementById('alertThreshold').value);
-        const newEnableFirebase = document.getElementById('enableFirebase').checked;
+        const darkModeElement = document.getElementById('darkMode');
+        const fontSizeElement = document.querySelector('input[name="fontSize"]:checked');
+        const defaultCurrencyElement = document.getElementById('defaultCurrency');
+        const decimalPlacesElement = document.querySelector('input[name="decimalPlaces"]:checked');
+        const enableBudgetAlertsElement = document.getElementById('enableBudgetAlerts');
+        const alertThresholdElement = document.getElementById('alertThreshold');
+        const enableFirebaseElement = document.getElementById('enableFirebase');
+
+        // 檢查元素是否存在
+        if (!darkModeElement) {
+            console.error("找不到深色模式元素");
+            showToast('保存設置失敗: 找不到深色模式選項', 'error');
+            return;
+        }
+
+        if (!fontSizeElement) {
+            console.error("找不到字體大小元素");
+            showToast('保存設置失敗: 找不到字體大小選項', 'error');
+            return;
+        }
+
+        if (!defaultCurrencyElement) {
+            console.error("找不到默認貨幣元素");
+            showToast('保存設置失敗: 找不到默認貨幣選項', 'error');
+            return;
+        }
+
+        if (!decimalPlacesElement) {
+            console.error("找不到小數點位數元素");
+            showToast('保存設置失敗: 找不到小數點位數選項', 'error');
+            return;
+        }
+
+        if (!enableBudgetAlertsElement) {
+            console.error("找不到預算提醒元素");
+            showToast('保存設置失敗: 找不到預算提醒選項', 'error');
+            return;
+        }
+
+        if (!alertThresholdElement) {
+            console.error("找不到提醒閾值元素");
+            showToast('保存設置失敗: 找不到提醒閾值選項', 'error');
+            return;
+        }
+
+        if (!enableFirebaseElement) {
+            console.error("找不到雲端同步元素");
+            showToast('保存設置失敗: 找不到雲端同步選項', 'error');
+            return;
+        }
+
+        // 獲取值
+        const newDarkMode = darkModeElement.checked;
+        const newFontSize = fontSizeElement.value;
+        const newDefaultCurrency = defaultCurrencyElement.value;
+        const newDecimalPlaces = parseInt(decimalPlacesElement.value);
+        const newEnableBudgetAlerts = enableBudgetAlertsElement.checked;
+        const newAlertThreshold = parseInt(alertThresholdElement.value);
+        const newEnableFirebase = enableFirebaseElement.checked;
 
         // 更新全局變量
         darkMode = newDarkMode;
@@ -277,10 +329,10 @@ function saveSettings() {
         showToast('設置已保存', 'success');
     } catch (error) {
         console.error("保存設置時發生錯誤:", error);
+        console.error("錯誤堆疊:", error.stack);
         showToast('保存設置失敗: ' + error.message, 'error');
     }
 }
-
 // 載入設置到表單
 function loadSettingsToForm() {
     console.log("載入設置到表單");
