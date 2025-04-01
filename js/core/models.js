@@ -17,10 +17,13 @@ const appState = {
     categories: { 
         income: [], 
         expense: [] 
-    },
+         },
 
 
-    budgets = {
+
+
+// 修改後
+budgets = {
     // 全局預算設置
     resetCycle: 'monthly',  // 預算重置週期
     resetDay: 1,            // 月度重置日
