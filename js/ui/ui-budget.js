@@ -223,6 +223,31 @@ function initializeBudgetsTab(budgetsTab) {
         });
     });
     
+    // 添加月度預算選擇器
+const monthSelector = document.createElement('div');
+monthSelector.className = 'budget-month-selector';
+monthSelector.innerHTML = `
+    <div class="form-row">
+        <div class="form-group">
+            <label for="budgetMonth">選擇預算月份</label>
+            <input type="month" id="budgetMonth" class="form-control" value="${getCurrentYearMonth()}">
+        </div>
+        <div class="form-group">
+            <label>&nbsp;</label>
+            <button type="button" id="loadMonthlyBudgetButton" class="btn btn-secondary">
+                <i class="fas fa-search"></i> 載入該月預算
+            </button>
+        </div>
+        <div class="form-group">
+            <label>&nbsp;</label>
+            <button type="button" id="saveBudgetHistoryButton" class="btn btn-secondary">
+                <i class="fas fa-save"></i> 保存為歷史記錄
+            </button>
+        </div>
+    </div>
+`;
+budgetsTab.appendChild(monthSelector);
+    
     // 更新類別預算下拉選單
     updateCategoryBudgetSelect();
     
@@ -1499,52 +1524,144 @@ function createNewBudget() {
     console.log("創建新預算");
     
     try {
+        // 獲取當前選擇的月份
+        const selectedMonth = document.getElementById('budgetMonth').value;
+        if (!selectedMonth) {
+            showToast('請選擇預算月份', 'error');
+            return;
+        }
+        
         // 獲取輸入值
         const totalBudget = parseFloat(document.getElementById('totalBudget').value);
         const autoCalculate = document.getElementById('autoCalculateBudget').checked;
         const startDate = document.getElementById('budgetStartDate').value;
         const endDate = document.getElementById('budgetEndDate').value;
         
-        // 獲取選中的重置週期
-        let resetCycle = 'monthly'; // 默認為月度
-        const resetCycleRadios = document.querySelectorAll('input[name="resetCycle"]');
-        
-        resetCycleRadios.forEach(radio => {
-            if (radio.checked) {
-                resetCycle = radio.value;
-            }
-        });
-        
-        // 僅對月度預算獲取重置日期
-        let resetDay = 1; // 默認為1號
-        
-        if (resetCycle === 'monthly') {
-            resetDay = parseInt(document.getElementById('monthlyResetDay').value) || 1;
-            
-            // 驗證日期在1-28範圍內
-            if (resetDay < 1 || resetDay > 28) {
-                showToast('重置日需在1至28之間', 'error');
-                return;
-            }
-        }
-        
-        // 如果非自動計算，驗證總預算
+        // 驗證
         if (!autoCalculate && (!totalBudget || totalBudget <= 0)) {
             showToast('請輸入有效預算金額', 'error');
             return;
         }
         
-        // 如果設置了結束日期，確保開始日期也設置了
-        if (endDate && !startDate) {
-            showToast('如果設置結束日期，必須也設置開始日期', 'error');
-            return;
-        }
-        
-        // 如果設置了開始和結束日期，確保結束日期不早於開始日期
         if (startDate && endDate && endDate < startDate) {
             showToast('結束日期不能早於開始日期', 'error');
             return;
         }
+        
+        // 初始化月度預算結構
+        if (!appState.budgets.monthly) {
+            appState.budgets.monthly = {};
+        }
+        
+        // 檢查該月份是否已有預算設置
+        if (!appState.budgets.monthly[selectedMonth]) {
+            appState.budgets.monthly[selectedMonth] = {
+                total: 0,
+                categories: [],
+                startDate: null,
+                endDate: null,
+                createdAt: new Date().toISOString()
+            };
+        }
+        
+        // 獲取月度預算對象
+        const monthlyBudget = appState.budgets.monthly[selectedMonth];
+        
+        // 更新預算設置
+        monthlyBudget.total = autoCalculate ? calculateMonthlyTotalCategoryBudget(selectedMonth) : totalBudget;
+        monthlyBudget.autoCalculate = autoCalculate;
+        monthlyBudget.startDate = startDate;
+        monthlyBudget.endDate = endDate;
+        monthlyBudget.updatedAt = new Date().toISOString();
+        
+        // 如果沒有設置開始和結束日期，自動設為月初和月末
+        if (!startDate) {
+            const [year, month] = selectedMonth.split('-');
+            monthlyBudget.startDate = `${year}-${month}-01`;
+        }
+        
+        if (!endDate) {
+            const [year, month] = selectedMonth.split('-');
+            const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+            monthlyBudget.endDate = `${year}-${month}-${lastDay}`;
+        }
+        
+        // 更新全局設置
+        appState.budgets.autoCalculate = autoCalculate;
+        
+        // 檢查預算是否已過期
+        const today = new Date().toISOString().split('T')[0];
+        const isExpired = monthlyBudget.endDate && monthlyBudget.endDate < today;
+        
+        // 如果預算已過期，保存到歷史記錄
+        if (isExpired) {
+            // 檢查是否已存在歷史記錄
+            const existsInHistory = appState.budgets.history && 
+                                   appState.budgets.history.some(h => h.period === selectedMonth);
+            
+            if (!existsInHistory) {
+                // 創建預算快照
+                const budgetSnapshot = {
+                    id: generateId(),
+                    period: selectedMonth,
+                    total: monthlyBudget.total,
+                    categories: JSON.parse(JSON.stringify(monthlyBudget.categories)),
+                    startDate: monthlyBudget.startDate,
+                    endDate: monthlyBudget.endDate,
+                    createdAt: new Date().toISOString()
+                };
+                
+                // 初始化歷史記錄數組
+                if (!appState.budgets.history) {
+                    appState.budgets.history = [];
+                }
+                
+                // 添加到歷史記錄
+                appState.budgets.history.push(budgetSnapshot);
+                
+                showToast(`已自動保存${formatYearMonth(selectedMonth)}預算到歷史記錄，因為此預算已過期`, 'info');
+            }
+        }
+        
+        // 更新UI
+        updateBudgetProgress();
+        updateCategoryBudgetsList(selectedMonth);
+        updateMonthlyBudgetsList();
+        
+        // 同步類別預算月份選擇器
+        const categoryMonthInput = document.getElementById('budgetCategoryMonth');
+        if (categoryMonthInput && categoryMonthInput.value !== selectedMonth) {
+            categoryMonthInput.value = selectedMonth;
+            // 觸發變更事件
+            const event = new Event('change');
+            categoryMonthInput.dispatchEvent(event);
+        }
+        
+        // 更新預算狀態卡片（如果在儀表板頁面）
+        if (typeof updateBudgetStatus === 'function') {
+            updateBudgetStatus();
+        }
+        
+        // 更新未來預算按鈕狀態
+        if (typeof updateFutureBudgetButtonStatus === 'function') {
+            updateFutureBudgetButtonStatus();
+        }
+        
+        // 保存到本地存儲
+        saveToLocalStorage();
+        
+        // 執行同步(如果啟用)
+        if (enableFirebase && isLoggedIn) {
+            syncToFirebase();
+        }
+        
+        // 顯示成功消息
+        showToast(`${formatYearMonth(selectedMonth)}預算設置已保存`, 'success');
+    } catch (error) {
+        console.error("創建新預算時發生錯誤:", error);
+        showToast('創建預算失敗: ' + error.message, 'error');
+    }
+}
         
         // 更新預算設置
         appState.budgets.resetCycle = resetCycle;
@@ -2451,27 +2568,78 @@ function loadMonthlyBudget() {
             return;
         }
         
+        // 初始化月度預算結構
+        if (!appState.budgets.monthly) {
+            appState.budgets.monthly = {};
+        }
+        
         // 檢查是否已有該月預算
-        const monthlyBudget = appState.budgets.monthlySettings[selectedMonth];
-        if (monthlyBudget) {
+        if (appState.budgets.monthly[selectedMonth]) {
             // 填充表單
-            document.getElementById('monthlyTotalBudget').value = monthlyBudget.total || 0;
+            const monthlyBudget = appState.budgets.monthly[selectedMonth];
+            document.getElementById('totalBudget').value = monthlyBudget.total || 0;
+            document.getElementById('autoCalculateBudget').checked = monthlyBudget.autoCalculate || false;
+            
+            if (monthlyBudget.startDate) {
+                document.getElementById('budgetStartDate').value = monthlyBudget.startDate;
+            }
+            
+            if (monthlyBudget.endDate) {
+                document.getElementById('budgetEndDate').value = monthlyBudget.endDate;
+            }
             
             // 更新類別預算的月份選擇
             const categoryMonthInput = document.getElementById('budgetCategoryMonth');
             if (categoryMonthInput) {
                 categoryMonthInput.value = selectedMonth;
-                // 觸發變更事件
+                // 觸發變更事件以更新類別預算列表
                 const event = new Event('change');
                 categoryMonthInput.dispatchEvent(event);
             }
             
             showToast(`已載入 ${formatYearMonth(selectedMonth)} 的預算設置`, 'success');
         } else {
-            // 清空表單
-            document.getElementById('monthlyTotalBudget').value = '';
-            showToast(`尚未設置 ${formatYearMonth(selectedMonth)} 的預算`, 'info');
+            // 創建新的月度預算
+            appState.budgets.monthly[selectedMonth] = {
+                total: 0,
+                categories: [],
+                autoCalculate: appState.budgets.autoCalculate,
+                startDate: null,
+                endDate: null,
+                createdAt: new Date().toISOString()
+            };
+            
+            // 自動設置默認的開始和結束日期（當月第一天到最後一天）
+            const [year, month] = selectedMonth.split('-');
+            const firstDay = `${year}-${month}-01`;
+            const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+            const lastDate = `${year}-${month}-${lastDay}`;
+            
+            appState.budgets.monthly[selectedMonth].startDate = firstDay;
+            appState.budgets.monthly[selectedMonth].endDate = lastDate;
+            
+            // 更新表單
+            document.getElementById('totalBudget').value = 0;
+            document.getElementById('budgetStartDate').value = firstDay;
+            document.getElementById('budgetEndDate').value = lastDate;
+            
+            // 更新類別預算的月份選擇
+            const categoryMonthInput = document.getElementById('budgetCategoryMonth');
+            if (categoryMonthInput) {
+                categoryMonthInput.value = selectedMonth;
+                // 觸發變更事件以更新類別預算列表
+                const event = new Event('change');
+                categoryMonthInput.dispatchEvent(event);
+            }
+            
+            // 保存到本地存儲
+            saveToLocalStorage();
+            
+            showToast(`已創建 ${formatYearMonth(selectedMonth)} 的新預算設置`, 'success');
         }
+        
+        // 更新預算進度和類別預算列表
+        updateBudgetProgress();
     } catch (error) {
         console.error("載入月度預算時發生錯誤:", error);
         showToast('載入月度預算失敗: ' + error.message, 'error');
@@ -2944,6 +3112,8 @@ function updateBudgetWithIncome(incomeAmount) {
         // 不顯示錯誤通知，因為這是自動操作
     }
 }
+
+
 
 // 導出函數
 window.updateBudgetsUI = updateBudgetsUI;
