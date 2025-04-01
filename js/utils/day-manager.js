@@ -323,5 +323,54 @@ calculateDailyExpense: function() {
     onTransactionAdded: function() {
         // 更新頂部狀態欄
         this.updateTopStatusBar();
+    },
+    /**
+ * 檢查月度預算結束狀態
+ */
+checkMonthlyBudgetEnd: function(oldDate, newDate) {
+    // 檢查是否有月度預算
+    if (!appState.budgets.monthly) return;
+    
+    // 獲取舊日期和新日期的月份
+    const oldMonth = oldDate.substring(0, 7); // YYYY-MM
+    const newMonth = newDate.substring(0, 7); // YYYY-MM
+    
+    // 如果月份發生變化，檢查舊月份的預算
+    if (oldMonth !== newMonth && appState.budgets.monthly[oldMonth]) {
+        console.log(`月份從${oldMonth}變更為${newMonth}，檢查月度預算`);
+        
+        // 自動保存上個月的預算為歷史記錄
+        const monthlyBudget = appState.budgets.monthly[oldMonth];
+        
+        // 創建預算快照
+        const budgetSnapshot = {
+            id: generateId(),
+            period: oldMonth,
+            total: monthlyBudget.total,
+            categories: JSON.parse(JSON.stringify(monthlyBudget.categories)),
+            startDate: monthlyBudget.startDate,
+            endDate: monthlyBudget.endDate,
+            createdAt: new Date().toISOString()
+        };
+        
+        // 初始化歷史記錄數組
+        if (!appState.budgets.history) {
+            appState.budgets.history = [];
+        }
+        
+        // 檢查是否已有相同月份的歷史記錄
+        const existingIndex = appState.budgets.history.findIndex(h => h.period === oldMonth);
+        if (existingIndex === -1) {
+            // 添加新記錄
+            appState.budgets.history.push(budgetSnapshot);
+            
+            // 保存到本地存儲
+            saveToLocalStorage();
+            
+            // 顯示通知
+            showToast(`${formatYearMonth(oldMonth)}預算已自動保存為歷史記錄`, 'info');
+        }
     }
-};
+}
+    
+}
