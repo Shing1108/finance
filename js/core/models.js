@@ -20,17 +20,28 @@ const appState = {
     },
 
 
-    budgets: {
-        categories: [],
-        total: 0,
-        resetCycle: 'monthly',  // 'daily', 'weekly', 'monthly'
-        resetDay: 1,            // 月度重置日
-        autoCalculate: false,   // 是否自動計算總預算
-        startDate: null,        // 預算開始日期
-        endDate: null,          // 預算結束日期
-        history: [],            // 過往預算記錄
-        monthlySettings: {}     // 按月份設置的預算 { '2025-04': { total: 1000, categories: [{...}] } }
+    budgets = {
+    // 全局預算設置
+    resetCycle: 'monthly',  // 預算重置週期
+    resetDay: 1,            // 月度重置日
+    autoCalculate: true,    // 是否自動根據類別預算計算總預算
+    
+    // 當前活動預算
+    current: {
+        total: 0,           // 總預算
+        startDate: null,    // 開始日期
+        endDate: null,      // 結束日期
+        categories: []      // 類別預算列表
     },
+    
+    // 月度預算設置 - 關鍵部分，每個月都有獨立的預算
+    monthly: {
+        // 格式: '2025-04': { total: 1000, categories: [{...}], startDate: '2025-04-01', endDate: '2025-04-30' }
+    },
+    
+    // 預算歷史記錄
+    history: []
+},
     
     // 數據分析設定
     analytics: {
