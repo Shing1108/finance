@@ -3113,6 +3113,54 @@ function updateBudgetWithIncome(incomeAmount) {
     }
 }
 
+/**
+ * 設置未來月份預算
+ * @param {string} month 月份 (YYYY-MM 格式)
+ */
+function setupFutureMonth(month) {
+    console.log(`設置未來月份預算: ${month}`);
+    
+    // 設置月份選擇
+    const monthInput = document.getElementById('budgetMonth');
+    if (monthInput) {
+        monthInput.value = month;
+    }
+    
+    // 滾動到月度預算設置區域
+    const monthlyBudgetCard = document.querySelector('.budget-month-selector');
+    if (monthlyBudgetCard) {
+        monthlyBudgetCard.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // 檢查該月是否已有預算設置
+    if (appState.budgets.monthly && appState.budgets.monthly[month]) {
+        // 載入該月預算
+        loadMonthlyBudget();
+        showToast(`正在編輯 ${formatYearMonth(month)} 的預算`, 'info');
+    } else {
+        // 提示是否要複製上一個月的預算設置
+        const buttons = [
+            {
+                text: '複製上一個月',
+                action: () => copyPreviousMonthBudget(month),
+                type: 'primary'
+            },
+            {
+                text: '建立新預算',
+                action: () => {
+                    // 清空預算表單並載入新月份
+                    document.getElementById('budgetMonth').value = month;
+                    loadMonthlyBudget();
+                    showToast(`正在設置 ${formatYearMonth(month)} 的預算`, 'info');
+                },
+                type: 'secondary'
+            }
+        ];
+        
+        showOptionsDialog(`設置 ${formatYearMonth(month)} 預算`, '請選擇如何設置此月預算：', buttons);
+    }
+}
+
 
 
 // 導出函數
