@@ -175,7 +175,7 @@ button, input, select, textarea {
     transition: padding var(--transition-normal);
     -webkit-overflow-scrolling: touch;
     padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px) + 60px);
-    margin-top: var(--header-area-height); /* 為固定的頂部區域留出空間 */
+    /*margin-top: var(--header-area-height); 為固定的頂部區域留出空間 */
 }
 
 .top-area {
