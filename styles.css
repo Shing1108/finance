@@ -1,4 +1,4 @@
-/* styles.css - 針對移動設備優化版本 */
+/* styles.css - 針對移動設備優化版本 2.0 */
 
 /* 全局變量 */
 :root {
@@ -71,9 +71,10 @@
     --z-index-fixed-nav: 500;
     
     /* 導航欄高度 */
-    --nav-height: 50px;
-    --tabs-height: 50px;
-    --header-area-height: 130px; /* 包含頂部信息區域 */
+    --nav-height: 45px;
+    --tabs-height: 45px;
+    --header-area-height: 120px; /* 包含頂部信息區域 */
+    --bottom-bar-height: 40px; /* 減少底部欄高度 */
 }
 
 /* 深色模式變量 */
@@ -174,8 +175,8 @@ button, input, select, textarea {
     padding: var(--spacing-md);
     transition: padding var(--transition-normal);
     -webkit-overflow-scrolling: touch;
-    padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px) + 60px);
-    /*margin-top: var(--header-area-height); 為固定的頂部區域留出空間 */
+    padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px) + var(--bottom-bar-height));
+    margin-top: var(--header-area-height); /* 為固定的頂部區域留出空間 */
 }
 
 .top-area {
@@ -218,7 +219,7 @@ button, input, select, textarea {
 }
 
 .nav-tabs li {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
     cursor: pointer;
     border-bottom: 3px solid transparent;
     transition: border-color var(--transition-fast), color var(--transition-fast);
@@ -228,10 +229,12 @@ button, input, select, textarea {
     white-space: nowrap;
     user-select: none;
     height: 100%;
+    font-size: var(--font-size-xs);
 }
 
 .nav-tabs li i {
     margin-right: var(--spacing-xs);
+    font-size: var(--font-size-md);
 }
 
 .nav-tabs li.active {
@@ -300,7 +303,7 @@ button, input, select, textarea {
 
 .form-control {
     width: 100%;
-    padding: 10px var(--spacing-md);
+    padding: 8px var(--spacing-md);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     background-color: var(--card-bg);
@@ -308,6 +311,7 @@ button, input, select, textarea {
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
     appearance: none;
     -webkit-appearance: none; /* 確保在iOS Safari上移除原生樣式 */
+    font-size: var(--font-size-sm);
 }
 
 .form-control:focus {
@@ -376,7 +380,7 @@ button, input, select, textarea {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 10px var(--spacing-md);
+    padding: 6px var(--spacing-md);
     border: none;
     border-radius: var(--border-radius);
     font-weight: 500;
@@ -385,6 +389,9 @@ button, input, select, textarea {
     background-color: var(--primary-color);
     color: white;
     white-space: nowrap;
+    font-size: inherit;
+    height: auto;
+    min-height: 32px;
 }
 
 .btn i {
@@ -434,12 +441,13 @@ button, input, select, textarea {
 }
 
 .btn-sm {
-    padding: 5px 10px;
+    padding: 4px 8px;
     font-size: var(--font-size-xs);
+    min-height: 28px;
 }
 
 .btn-icon {
-    padding: 5px;
+    padding: 4px;
     font-size: var(--font-size-xs);
     border-radius: 50%;
     background: transparent;
@@ -447,6 +455,11 @@ button, input, select, textarea {
     border: none;
     cursor: pointer;
     transition: color var(--transition-fast), background-color var(--transition-fast);
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-icon:hover {
@@ -556,8 +569,8 @@ button, input, select, textarea {
 
 #toast-container {
     position: fixed;
-    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-    right: 20px;
+    bottom: calc(15px + env(safe-area-inset-bottom, 0px) + var(--bottom-bar-height));
+    right: 15px;
     z-index: var(--z-index-toast);
     display: flex;
     flex-direction: column;
@@ -680,11 +693,12 @@ button, input, select, textarea {
     gap: var(--spacing-sm);
     padding: var(--spacing-sm);
     margin-bottom: var(--spacing-sm);
-    overflow-x: auto;
+    overflow-x: hidden; /* 修改：禁止水平滾動 */
     scrollbar-width: none;
     -ms-overflow-style: none;
     -webkit-overflow-scrolling: touch;
     width: 100%;
+    justify-content: space-between; /* 修改：確保項目平均分布 */
 }
 
 .finances-snapshot::-webkit-scrollbar {
@@ -693,7 +707,7 @@ button, input, select, textarea {
 
 .snapshot-item {
     flex: 1;
-    min-width: 150px;
+    min-width: 0; /* 修改：允許收縮 */
     background-color: var(--card-bg);
     border-radius: var(--border-radius);
     padding: var(--spacing-sm);
@@ -724,11 +738,17 @@ button, input, select, textarea {
     font-size: var(--font-size-xs);
     color: var(--text-light);
     margin-bottom: var(--spacing-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .snapshot-value {
     font-size: var(--font-size-lg);
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* ===== 賬戶卡片 ===== */
@@ -879,8 +899,8 @@ button, input, select, textarea {
 }
 
 .transaction-icon {
-    width: 40px;
-    height: 40px;
+    width: 36px; /* 減小尺寸 */
+    height: 36px; /* 減小尺寸 */
     border-radius: 50%;
     background-color: rgba(var(--primary-color-rgb), 0.1);
     display: flex;
@@ -1001,14 +1021,14 @@ button, input, select, textarea {
 }
 
 .category-icon {
-    width: 60px;
-    height: 60px;
+    width: 50px; /* 減小尺寸 */
+    height: 50px; /* 減小尺寸 */
     border-radius: 50%;
     background-color: rgba(var(--primary-color-rgb), 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 20px; /* 減小尺寸 */
     margin-bottom: var(--spacing-sm);
 }
 
@@ -1041,7 +1061,7 @@ button, input, select, textarea {
     box-shadow: var(--box-shadow);
     width: calc(25% - var(--spacing-md));
     min-width: 200px;
-    height: 160px;
+    height: 150px; /* 減小高度 */
     transition: background-color var(--transition-fast);
 }
 
@@ -1053,10 +1073,11 @@ button, input, select, textarea {
     background: none;
     border: 2px dashed var(--border-color);
     border-radius: var(--border-radius);
-    padding: var(--spacing-md) var(--spacing-xl);
+    padding: var(--spacing-md) var(--spacing-lg);
     color: var(--text-light);
     cursor: pointer;
     transition: all var(--transition-fast);
+    font-size: var(--font-size-xs);
 }
 
 .btn-add:hover {
@@ -1071,9 +1092,9 @@ button, input, select, textarea {
 }
 
 .budget-progress-container {
-    height: 10px;
+    height: 8px; /* 減小高度 */
     background-color: #f2f2f2;
-    border-radius: 5px;
+    border-radius: 4px;
     margin: var(--spacing-sm) 0;
     overflow: hidden;
 }
@@ -1085,7 +1106,7 @@ button, input, select, textarea {
 .budget-progress-bar {
     height: 100%;
     background-color: var(--primary-color);
-    border-radius: 5px;
+    border-radius: 4px;
     width: 0;
     transition: width 1s ease-in-out;
 }
@@ -1118,8 +1139,8 @@ button, input, select, textarea {
 }
 
 .budget-category-icon {
-    width: 40px;
-    height: 40px;
+    width: 36px; /* 減小尺寸 */
+    height: 36px; /* 減小尺寸 */
     border-radius: 50%;
     background-color: rgba(var(--primary-color-rgb), 0.1);
     display: flex;
@@ -1188,9 +1209,9 @@ button, input, select, textarea {
 }
 
 .savings-goal-progress-bar {
-    height: 10px;
+    height: 8px; /* 減小高度 */
     background-color: #f2f2f2;
-    border-radius: 5px;
+    border-radius: 4px;
     margin-bottom: var(--spacing-sm);
     overflow: hidden;
 }
@@ -1202,7 +1223,7 @@ button, input, select, textarea {
 .savings-goal-progress-fill {
     height: 100%;
     background-color: var(--primary-color);
-    border-radius: 5px;
+    border-radius: 4px;
     width: 0;
     transition: width 1s ease-in-out;
 }
@@ -1274,7 +1295,7 @@ button, input, select, textarea {
 
 .app-actions {
     display: flex;
-    padding: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-sm); /* 減少內邊距 */
     background-color: var(--card-bg);
     border-top: 1px solid var(--border-color);
     box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
@@ -1283,13 +1304,14 @@ button, input, select, textarea {
     left: 0;
     right: 0;
     z-index: var(--z-index-fixed-nav);
-    padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--spacing-xs) + env(safe-area-inset-bottom, 0px));
+    height: calc(var(--bottom-bar-height) + env(safe-area-inset-bottom, 0px));
 }
 
 .snapshot-btn {
     border: none;
     background: none;
-    padding: var(--spacing-md);
+    padding: var(--spacing-xs) var(--spacing-sm); /* 減少內邊距 */
     border-radius: var(--border-radius);
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -1297,6 +1319,9 @@ button, input, select, textarea {
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: var(--font-size-xs);
+    min-height: 0; /* 移除最小高度 */
+    height: auto;
 }
 
 .snapshot-btn:hover {
@@ -1322,6 +1347,8 @@ button, input, select, textarea {
 
 .view-toggle .btn {
     border-radius: 0;
+    font-size: var(--font-size-xs);
+    padding: 4px 8px;
 }
 
 .view-toggle .btn:first-child {
@@ -1341,13 +1368,14 @@ button, input, select, textarea {
 }
 
 .tab-button {
-    padding: var(--spacing-sm) var(--spacing-md);
+    padding: var(--spacing-xs) var(--spacing-md);
     background: none;
     border: none;
     border-bottom: 2px solid transparent;
     color: var(--text-light);
     cursor: pointer;
     transition: all var(--transition-fast);
+    font-size: var(--font-size-xs);
 }
 
 .tab-button.active {
@@ -1368,21 +1396,21 @@ button, input, select, textarea {
 }
 
 .icon-selector .icon-preview {
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background-color: var(--border-color);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 20px;
     margin-right: var(--spacing-md);
 }
 
 .icon-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-    gap: var(--spacing-sm);
+    grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+    gap: var(--spacing-xs);
     margin-top: var(--spacing-sm);
     max-height: 200px;
     overflow-y: auto;
@@ -1390,8 +1418,8 @@ button, input, select, textarea {
 }
 
 .icon-item {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1399,6 +1427,7 @@ button, input, select, textarea {
     border-radius: 50%;
     cursor: pointer;
     transition: all var(--transition-fast);
+    font-size: var(--font-size-sm);
 }
 
 .icon-item:hover {
@@ -1469,24 +1498,24 @@ button, input, select, textarea {
 
 @media (max-width: 768px) {
     :root {
-        --header-area-height: 120px; /* 減小移動設備上的頂部區域高度 */
+        --header-area-height: 110px; /* 減小移動設備上的頂部區域高度 */
     }
     
     .finances-snapshot {
-        overflow-x: auto;
         width: 100%;
-        justify-content: flex-start;
-        padding: var(--spacing-sm) 0;
+        justify-content: space-between;
+        overflow-x: hidden; /* 確保禁止滾動 */
     }
     
     .snapshot-item {
-        min-width: 150px;
-        flex: 0 0 auto;
+        min-width: 0; /* 確保可以收縮 */
+        flex: 1;
     }
     
     .main-content {
         padding: var(--spacing-sm);
-        padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px) + 60px);
+        padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px) + var(--bottom-bar-height));
+        margin-top: var(--header-area-height); /* 更新頂部區域空間 */
     }
     
     .card-header {
@@ -1542,8 +1571,8 @@ button, input, select, textarea {
     }
     
     .nav-tabs li {
-        padding: var(--spacing-sm);
-        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 10px;
     }
     
     .transaction-date,
@@ -1565,19 +1594,15 @@ button, input, select, textarea {
     
     /* 修復iOS底部的安全區域問題 */
     .app-actions {
-        padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom, 0px));
-    }
-    
-    /* 改善財務快照區域的可見性 */
-    .finances-snapshot {
-        padding-left: var(--spacing-sm);
-        padding-right: var(--spacing-sm);
+        padding-bottom: calc(var(--spacing-xs) + env(safe-area-inset-bottom, 0px));
+        height: calc(var(--bottom-bar-height) + env(safe-area-inset-bottom, 0px));
     }
 }
 
 @media (max-width: 480px) {
     :root {
-        --header-area-height: 110px; /* 進一步減小最小屏幕上的頂部區域高度 */
+        --header-area-height: 100px; /* 進一步減小最小屏幕上的頂部區域高度 */
+        --bottom-bar-height: 36px; /* 減少底部欄高度 */
     }
     
     .category-card,
@@ -1587,6 +1612,7 @@ button, input, select, textarea {
     
     .finances-snapshot {
         flex-wrap: nowrap;
+        overflow-x: hidden; /* 確保禁止滾動 */
     }
     
     .nav-tabs li i {
@@ -1595,8 +1621,8 @@ button, input, select, textarea {
     
     .nav-tabs li {
         flex-direction: column;
-        font-size: 10px;
-        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 9px;
+        padding: var(--spacing-xs) var(--spacing-xs);
     }
     
     .nav-tabs li i {
@@ -1604,10 +1630,17 @@ button, input, select, textarea {
         margin-bottom: 2px;
     }
     
-    /* 改善小螢幕上的表單元素可點擊區域 */
-    .form-control, .btn, select, 
-    input[type="date"], input[type="time"] {
-        min-height: 44px;
+    /* 更小的按鈕尺寸 */
+    .btn {
+        padding: 4px var(--spacing-sm);
+        min-height: 28px;
+        font-size: var(--font-size-xs);
+    }
+    
+    .btn-sm {
+        padding: 3px 6px;
+        min-height: 24px;
+        font-size: 10px;
     }
 }
 
@@ -1726,7 +1759,7 @@ button, input, select, textarea {
 /* ===== 頂部固定區域樣式 ===== */
 .top-info-area {
     width: 100%;
-    padding: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-sm); /* 減少內邊距 */
     background-color: var(--bg-color);
     position: relative;
     z-index: var(--z-index-fixed-nav);
@@ -1757,8 +1790,7 @@ body.ios {
 .main-content, 
 .modal-body, 
 .transactions-list, 
-.icon-grid, 
-.finances-snapshot {
+.icon-grid {
     -webkit-overflow-scrolling: touch;
 }
 
@@ -1776,12 +1808,6 @@ body.ios {
     .category-actions, 
     .account-actions {
         opacity: 1;
-    }
-    
-    /* 增加可點擊元素的交互區域 */
-    button, a, .btn, .nav-tabs li, .tab-button {
-        min-height: 44px;
-        padding: var(--spacing-sm) var(--spacing-md);
     }
 }
 
