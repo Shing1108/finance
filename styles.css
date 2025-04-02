@@ -1,4 +1,4 @@
-/* styles.css - 優化版本 */
+/* styles.css - 針對移動設備優化版本 */
 
 /* 全局變量 */
 :root {
@@ -68,6 +68,12 @@
     --z-index-modal: 1000;
     --z-index-toast: 2000;
     --z-index-loading: 3000;
+    --z-index-fixed-nav: 500;
+    
+    /* 導航欄高度 */
+    --nav-height: 50px;
+    --tabs-height: 50px;
+    --header-area-height: 130px; /* 包含頂部信息區域 */
 }
 
 /* 深色模式變量 */
@@ -104,12 +110,14 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
 
 html {
     font-size: 16px;
     height: 100%;
     width: 100%;
+    overflow: hidden;
 }
 
 body {
@@ -120,7 +128,7 @@ body {
     line-height: 1.6;
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100%;
     width: 100%;
     overflow: hidden;
     transition: background-color var(--transition-normal), color var(--transition-normal);
@@ -128,6 +136,7 @@ body {
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    position: relative;
 }
 
 a {
@@ -145,8 +154,6 @@ button, input, select, textarea {
     font-size: inherit;
     line-height: inherit;
 }
-
-/* 檔案大小,分隔文件內容為部分 */
 
 /* ===== 佈局組件 ===== */
 
@@ -167,12 +174,32 @@ button, input, select, textarea {
     padding: var(--spacing-md);
     transition: padding var(--transition-normal);
     -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px) + 60px);
+    margin-top: var(--header-area-height); /* 為固定的頂部區域留出空間 */
+}
+
+.top-area {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--bg-color);
+    z-index: var(--z-index-fixed-nav);
+    padding-top: env(safe-area-inset-top, 0px);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .top-navigation {
     background-color: var(--card-bg);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    z-index: 10;
+    z-index: var(--z-index-fixed-nav);
+    width: 100%;
+    height: var(--tabs-height);
+    position: relative;
 }
 
 .nav-tabs {
@@ -183,6 +210,7 @@ button, input, select, textarea {
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE and Edge */
     white-space: nowrap;
+    height: 100%;
 }
 
 .nav-tabs::-webkit-scrollbar {
@@ -199,6 +227,7 @@ button, input, select, textarea {
     align-items: center;
     white-space: nowrap;
     user-select: none;
+    height: 100%;
 }
 
 .nav-tabs li i {
@@ -277,7 +306,8 @@ button, input, select, textarea {
     background-color: var(--card-bg);
     color: var(--text-color);
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-    -webkit-appearance: none;
+    appearance: none;
+    -webkit-appearance: none; /* 確保在iOS Safari上移除原生樣式 */
 }
 
 .form-control:focus {
@@ -441,6 +471,7 @@ button, input, select, textarea {
     transition: opacity var(--transition-normal);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px) 0;
 }
 
 .modal.active {
@@ -454,13 +485,15 @@ button, input, select, textarea {
     box-shadow: var(--box-shadow);
     width: 90%;
     max-width: 600px;
-    max-height: 90vh;
+    max-height: 85vh;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     transition: transform var(--transition-normal);
     transform: scale(0.9);
     position: relative;
     display: flex;
     flex-direction: column;
+    margin: auto;
 }
 
 .modal.active .modal-content {
@@ -473,6 +506,10 @@ button, input, select, textarea {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: sticky;
+    top: 0;
+    background-color: var(--card-bg);
+    z-index: 1;
 }
 
 .modal-header h3 {
@@ -499,6 +536,7 @@ button, input, select, textarea {
 .modal-body {
     padding: var(--spacing-md);
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     flex: 1;
 }
 
@@ -508,13 +546,17 @@ button, input, select, textarea {
     display: flex;
     justify-content: flex-end;
     gap: var(--spacing-sm);
+    position: sticky;
+    bottom: 0;
+    background-color: var(--card-bg);
+    z-index: 1;
 }
 
 /* ===== Toast通知 ===== */
 
 #toast-container {
     position: fixed;
-    bottom: 20px;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     right: 20px;
     z-index: var(--z-index-toast);
     display: flex;
@@ -614,6 +656,7 @@ button, input, select, textarea {
     align-items: center;
     justify-content: center;
     transition: opacity var(--transition-normal);
+    padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px) 0;
 }
 
 .spinner {
@@ -641,6 +684,7 @@ button, input, select, textarea {
     scrollbar-width: none;
     -ms-overflow-style: none;
     -webkit-overflow-scrolling: touch;
+    width: 100%;
 }
 
 .finances-snapshot::-webkit-scrollbar {
@@ -1234,8 +1278,12 @@ button, input, select, textarea {
     background-color: var(--card-bg);
     border-top: 1px solid var(--border-color);
     box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
-    position: relative;
-    z-index: 5;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--z-index-fixed-nav);
+    padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom, 0px));
 }
 
 .snapshot-btn {
@@ -1338,6 +1386,7 @@ button, input, select, textarea {
     margin-top: var(--spacing-sm);
     max-height: 200px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .icon-item {
@@ -1419,8 +1468,8 @@ button, input, select, textarea {
 /* ===== 響應式設計 ===== */
 
 @media (max-width: 768px) {
-    body {
-        padding-bottom: 70px; 
+    :root {
+        --header-area-height: 120px; /* 減小移動設備上的頂部區域高度 */
     }
     
     .finances-snapshot {
@@ -1435,16 +1484,9 @@ button, input, select, textarea {
         flex: 0 0 auto;
     }
     
-    .app-actions {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 10;
-    }
-    
     .main-content {
         padding: var(--spacing-sm);
+        padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px) + 60px);
     }
     
     .card-header {
@@ -1520,9 +1562,24 @@ button, input, select, textarea {
     .category-actions {
         opacity: 1;
     }
+    
+    /* 修復iOS底部的安全區域問題 */
+    .app-actions {
+        padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom, 0px));
+    }
+    
+    /* 改善財務快照區域的可見性 */
+    .finances-snapshot {
+        padding-left: var(--spacing-sm);
+        padding-right: var(--spacing-sm);
+    }
 }
 
 @media (max-width: 480px) {
+    :root {
+        --header-area-height: 110px; /* 進一步減小最小屏幕上的頂部區域高度 */
+    }
+    
     .category-card,
     .category-add-card {
         width: 100%;
@@ -1545,6 +1602,12 @@ button, input, select, textarea {
     .nav-tabs li i {
         font-size: var(--font-size-md);
         margin-bottom: 2px;
+    }
+    
+    /* 改善小螢幕上的表單元素可點擊區域 */
+    .form-control, .btn, select, 
+    input[type="date"], input[type="time"] {
+        min-height: 44px;
     }
 }
 
@@ -1613,6 +1676,7 @@ button, input, select, textarea {
     .main-content {
         overflow: visible;
         padding: 0;
+        margin-top: 0; /* 移除頂部區域空間 */
     }
     
     .card {
@@ -1657,4 +1721,82 @@ button, input, select, textarea {
 
 .slide-up {
     animation: slideUp var(--transition-normal) forwards;
+}
+
+/* ===== 頂部固定區域樣式 ===== */
+.top-info-area {
+    width: 100%;
+    padding: var(--spacing-sm);
+    background-color: var(--bg-color);
+    position: relative;
+    z-index: var(--z-index-fixed-nav);
+}
+
+/* 確保頁面內容不會被固定頂部遮擋 */
+html.ios {
+    height: -webkit-fill-available;
+}
+
+body.ios {
+    min-height: -webkit-fill-available;
+}
+
+/* 修復可能的Safari滾動問題 */
+* {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 確保模態框在 iOS Safari 上正確顯示 */
+.modal {
+    position: fixed;
+    height: 100%;
+    -webkit-transform: translateZ(0);
+}
+
+/* 確保所有可滾動區域在iOS上有流暢的滾動體驗 */
+.main-content, 
+.modal-body, 
+.transactions-list, 
+.icon-grid, 
+.finances-snapshot {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 確保導航欄和底部操作欄在iOS上固定 */
+.top-area, 
+.app-actions {
+    will-change: transform;
+    -webkit-transform: translateZ(0);
+}
+
+/* 增強移動設備上的交互體驗 */
+@media (hover: none) {
+    /* 在觸摸設備上始終顯示交互元素 */
+    .transaction-actions, 
+    .category-actions, 
+    .account-actions {
+        opacity: 1;
+    }
+    
+    /* 增加可點擊元素的交互區域 */
+    button, a, .btn, .nav-tabs li, .tab-button {
+        min-height: 44px;
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+}
+
+/* 確保戶口管理下方文字顯示正常 */
+.account-list-item,
+.account-info,
+.account-name,
+.account-type-currency,
+.account-details {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.account-name,
+.transaction-category {
+    word-break: break-word;
+    white-space: normal;
 }
