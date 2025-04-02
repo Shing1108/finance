@@ -275,15 +275,8 @@ async function getDataFromFirebase() {
             // 獲取數據
             const data = doc.data();
             
-            // 檢查是否有有效數據並且是首次登入後的自動同步
-            const autoSync = localStorage.getItem('autoSync') === 'true';
-            
             // 檢查是否有有效數據
-            if ((data.accounts || data.transactions || data.categories) && autoSync) {
-                // 自動使用本地數據，避免彈出選擇對話框
-                await syncToFirebase();
-                console.log("自動使用本地數據並同步到雲端");
-            } else if (data.accounts || data.transactions || data.categories) {
+            if (data.accounts || data.transactions || data.categories) {
                 // 詢問用戶如何處理數據
                 const result = await new Promise((resolve) => {
                     showDataMergeDialog(resolve);
