@@ -28,6 +28,19 @@ const UiCategories = {
             this.saveCategory();
         });
         
+        // 添加到 init() 函数中
+document.querySelector('#addCategoryModal .close-button').addEventListener('click', () => {
+    UiCore.closeModal('addCategoryModal');
+});
+
+// 如果模态窗口中有取消按钮，也添加：
+const cancelButton = document.querySelector('#addCategoryModal .cancel-button');
+if (cancelButton) {
+    cancelButton.addEventListener('click', () => {
+        UiCore.closeModal('addCategoryModal');
+    });
+}
+        
         // 初始化圖標選擇
         this._initIconSelector();
         
