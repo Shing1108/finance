@@ -655,8 +655,9 @@ const Store = {
         };
     },
     
-    // 取得所有預算使用狀況
-    getAllBudgetUsage: function(period = 'monthly', year = new Date().getFullYear(), month, quarter) {
+    // 在getAllBudgetUsage方法中添加更多的安全檢查
+getAllBudgetUsage: function(period = 'monthly', year = new Date().getFullYear(), month, quarter) {
+    try {
         // 確保 this.budgets 是數組
         if (!this.budgets || !Array.isArray(this.budgets)) {
             console.warn('警告: getAllBudgetUsage 中 budgets 不是數組，初始化為空數組');
@@ -669,8 +670,19 @@ const Store = {
         
         const budgets = this.getBudgets(period, year, currentMonth, currentQuarter);
         
-        return budgets.map(budget => this.getBudgetUsage(budget.id));
-    },
+        return budgets.map(budget => {
+            try {
+                return this.getBudgetUsage(budget.id);
+            } catch (err) {
+                console.error(`處理預算 ${budget.id} 時出錯:`, err);
+                return null;
+            }
+        }).filter(Boolean); // 過濾掉null值
+    } catch (error) {
+        console.error('獲取所有預算使用狀況時出錯:', error);
+        return [];
+    }
+},
     
     // 匯出資料
     exportData: function() {
