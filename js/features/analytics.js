@@ -8,8 +8,18 @@ const AnalyticsManager = {
      */
     init: function() {
         this._bindEvents();
+    // 延遲執行，確保DOM已完全載入
+    setTimeout(() => {
+        // 強制清除載入中狀態
+        document.querySelectorAll('.chart-container .chart-loading').forEach(el => {
+            el.style.display = 'none';
+        });
         
-        console.log('資料分析功能初始化完成');
+        // 更新圖表
+        this.updateCharts('month');
+    }, 500);
+    
+    console.log('資料分析功能初始化完成');
     },
     
     /**
