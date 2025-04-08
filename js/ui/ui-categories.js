@@ -51,8 +51,8 @@ _initCategoryTabs: function() {
     document.getElementById('incomeCategoryTabButton').addEventListener('click', () => {
         document.getElementById('incomeCategoryTabButton').classList.add('active');
         document.getElementById('expenseCategoryTabButton').classList.remove('active');
-        document.getElementById('incomeCategoryTab').style.display = 'block';
-        document.getElementById('expenseCategoryTab').style.display = 'none';
+        document.getElementById('incomeCategoryTab').style.display = 'block;visibility: visible; opacity: 1;';
+        document.getElementById('expenseCategoryTab').style.display = 'none;visibility: visible; opacity: 1;';
         this.currentType = 'income';
         
         // 如果有打開的編輯模態框，則關閉它
@@ -64,8 +64,8 @@ _initCategoryTabs: function() {
     document.getElementById('expenseCategoryTabButton').addEventListener('click', () => {
         document.getElementById('incomeCategoryTabButton').classList.remove('active');
         document.getElementById('expenseCategoryTabButton').classList.add('active');
-        document.getElementById('incomeCategoryTab').style.display = 'none';
-        document.getElementById('expenseCategoryTab').style.display = 'block';
+        document.getElementById('incomeCategoryTab').style.display = 'none;visibility: visible; opacity: 1;';
+        document.getElementById('expenseCategoryTab').style.display = 'block;visibility: visible; opacity: 1;';
         this.currentType = 'expense';
         
         // 如果有打開的編輯模態框，則關閉它
