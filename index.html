@@ -859,5 +859,102 @@
         </button>
     </div>
     <div class="safe-area-inset-bottom"></div>
+    
+    <script>
+// 確保在DOM完全載入後初始化所有UI組件
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('開始初始化UI組件');
+    
+    // 檢查必要的UI模塊是否存在
+    if (typeof UiTransactions === 'undefined') {
+        console.error('UiTransactions未定義');
+    } else {
+        console.log('初始化UiTransactions');
+        UiTransactions.init();
+    }
+    
+    if (typeof UiCategories === 'undefined') {
+        console.error('UiCategories未定義');
+    } else {
+        console.log('初始化UiCategories');
+        UiCategories.init();
+    }
+    
+    // 強制確保表單顯示正確
+    function fixTabDisplay() {
+        console.log('修復表單顯示');
+        
+        // 交易表單修復
+        const incomeTabBtn = document.getElementById('incomeTabButton');
+        const expenseTabBtn = document.getElementById('expenseTabButton');
+        const incomeTab = document.getElementById('incomeTab');
+        const expenseTab = document.getElementById('expenseTab');
+        
+        if (incomeTabBtn && expenseTabBtn && incomeTab && expenseTab) {
+            console.log('找到交易表單元素，重新綁定事件');
+            
+            // 確保收入表單顯示
+            if (incomeTabBtn.classList.contains('active')) {
+                incomeTab.style.display = 'block';
+                expenseTab.style.display = 'none';
+            }
+            
+            // 確保支出表單能夠顯示
+            expenseTabBtn.addEventListener('click', function() {
+                console.log('點擊支出按鈕');
+                incomeTabBtn.classList.remove('active');
+                expenseTabBtn.classList.add('active');
+                incomeTab.style.display = 'none';
+                expenseTab.style.display = 'block';
+            });
+        }
+        
+        // 類別表單修復
+        const incomeCatBtn = document.getElementById('incomeCategoryTabButton');
+        const expenseCatBtn = document.getElementById('expenseCategoryTabButton');
+        const incomeCatTab = document.getElementById('incomeCategoryTab');
+        const expenseCatTab = document.getElementById('expenseCategoryTab');
+        
+        if (incomeCatBtn && expenseCatBtn && incomeCatTab && expenseCatTab) {
+            console.log('找到類別表單元素，重新綁定事件');
+            
+            // 確保類別切換正確
+            expenseCatBtn.addEventListener('click', function() {
+                console.log('點擊支出類別按鈕');
+                incomeCatBtn.classList.remove('active');
+                expenseCatBtn.classList.add('active');
+                incomeCatTab.style.display = 'none';
+                expenseCatTab.style.display = 'block';
+                if (typeof UiCategories !== 'undefined') {
+                    UiCategories.currentType = 'expense';
+                }
+            });
+        }
+        
+        // 修復類別添加按鈕
+        const addIncomeCatBtn = document.getElementById('addIncomeCategoryButton');
+        const addExpenseCatBtn = document.getElementById('addExpenseCategoryButton');
+        
+        if (addIncomeCatBtn && typeof UiCategories !== 'undefined') {
+            console.log('重新綁定收入類別添加按鈕');
+            addIncomeCatBtn.addEventListener('click', function() {
+                console.log('點擊添加收入類別按鈕');
+                UiCategories.showAddCategoryModal('income');
+            });
+        }
+        
+        if (addExpenseCatBtn && typeof UiCategories !== 'undefined') {
+            console.log('重新綁定支出類別添加按鈕');
+            addExpenseCatBtn.addEventListener('click', function() {
+                console.log('點擊添加支出類別按鈕');
+                UiCategories.showAddCategoryModal('expense');
+            });
+        }
+    }
+    
+    // 給DOM一點時間完全渲染，然後應用修復
+    setTimeout(fixTabDisplay, 500);
+});
+</script>
 </body>
 </html>
