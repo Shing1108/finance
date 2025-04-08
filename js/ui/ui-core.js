@@ -156,43 +156,27 @@ const UiCore = {
         this.showModal('settingsModal');
     },
     
-    showModal: function(modalId) {
-        const modal = document.getElementById(modalId);
-        if (!modal) {
-            console.error('找不到模態框:', modalId);
-            return;
-        }
-        
-        console.log('顯示模態框:', modalId);
-        modal.style.display = 'block';
-        
-        // 綁定關閉按鈕
-        const closeBtn = modal.querySelector('.close-button');
-        const cancelBtn = modal.querySelector('.modal-cancel');
-        
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                this.closeModal(modalId);
-            });
-        }
-        
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => {
-                this.closeModal(modalId);
-            });
-        }
-    },
+showModal: function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) {
+        console.error('找不到模態框:', modalId);
+        return;
+    }
     
-   /**
-     * 關閉模態框
-     */
-    closeModal: function(modalId) {
-        const modal = document.getElementById(modalId);
-        if (!modal) return;
-        
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
-    },
+    console.log('顯示模態框:', modalId);
+    modal.style.display = 'block';
+    modal.classList.add('active');  // 添加 active 類
+    document.body.style.overflow = 'hidden'; // 防止背景滾動
+},
+
+closeModal: function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    
+    modal.style.display = 'none';  // 設置 display 為 none
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+},
     
     /**
      * 切換頁籤內容
