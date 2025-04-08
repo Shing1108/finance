@@ -46,6 +46,10 @@ const DayManager = {
             return false;
         }
         
+        if (!confirm('確認要開啟新的一天嗎？')){
+            return false;
+            }
+        
         // 更新當前日期為今天
         this.currentDate = today;
         Utils.saveToLocalStorage('currentDate', this.currentDate);
