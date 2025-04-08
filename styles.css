@@ -475,7 +475,7 @@ button, input, select, textarea {
 .modal {
     display: none;
     position: fixed;
-    top: 0;
+    top: A0;
     left: 0;
     width: 100%;
     height: 100%;
@@ -492,7 +492,7 @@ button, input, select, textarea {
 
 .modal.active {
     opacity: 1;
-    display: flex;
+    display: block;
 }
 
 .modal-content {
@@ -510,6 +510,16 @@ button, input, select, textarea {
     display: flex;
     flex-direction: column;
     margin: auto;
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 15% auto;
+    padding: 20px;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 5px;
+    position: relative;
 }
 
 .modal.active .modal-content {
