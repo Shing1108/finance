@@ -190,7 +190,7 @@ closeModal: function(modalId) {
     if (modal) {
         modal.style.cssText = 'display: none !important;';
     }
-}
+},
     
     /**
      * 切換頁籤內容
