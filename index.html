@@ -862,32 +862,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 頁面載入後清除所有載入中提示
-document.addEventListener('DOMContentLoaded', function() {
-    // 第一次清除
-    clearLoadingIndicators();
-    
-    // 延遲多次清除以確保完全移除
-    setTimeout(clearLoadingIndicators, 500);
-    setTimeout(clearLoadingIndicators, 1000);
-    setTimeout(clearLoadingIndicators, 2000);
-    
-    // 滾動時也清除
-    window.addEventListener('scroll', clearLoadingIndicators);
-    
-    // 標籤切換時也清除
-    document.querySelectorAll('.nav-tabs li').forEach(tab => {
-        tab.addEventListener('click', function() {
-            setTimeout(clearLoadingIndicators, 500);
-        });
-    });
-    
-    function clearLoadingIndicators() {
-        document.querySelectorAll('.chart-loading, .spinner, .insight-loading').forEach(el => {
-            el.style.display = 'none';
-        });
-    }
-});
 </script>
 
 
