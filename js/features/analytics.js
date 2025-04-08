@@ -89,8 +89,20 @@ _bindEvents: function() {
     /**
      * 更新所有圖表
      */
-    updateCharts: function(period = 'month', startDate, endDate) {
-        // 根據期間計算日期範圍
+        updateCharts: function(period = 'month', startDate, endDate) {
+    // 檢查Chart庫是否可用
+    if (typeof Chart === 'undefined') {
+        console.error("Chart.js庫未加載，圖表功能將無法正常工作");
+        // 顯示錯誤信息在圖表容器中
+        const containers = ['trendChart', 'categoryDistribution', 'comparisonChart'];
+        containers.forEach(id => {
+            const container = document.getElementById(id);
+            if (container) {
+                container.innerHTML = '<p class="error-message">圖表庫未加載，請檢查網絡連接</p>';
+            }
+        });
+        return;
+    }
         let dateRange;
         
         switch (period) {
