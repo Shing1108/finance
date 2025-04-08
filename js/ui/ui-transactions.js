@@ -57,8 +57,8 @@ _initTransactionTabs: function() {
     document.getElementById('incomeTabButton').addEventListener('click', () => {
         document.getElementById('incomeTabButton').classList.add('active');
         document.getElementById('expenseTabButton').classList.remove('active');
-        document.getElementById('incomeTab').style.display = 'block';
-        document.getElementById('expenseTab').style.display = 'none';
+        document.getElementById('incomeTab').style.display = 'block;visibility: visible; opacity: 1;';
+        document.getElementById('expenseTab').style.display = 'none;visibility: visible; opacity: 1;';
         
         // 重置支出表單
         this._resetExpenseForm();
