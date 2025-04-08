@@ -183,14 +183,16 @@ const UiCore = {
         }
     },
     
-// 这应该在 UiCore.js 中
-// 确保它正确实现：
-closeModal: function(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.cssText = 'display: none !important;';
-    }
-}
+   /**
+     * 關閉模態框
+     */
+    closeModal: function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    },
     
     /**
      * 切換頁籤內容
