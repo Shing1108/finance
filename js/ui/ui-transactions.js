@@ -55,7 +55,15 @@ const UiTransactions = {
         
         const incomeTabBtn = document.getElementById('incomeTabButton');
         const expenseTabBtn = document.getElementById('expenseTabButton');
- I
+   // 確保初始狀態下活動表單正確顯示
+   const incomeTab = document.getElementById('incomeTab');
+   const expenseTab = document.getElementById('expenseTab');
+   if (incomeTab && expenseTab) {
+       incomeTab.style.cssText = 'display: block; visibility: visible; opacity: 1;';
+       expenseTab.style.cssText = 'display: none;display: none; visibility: visible; opacity: 1;';
+   }
+   
+   console.log('交易記錄UI初始化完成');
         
         incomeTabBtn.addEventListener('click', () => {
             console.log('切換到收入頁籤');
