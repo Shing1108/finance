@@ -15,65 +15,76 @@ const AnalyticsManager = {
     /**
      * 綁定事件
      */
-    _bindEvents: function() {
-        // 期間選擇器 - 添加元素存在检查
-        document.querySelectorAll('.period-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                // 移除所有活動狀態
-                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-                
-                // 添加活動狀態
-                btn.classList.add('active');
-                
-                // 获取自定义期间元素，并添加存在检查
-                const customPeriodElement = document.querySelector('.custom-period');
-                
-                // 顯示/隱藏自定義期間
-                if (btn.dataset.period === 'custom' && customPeriodElement) {
+_bindEvents: function() {
+    // 使用更明確的選擇器以避免衝突
+    const analyticsContent = document.getElementById('dataAnalytics');
+    if (!analyticsContent) {
+        console.error("找不到分析內容容器");
+        return;
+    }
+    
+    // 只綁定分析頁面內的期間按鈕
+    const periodButtons = analyticsContent.querySelectorAll('.period-btn');
+    periodButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // 移除所有活動狀態（只在當前容器內）
+            analyticsContent.querySelectorAll('.period-btn').forEach(b => 
+                b.classList.remove('active')
+            );
+            
+            // 添加活動狀態
+            btn.classList.add('active');
+            
+            // 获取自定义期间元素（只在當前容器內）
+            const customPeriodElement = analyticsContent.querySelector('.custom-period');
+            
+            // 顯示/隱藏自定義期間
+            if (customPeriodElement) {
+                if (btn.dataset.period === 'custom') {
                     customPeriodElement.style.display = 'flex';
-                } else if (customPeriodElement) {
+                } else {
                     customPeriodElement.style.display = 'none';
-                    
                     // 更新圖表
                     this.updateCharts(btn.dataset.period);
                 }
-            });
+            }
         });
-        
-        // 應用自定義期間按鈕 - 添加元素存在检查
-        const applyCustomBtn = document.getElementById('applyCustomPeriod');
-        if (applyCustomBtn) {
-            applyCustomBtn.addEventListener('click', () => {
-                const startDateElem = document.getElementById('analyticsStartDate');
-                const endDateElem = document.getElementById('analyticsEndDate');
-                
-                if (!startDateElem || !endDateElem) return;
-                
-                const startDate = startDateElem.value;
-                const endDate = endDateElem.value;
-                
-                if (!startDate || !endDate) {
-                    if (typeof Utils !== 'undefined' && Utils.showToast) {
-                        Utils.showToast('請選擇起始和結束日期', 'error');
-                    } else {
-                        alert('請選擇起始和結束日期');
-                    }
-                    return;
+    });
+    
+    // 應用自定義期間按鈕
+    const applyCustomBtn = analyticsContent.querySelector('#applyCustomPeriod');
+    if (applyCustomBtn) {
+        applyCustomBtn.addEventListener('click', () => {
+            const startDateElem = analyticsContent.querySelector('#analyticsStartDate');
+            const endDateElem = analyticsContent.querySelector('#analyticsEndDate');
+            
+            if (!startDateElem || !endDateElem) return;
+            
+            const startDate = startDateElem.value;
+            const endDate = endDateElem.value;
+            
+            if (!startDate || !endDate) {
+                if (typeof Utils !== 'undefined' && Utils.showToast) {
+                    Utils.showToast('請選擇起始和結束日期', 'error');
+                } else {
+                    alert('請選擇起始和結束日期');
                 }
-                
-                if (new Date(startDate) > new Date(endDate)) {
-                    if (typeof Utils !== 'undefined' && Utils.showToast) {
-                        Utils.showToast('起始日期不能晚於結束日期', 'error');
-                    } else {
-                        alert('起始日期不能晚於結束日期');
-                    }
-                    return;
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                if (typeof Utils !== 'undefined' && Utils.showToast) {
+                    Utils.showToast('起始日期不能晚於結束日期', 'error');
+                } else {
+                    alert('起始日期不能晚於結束日期');
                 }
-                
-                this.updateCharts('custom', startDate, endDate);
-            });
-        }
-    },
+                return;
+            }
+            
+            this.updateCharts('custom', startDate, endDate);
+        });
+    }
+},
     
     /**
      * 更新所有圖表
