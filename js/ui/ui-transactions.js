@@ -50,30 +50,35 @@ const UiTransactions = {
         console.log('交易記錄UI初始化完成');
     },
     
-  /**
- * 初始化收入/支出頁籤
- */
-_initTransactionTabs: function() {
-    document.getElementById('incomeTabButton').addEventListener('click', () => {
-        document.getElementById('incomeTabButton').classList.add('active');
-        document.getElementById('expenseTabButton').classList.remove('active');
-        document.getElementById('incomeTab').style.display = 'block;visibility: visible; opacity: 1;';
-        document.getElementById('expenseTab').style.display = 'none;visibility: visible; opacity: 1;';
+    _initTransactionTabs: function() {
+        console.log('初始化交易表單頁籤');
         
-        // 重置支出表單
-        this._resetExpenseForm();
-    });
-    
-    document.getElementById('expenseTabButton').addEventListener('click', () => {
-        document.getElementById('incomeTabButton').classList.remove('active');
-        document.getElementById('expenseTabButton').classList.add('active');
-        document.getElementById('incomeTab').style.display = 'none';
-        document.getElementById('expenseTab').style.display = 'block';
+        const incomeTabBtn = document.getElementById('incomeTabButton');
+        const expenseTabBtn = document.getElementById('expenseTabButton');
+ I
         
-        // 重置收入表單
-        this._resetIncomeForm();
-    });
-},
+        incomeTabBtn.addEventListener('click', () => {
+            console.log('切換到收入頁籤');
+            incomeTabBtn.classList.add('active');
+            expenseTabBtn.classList.remove('active');
+            incomeTab.style.display = 'block';
+            expenseTab.style.display = 'none';
+            
+            // 重置支出表單
+            this._resetExpenseForm();
+        });
+        
+        expenseTabBtn.addEventListener('click', () => {
+            console.log('切換到支出頁籤');
+            incomeTabBtn.classList.remove('active');
+            expenseTabBtn.classList.add('active');
+            incomeTab.style.display = 'none';
+            expenseTab.style.display = 'block';
+            
+            // 重置收入表單
+            this._resetIncomeForm();
+        });
+    },
 
 /**
  * 重置收入表單
