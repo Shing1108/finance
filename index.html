@@ -505,21 +505,6 @@
         </div>
     </div>
                 
-                <div class="analytics-controls">
-                    <div class="period-selector">
-                        <button class="period-btn active" data-period="month">月</button>
-                        <button class="period-btn" data-period="quarter">季</button>
-                        <button class="period-btn" data-period="year">年</button>
-                        <button class="period-btn" data-period="custom">自定義</button>
-                    </div>
-                    
-                    <div class="custom-period" style="display: none;">
-                        <input type="date" id="analyticsStartDate" class="form-control">
-                        <span>至</span>
-                        <input type="date" id="analyticsEndDate" class="form-control">
-                        <button id="applyCustomPeriod" class="btn btn-sm btn-primary">應用</button>
-                    </div>
-                </div>
                 
                 <div class="analytics-dashboard">
                     <div class="analytics-card">
@@ -846,6 +831,37 @@
 
     <!-- 外部依賴 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 診斷日曆問題
+    console.log('開始診斷日曆...');
+    if (typeof CalendarManager !== 'undefined') {
+        const diagnosticResult = CalendarManager.diagnoseCalendar();
+        console.log('日曆診斷結果:', diagnosticResult);
+    } else {
+        console.error('CalendarManager未定義！');
+    }
+    
+    // 初始化日曆功能
+    if (typeof CalendarManager !== 'undefined') {
+        try {
+            CalendarManager.init();
+        } catch (error) {
+            console.error('日曆初始化失敗:', error);
+        }
+    }
+    
+    // 初始化分析功能
+    if (typeof AnalyticsManager !== 'undefined') {
+        try {
+            AnalyticsManager.init();
+        } catch (error) {
+            console.error('分析功能初始化失敗:', error);
+        }
+    }
+});
+</script>
 
 
     
