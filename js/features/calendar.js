@@ -16,7 +16,12 @@ const CalendarManager = {
         // 渲染當前月份
         this.renderCalendarView();
         
-        console.log('財務日曆初始化完成');
+        setTimeout(() => {
+        const loadingElements = document.querySelectorAll('#financeCalendar .chart-loading');
+        loadingElements.forEach(el => el.remove());
+        }, 500);
+    
+    console.log('財務日曆初始化完成');
     },
     
     /**
