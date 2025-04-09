@@ -2579,3 +2579,30 @@ body.ios {
 [data-theme="dark"] .transaction-amount.transfer {
     color: #64B5F6;
 }
+
+/* 修復黑暗模式下模態框的顏色 */
+[data-theme="dark"] .modal-content {
+  background-color: var(--card-bg);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-footer {
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .modal input,
+[data-theme="dark"] .modal select,
+[data-theme="dark"] .modal textarea {
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .close-button {
+  color: var(--text-light);
+}
+
+[data-theme="dark"] .close-button:hover {
+  color: var(--danger-color);
+}
