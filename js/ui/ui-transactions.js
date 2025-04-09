@@ -152,34 +152,48 @@ _resetExpenseForm: function() {
     },
     
     /**
-     * 更新戶口選項
-     */
-    updateAccountOptions: function() {
-        const accounts = Store.getAccounts();
+ * 更新戶口選項
+ */
+updateAccountOptions: function() {
+    const accounts = Store.getAccounts();
+    
+    // 收入戶口
+    const incomeAccountSelect = document.getElementById('incomeAccount');
+    incomeAccountSelect.innerHTML = '<option value="" disabled selected>選擇戶口</option>';
+    
+    // 支出戶口
+    const expenseAccountSelect = document.getElementById('expenseAccount');
+    expenseAccountSelect.innerHTML = '<option value="" disabled selected>選擇戶口</option>';
+    
+    // 添加選項
+    accounts.forEach(account => {
+        // 收入選項
+        const incomeOption = document.createElement('option');
+        incomeOption.value = account.id;
+        incomeOption.textContent = `${account.name} (${account.currency})`;
+        incomeAccountSelect.appendChild(incomeOption);
         
-        // 收入戶口
-        const incomeAccountSelect = document.getElementById('incomeAccount');
-        incomeAccountSelect.innerHTML = '<option value="" disabled selected>選擇戶口</option>';
-        
-        // 支出戶口
-        const expenseAccountSelect = document.getElementById('expenseAccount');
-        expenseAccountSelect.innerHTML = '<option value="" disabled selected>選擇戶口</option>';
-        
-        // 添加選項
+        // 支出選項
+        const expenseOption = document.createElement('option');
+        expenseOption.value = account.id;
+        expenseOption.textContent = `${account.name} (${account.currency})`;
+        expenseAccountSelect.appendChild(expenseOption);
+    });
+    
+    // 搜尋戶口選項
+    const accountFilter = document.getElementById('accountFilter');
+    if (accountFilter) {
+        accountFilter.innerHTML = '<option value="all">全部戶口</option>';
         accounts.forEach(account => {
-            // 收入選項
-            const incomeOption = document.createElement('option');
-            incomeOption.value = account.id;
-            incomeOption.textContent = `${account.name} (${account.currency})`;
-            incomeAccountSelect.appendChild(incomeOption);
-            
-            // 支出選項
-            const expenseOption = document.createElement('option');
-            expenseOption.value = account.id;
-            expenseOption.textContent = `${account.name} (${account.currency})`;
-            expenseAccountSelect.appendChild(expenseOption);
+            const option = document.createElement('option');
+            option.value = account.id;
+            option.textContent = account.name;
+            accountFilter.appendChild(option);
         });
-    },
+    }
+},
+
+
     
     /**
      * 更新類別選項
@@ -734,6 +748,7 @@ searchTransactions: function() {
     const endDate = document.getElementById('endDate').value;
     const type = document.getElementById('transactionTypeFilter').value;
     const categoryId = document.getElementById('categoryFilter').value;
+    const accountId = document.getElementById('accountFilter')?.value || 'all'; // 新增戶口過濾
     
     // 準備過濾條件
     const filters = {
@@ -747,6 +762,10 @@ searchTransactions: function() {
     
     if (categoryId !== 'all') {
         filters.categoryId = categoryId;
+    }
+    
+    if (accountId !== 'all') {
+        filters.accountId = accountId;
     }
     
     // 取得交易
@@ -777,7 +796,6 @@ searchTransactions: function() {
             return timeB - timeA; // 倒序排列
         }
         
-        // 如果以上都沒有，保持原順序
         return 0;
     });
     
