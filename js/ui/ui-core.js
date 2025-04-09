@@ -456,6 +456,20 @@ getAccountTypeName: function(type) {
     };
     return typeMap[type] || type;
 },
+
+/**
+ * 獲取戶口類型圖標
+ */
+getAccountTypeIcon: function(type) {
+    const iconMap = {
+        'cash': 'money-bill-wave',
+        'bank': 'university',
+        'credit': 'credit-card',
+        'investment': 'chart-line',
+        'other': 'wallet'
+    };
+    return iconMap[type] || 'wallet';
+},
     
     /**
      * 取得戶口顏色
