@@ -725,36 +725,49 @@ saveEditTransaction: function() {
         }
     },
     
-    /**
-     * 搜尋交易
-     */
-    searchTransactions: function() {
-        // 取得搜尋條件
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const type = document.getElementById('transactionTypeFilter').value;
-        const categoryId = document.getElementById('categoryFilter').value;
+/**
+ * 搜尋交易
+ */
+searchTransactions: function() {
+    // 取得搜尋條件
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const type = document.getElementById('transactionTypeFilter').value;
+    const categoryId = document.getElementById('categoryFilter').value;
+    
+    // 準備過濾條件
+    const filters = {
+        startDate,
+        endDate
+    };
+    
+    if (type !== 'all') {
+        filters.type = type;
+    }
+    
+    if (categoryId !== 'all') {
+        filters.categoryId = categoryId;
+    }
+    
+    // 取得交易
+    let transactions = Store.getTransactions(filters);
+    
+    // 按日期倒序排列（最新的交易在前）
+    transactions.sort((a, b) => {
+        // 先比較日期（倒序）
+        const dateComparison = new Date(b.date) - new Date(a.date);
         
-        // 準備過濾條件
-        const filters = {
-            startDate,
-            endDate
-        };
-        
-        if (type !== 'all') {
-            filters.type = type;
+        // 如果日期相同，再比較ID（假設ID較大的為較新的交易）
+        if (dateComparison === 0) {
+            return b.id - a.id;
         }
         
-        if (categoryId !== 'all') {
-            filters.categoryId = categoryId;
-        }
-        
-        // 取得交易
-        const transactions = Store.getTransactions(filters);
-        
-        // 顯示交易
-        this.displayTransactions(transactions);
-    },
+        return dateComparison;
+    });
+    
+    // 顯示交易
+    this.displayTransactions(transactions);
+},
     
     /**
      * 重新整理交易列表
