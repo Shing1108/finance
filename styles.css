@@ -513,7 +513,7 @@ button, input, select, textarea {
 }
 
 .modal-content {
-    background-color: #fff;
+    background-color: var(--card-bg);
     margin: 15% auto;
     padding: 20px;
     width: 80%;
@@ -2327,7 +2327,27 @@ button, input, select, textarea {
 [data-theme="dark"] .icon-preview {
     background-color: #333;
 }
+/* Ensure modals respect dark mode */
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-body,
+[data-theme="dark"] .modal-footer {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+}
 
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-footer {
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .close-button {
+    color: var(--text-light);
+}
+
+[data-theme="dark"] .close-button:hover {
+    color: var(--danger-color);
+}
 /* ===== 輔助類 ===== */
 
 .mt-2 {
