@@ -30,28 +30,49 @@ const UiDashboard = {
         UiCore.updateFinancialSnapshot();
     },
     
-    /**
-     * 更新今日交易清單
-     */
-    refreshTodayTransactions: function() {
-        const todayTransactions = Store.getTodayTransactions();
-        const todayTransactionsList = document.getElementById('todayTransactionsList');
-        
-        // 清空列表
-        todayTransactionsList.innerHTML = '';
-        
-        // 如果沒有交易，顯示提示訊息
-        if (todayTransactions.length === 0) {
-            todayTransactionsList.innerHTML = '<p class="empty-message">今日尚無交易記錄</p>';
-            return;
+/**
+ * 更新今日交易清單
+ */
+refreshTodayTransactions: function() {
+    // 獲取今日交易
+    let todayTransactions = Store.getTodayTransactions();
+    
+    // 按創建時間倒序排列（最新的交易在前）
+    todayTransactions.sort((a, b) => {
+        // 比較創建時間（如果有）
+        if (a.createdAt && b.createdAt) {
+            const timeA = new Date(a.createdAt);
+            const timeB = new Date(b.createdAt);
+            return timeB - timeA; // 倒序排列
         }
         
-        // 顯示交易
-        todayTransactions.forEach(transaction => {
-            const transactionHtml = UiCore.createTransactionHTML(transaction, false);
-            todayTransactionsList.innerHTML += transactionHtml;
-        });
-    },
+        // 如果沒有創建時間，則比較更新時間
+        if (a.updatedAt && b.updatedAt) {
+            const timeA = new Date(a.updatedAt);
+            const timeB = new Date(b.updatedAt);
+            return timeB - timeA; // 倒序排列
+        }
+        
+        return 0;
+    });
+    
+    const todayTransactionsList = document.getElementById('todayTransactionsList');
+    
+    // 清空列表
+    todayTransactionsList.innerHTML = '';
+    
+    // 如果沒有交易，顯示提示訊息
+    if (todayTransactions.length === 0) {
+        todayTransactionsList.innerHTML = '<p class="empty-message">今日尚無交易記錄</p>';
+        return;
+    }
+    
+    // 顯示交易
+    todayTransactions.forEach(transaction => {
+        const transactionHtml = UiCore.createTransactionHTML(transaction, false);
+        todayTransactionsList.innerHTML += transactionHtml;
+    });
+},
     
     /**
      * 更新預算狀態
@@ -119,28 +140,59 @@ const UiDashboard = {
     },
     
     /**
-     * 更新近期交易
-     */
-    refreshRecentTransactions: function() {
-        // 取得最近 5 筆交易
-        const recentTransactions = Store.getTransactions().slice(0, 5);
-        const recentTransactionsList = document.getElementById('recentTransactionsList');
+ * 更新近期交易
+ */
+refreshRecentTransactions: function() {
+    // 取得所有交易
+    let transactions = Store.getTransactions();
+    
+    // 按日期和創建時間倒序排列（最新的交易在前）
+    transactions.sort((a, b) => {
+        // 首先比較日期（倒序）
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        const dateDiff = dateB - dateA;
         
-        // 清空列表
-        recentTransactionsList.innerHTML = '';
-        
-        // 如果沒有交易，顯示提示訊息
-        if (recentTransactions.length === 0) {
-            recentTransactionsList.innerHTML = '<p class="empty-message">尚無交易記錄</p>';
-            return;
+        if (dateDiff !== 0) {
+            return dateDiff; // 不同日期，返回日期差值（倒序）
         }
         
-        // 顯示交易
-        recentTransactions.forEach(transaction => {
-            const transactionHtml = UiCore.createTransactionHTML(transaction, false);
-            recentTransactionsList.innerHTML += transactionHtml;
-        });
-    },
+        // 日期相同，比較創建時間（如果有）
+        if (a.createdAt && b.createdAt) {
+            const timeA = new Date(a.createdAt);
+            const timeB = new Date(b.createdAt);
+            return timeB - timeA; // 倒序排列
+        }
+        
+        // 如果沒有創建時間，則比較更新時間
+        if (a.updatedAt && b.updatedAt) {
+            const timeA = new Date(a.updatedAt);
+            const timeB = new Date(b.updatedAt);
+            return timeB - timeA; // 倒序排列
+        }
+        
+        return 0;
+    });
+    
+    // 取最近5筆交易
+    const recentTransactions = transactions.slice(0, 5);
+    const recentTransactionsList = document.getElementById('recentTransactionsList');
+    
+    // 清空列表
+    recentTransactionsList.innerHTML = '';
+    
+    // 如果沒有交易，顯示提示訊息
+    if (recentTransactions.length === 0) {
+        recentTransactionsList.innerHTML = '<p class="empty-message">尚無交易記錄</p>';
+        return;
+    }
+    
+    // 顯示交易
+    recentTransactions.forEach(transaction => {
+        const transactionHtml = UiCore.createTransactionHTML(transaction, false);
+        recentTransactionsList.innerHTML += transactionHtml;
+    });
+},
     
     /**
      * 更新財務健康指數
