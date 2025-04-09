@@ -2561,3 +2561,21 @@ body.ios {
 .transactions-list {
     scroll-behavior: smooth;
 }
+
+/* 轉賬交易樣式 */
+.transaction-item.transfer {
+    border-left-color: #2196F3;
+}
+
+.transaction-amount.transfer {
+    color: #2196F3;
+}
+
+/* 在深色模式下的樣式 */
+[data-theme="dark"] .transaction-item.transfer {
+    border-left-color: #64B5F6;
+}
+
+[data-theme="dark"] .transaction-amount.transfer {
+    color: #64B5F6;
+}
