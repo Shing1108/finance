@@ -228,42 +228,44 @@ closeModal: function(modalId) {
         document.getElementById('topTodayIncome').textContent = Utils.formatNumber(todayIncome);
     },
     
-    /**
-     * 創建交易項目 HTML
-     */
-    createTransactionHTML: function(transaction, includeActions = true) {
-        const account = Store.getAccount(transaction.accountId);
-        const category = Store.getCategory(transaction.categoryId);
+    // Add this to ui-core.js, replacing the existing createTransactionHTML function
+
+/**
+ * 創建交易項目 HTML
+ */
+createTransactionHTML: function(transaction, includeActions = true) {
+    // Handle transfer transactions
+    if (transaction.type === 'transfer') {
+        const fromAccount = Store.getAccount(transaction.accountId);
+        const toAccount = Store.getAccount(transaction.toAccountId);
         
-        if (!account || !category) return '';
+        if (!fromAccount || !toAccount) return '';
         
         // 格式化金額
-        const formattedAmount = transaction.type === 'expense' 
-            ? '- ' + Utils.formatCurrency(transaction.amount, transaction.currency)
-            : '+ ' + Utils.formatCurrency(transaction.amount, transaction.currency);
+        const formattedAmount = Utils.formatCurrency(transaction.amount, transaction.currency);
         
         // 格式化外幣資訊
         let originalAmount = '';
-        if (transaction.originalCurrency !== transaction.currency) {
+        if (transaction.originalCurrency && transaction.originalCurrency !== transaction.currency) {
             originalAmount = `<div class="transaction-original">
                 原始金額: ${Utils.formatCurrency(transaction.originalAmount, transaction.originalCurrency)}
             </div>`;
         }
         
-        // 建立 HTML
+        // 建立轉賬交易 HTML
         let html = `
-            <div class="transaction-item ${transaction.type}" data-id="${transaction.id}">
+            <div class="transaction-item transfer" data-id="${transaction.id}">
                 <div class="transaction-date">${DateUtils.formatHumanReadable(transaction.date)}</div>
-                <div class="transaction-icon" style="background-color: ${category.color}20; color: ${category.color}">
-                    <i class="fas fa-${category.icon}"></i>
+                <div class="transaction-icon" style="background-color: rgba(33, 150, 243, 0.1); color: #2196F3">
+                    <i class="fas fa-exchange-alt"></i>
                 </div>
                 <div class="transaction-details">
-                    <div class="transaction-category">${category.name}</div>
-                    <div class="transaction-account">${account.name}</div>
+                    <div class="transaction-category">轉賬</div>
+                    <div class="transaction-account">${fromAccount.name} → ${toAccount.name}</div>
                     ${transaction.note ? `<div class="transaction-note">${transaction.note}</div>` : ''}
                     ${originalAmount}
                 </div>
-                <div class="transaction-amount ${transaction.type}">
+                <div class="transaction-amount transfer">
                     ${formattedAmount}
                 </div>
         `;
@@ -285,7 +287,63 @@ closeModal: function(modalId) {
         html += `</div>`;
         
         return html;
-    },
+    }
+    
+    // Original code for income/expense transactions
+    const account = Store.getAccount(transaction.accountId);
+    const category = Store.getCategory(transaction.categoryId);
+    
+    if (!account || !category) return '';
+    
+    // 格式化金額
+    const formattedAmount = transaction.type === 'expense' 
+        ? '- ' + Utils.formatCurrency(transaction.amount, transaction.currency)
+        : '+ ' + Utils.formatCurrency(transaction.amount, transaction.currency);
+    
+    // 格式化外幣資訊
+    let originalAmount = '';
+    if (transaction.originalCurrency !== transaction.currency) {
+        originalAmount = `<div class="transaction-original">
+            原始金額: ${Utils.formatCurrency(transaction.originalAmount, transaction.originalCurrency)}
+        </div>`;
+    }
+    
+    // 建立 HTML
+    let html = `
+        <div class="transaction-item ${transaction.type}" data-id="${transaction.id}">
+            <div class="transaction-date">${DateUtils.formatHumanReadable(transaction.date)}</div>
+            <div class="transaction-icon" style="background-color: ${category.color}20; color: ${category.color}">
+                <i class="fas fa-${category.icon}"></i>
+            </div>
+            <div class="transaction-details">
+                <div class="transaction-category">${category.name}</div>
+                <div class="transaction-account">${account.name}</div>
+                ${transaction.note ? `<div class="transaction-note">${transaction.note}</div>` : ''}
+                ${originalAmount}
+            </div>
+            <div class="transaction-amount ${transaction.type}">
+                ${formattedAmount}
+            </div>
+    `;
+    
+    // 添加操作按鈕
+    if (includeActions) {
+        html += `
+            <div class="transaction-actions">
+                <button class="btn-icon edit-transaction" title="編輯" data-id="${transaction.id}">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-icon delete-transaction" title="刪除" data-id="${transaction.id}">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+        `;
+    }
+    
+    html += `</div>`;
+    
+    return html;
+},
     
     /**
      * 建立戶口 HTML
