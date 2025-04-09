@@ -302,12 +302,183 @@ const UiBudget = {
     },
     
     /**
-     * 顯示編輯預算模態框
-     */
-    _showEditBudgetModal: function(budgetId) {
-        // 尚未實現
-        alert('編輯預算功能即將推出');
-    },
+ * 顯示編輯預算模態框
+ */
+_showEditBudgetModal: function(budgetId) {
+    // 獲取預算使用情況
+    const budgetUsage = Store.getBudgetUsage(budgetId);
+    if (!budgetUsage || !budgetUsage.budget) {
+        Utils.showToast('找不到指定預算', 'error');
+        return;
+    }
+    
+    const budget = budgetUsage.budget;
+    const category = budgetUsage.category;
+    
+    if (!category) {
+        Utils.showToast('找不到預算類別', 'error');
+        return;
+    }
+    
+    // 計算進度條顏色
+    let progressColor = 'var(--primary-color)';
+    if (budgetUsage.percentage >= 90) {
+        progressColor = 'var(--danger-color)';
+    } else if (budgetUsage.percentage >= 70) {
+        progressColor = 'var(--warning-color)';
+    }
+    
+    // 創建模態框 HTML
+    const modalHtml = `
+        <div id="editBudgetModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>編輯預算</h3>
+                    <span class="close-button">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editBudgetId" value="${budget.id}">
+                    
+                    <div class="form-group">
+                        <label for="editBudgetCategory">類別</label>
+                        <select id="editBudgetCategory" class="form-control">
+                            <option value="" disabled>選擇類別</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editBudgetAmount">預算金額</label>
+                        <input type="number" id="editBudgetAmount" class="form-control" min="0" step="0.01" value="${budget.amount}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>預算期間</label>
+                        <div class="period-display">${this._getPeriodDisplayText(budget)}</div>
+                    </div>
+                    
+                    <div class="budget-progress-info">
+                        <h4>當前使用情況</h4>
+                        <div class="budget-progress-container">
+                            <div class="budget-progress-bar" style="width: ${budgetUsage.percentage}%; background-color: ${progressColor}"></div>
+                        </div>
+                        <div class="budget-info">
+                            <div>已使用: ${Utils.formatCurrency(budgetUsage.totalExpense, Store.settings.defaultCurrency)} (${Math.round(budgetUsage.percentage)}%)</div>
+                            <div>剩餘: ${Utils.formatCurrency(budgetUsage.remaining, Store.settings.defaultCurrency)}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="saveEditBudgetButton" class="btn btn-primary">保存</button>
+                    <button class="btn btn-secondary modal-cancel">取消</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 如果模態框已存在，則移除
+    const existingModal = document.getElementById('editBudgetModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 添加模態框到頁面
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // 填充類別選項
+    const categorySelect = document.getElementById('editBudgetCategory');
+    const categories = Store.getCategories('expense');
+    
+    categories.sort((a, b) => a.order - b.order).forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat.id;
+        option.textContent = cat.name;
+        categorySelect.appendChild(option);
+    });
+    
+    // 選中當前類別
+    categorySelect.value = budget.categoryId;
+    
+    // 綁定保存按鈕事件
+    document.getElementById('saveEditBudgetButton').addEventListener('click', () => {
+        this._saveEditBudget();
+    });
+    
+    // 綁定關閉按鈕事件
+    document.querySelector('#editBudgetModal .close-button').addEventListener('click', () => {
+        UiCore.closeModal('editBudgetModal');
+    });
+    
+    document.querySelector('#editBudgetModal .modal-cancel').addEventListener('click', () => {
+        UiCore.closeModal('editBudgetModal');
+    });
+    
+    // 顯示模態框
+    UiCore.showModal('editBudgetModal');
+},
+
+/**
+ * 取得預算期間的顯示文字
+ */
+_getPeriodDisplayText: function(budget) {
+    if (budget.period === 'monthly') {
+        return `${budget.year}年${budget.month}月`;
+    } else if (budget.period === 'quarterly') {
+        return `${budget.year}年第${budget.quarter}季度`;
+    } else if (budget.period === 'yearly') {
+        return `${budget.year}年`;
+    }
+    
+    return '';
+},
+
+/**
+ * 保存編輯後的預算
+ */
+_saveEditBudget: function() {
+    // 獲取表單數據
+    const budgetId = document.getElementById('editBudgetId').value;
+    const categoryId = document.getElementById('editBudgetCategory').value;
+    const amount = parseFloat(document.getElementById('editBudgetAmount').value);
+    
+    // 驗證
+    if (!categoryId) {
+        Utils.showToast('請選擇類別', 'error');
+        return;
+    }
+    
+    if (isNaN(amount) || amount <= 0) {
+        Utils.showToast('請輸入有效的預算金額', 'error');
+        return;
+    }
+    
+    // 獲取原始預算
+    const originalBudget = Store.getBudget(budgetId);
+    if (!originalBudget) {
+        Utils.showToast('找不到原始預算數據', 'error');
+        return;
+    }
+    
+    // 準備更新數據
+    const budgetData = {
+        ...originalBudget, // 保留原始預算的期間設置
+        categoryId,
+        amount
+    };
+    
+    // 保存預算
+    const result = App.updateBudget(budgetId, budgetData);
+    
+    // 處理結果
+    if (result) {
+        UiCore.closeModal('editBudgetModal');
+        this._refreshBudgetList();
+        
+        // 更新儀表板
+        UiDashboard.refreshBudgetStatus();
+        
+        Utils.showToast('預算已更新', 'success');
+    }
+},
     
     /**
      * 刪除預算
