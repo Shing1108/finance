@@ -129,27 +129,40 @@ _resetExpenseForm: function() {
         document.getElementById('endDate').value = lastDayOfMonth;
     },
     
-    /**
-     * 初始化交易列表
-     */
-    _initTransactionList: function() {
-        // 交易編輯和刪除按鈕事件委派
-        document.getElementById('transactionsList').addEventListener('click', (event) => {
-            const target = event.target.closest('.edit-transaction, .delete-transaction');
-            if (!target) return;
-            
-            const transactionId = target.dataset.id;
-            
-            if (target.classList.contains('edit-transaction')) {
-                this.showEditTransactionModal(transactionId);
-            } else if (target.classList.contains('delete-transaction')) {
-                this.deleteTransaction(transactionId);
-            }
-        });
+/**
+ * 初始化交易列表
+ */
+_initTransactionList: function() {
+    // 獲取交易列表元素
+    const transactionsList = document.getElementById('transactionsList');
+    
+    // 安全檢查，確保元素存在
+    if (!transactionsList) {
+        console.warn('找不到交易列表元素 (id="transactionsList")，跳過事件綁定');
+        return;
+    }
+    
+    // 交易編輯和刪除按鈕事件委派
+    transactionsList.addEventListener('click', (event) => {
+        const target = event.target.closest('.edit-transaction, .delete-transaction');
+        if (!target) return;
         
-        // 載入初始交易列表
+        const transactionId = target.dataset.id;
+        
+        if (target.classList.contains('edit-transaction')) {
+            this.showEditTransactionModal(transactionId);
+        } else if (target.classList.contains('delete-transaction')) {
+            this.deleteTransaction(transactionId);
+        }
+    });
+    
+    // 載入初始交易列表
+    try {
         this.searchTransactions();
-    },
+    } catch (error) {
+        console.error('載入初始交易列表失敗:', error);
+    }
+},
     
     /**
  * 更新戶口選項
