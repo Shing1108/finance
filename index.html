@@ -296,36 +296,38 @@
                     <div class="card-header">
                         <h3>📋 交易記錄</h3>
                     </div>
-                    <div class="transaction-filters">
-                        <div class="filter-group">
-                            <label>日期範圍</label>
-                            <div class="date-range">
-                                <input type="date" id="startDate" class="form-control">
-                                <span>至</span>
-                                <input type="date" id="endDate" class="form-control">
-                            </div>
-                        </div>
-                        <div class="filter-group">
-                            <label>類型</label>
-                            <select id="transactionTypeFilter" class="form-control">
-                                <option value="all">全部</option>
-                                <option value="income">收入</option>
-                                <option value="expense">支出</option>
-                                <option value="transfer">轉帳</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label>類別</label>
-                            <select id="categoryFilter" class="form-control">
-                                <option value="all">全部類別</option>
-                            </select>
-                        </div>
-                        <button id="searchTransactionsButton" class="btn btn-primary">搜尋</button>
-                    </div>
-                    <div id="transactionsList" class="transactions-list">
-                        <p class="empty-message">無符合條件的交易記錄</p>
-                    </div>
-                </div>
+<div class="transaction-filters">
+    <div class="filter-group">
+        <label>日期範圍</label>
+        <div class="date-range">
+            <input type="date" id="startDate" class="form-control">
+            <span>至</span>
+            <input type="date" id="endDate" class="form-control">
+        </div>
+    </div>
+    <div class="filter-group">
+        <label>類型</label>
+        <select id="transactionTypeFilter" class="form-control">
+            <option value="all">全部</option>
+            <option value="income">收入</option>
+            <option value="expense">支出</option>
+            <option value="transfer">轉帳</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>戶口</label>
+        <select id="accountFilter" class="form-control">
+            <option value="all">全部戶口</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>類別</label>
+        <select id="categoryFilter" class="form-control">
+            <option value="all">全部類別</option>
+        </select>
+    </div>
+    <button id="searchTransactionsButton" class="btn btn-primary">搜尋</button>
+</div>
             </div>
 
             <!-- 預算設定 -->
