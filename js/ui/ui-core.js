@@ -443,20 +443,19 @@ createTransactionHTML: function(transaction, includeActions = true) {
         }
     },
     
-    /**
-     * 取得戶口類型名稱
-     */
-    _getAccountTypeName: function(type) {
-        const typeNames = {
-            'cash': '現金',
-            'bank': '銀行戶口',
-            'credit': '信用卡',
-            'investment': '投資',
-            'other': '其他'
-        };
-        
-        return typeNames[type] || '其他';
-    },
+/**
+ * 獲取戶口類型名稱
+ */
+getAccountTypeName: function(type) {
+    const typeMap = {
+        'cash': '現金',
+        'bank': '銀行戶口',
+        'credit': '信用卡',
+        'investment': '投資',
+        'other': '其他'
+    };
+    return typeMap[type] || type;
+},
     
     /**
      * 取得戶口顏色
