@@ -833,24 +833,63 @@
     <!-- 外部依賴 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-    // 診斷日曆問題
-    console.log('開始診斷日曆...');
-    if (typeof CalendarManager !== 'undefined') {
-        const diagnosticResult = CalendarManager.diagnoseCalendar();
-        console.log('日曆診斷結果:', diagnosticResult);
-    } else {
-        console.error('CalendarManager未定義！');
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('初始化功能...');
+
+    // 移除載入指示器的函數
+    function removeAllLoaders() {
+        document.querySelectorAll('.chart-loading, .spinner, .insight-loading').forEach(el => {
+            el.style.display = 'none';
+        });
     }
     
-    // 初始化日曆功能
+    // 檢查並添加默認內容到空圖表
+    function addDefaultContentToEmptyCharts() {
+        // 修復日常可用預算
+        const dailyBudget = document.getElementById('dailyAvailableBudget');
+        if (dailyBudget && (!dailyBudget.innerHTML.trim() || dailyBudget.querySelector('.chart-loading'))) {
+            dailyBudget.innerHTML = '<div class="empty-chart-message">暫無預算數據</div>';
+        }
+        
+        // 修復趨勢圖表
+        const trendChart = document.getElementById('trendChart');
+        if (trendChart && (!trendChart.innerHTML.trim() || trendChart.querySelector('.chart-loading'))) {
+            trendChart.innerHTML = '<div class="empty-chart-message">暫無收支趨勢數據</div>';
+        }
+    }
+    
+    // 圖表元素定時檢查
+    function checkChartRendered() {
+        const chartContainers = ['trendChart', 'categoryDistribution', 'comparisonChart', 'financeCalendar'];
+        chartContainers.forEach(id => {
+            const container = document.getElementById(id);
+            if (container) {
+                // 檢查是否有canvas元素（表示圖表已渲染）
+                const canvas = container.querySelector('canvas');
+                if (canvas) {
+                    // 隱藏載入提示
+                    const loadingElements = container.querySelectorAll('.chart-loading, .spinner');
+                    loadingElements.forEach(el => {
+                        el.style.display = 'none';
+                    });
+                }
+            }
+        });
+    }
+    
+    // 1. 診斷與初始化模塊
+    // 診斷日曆問題
     if (typeof CalendarManager !== 'undefined') {
         try {
+            const diagnosticResult = CalendarManager.diagnoseCalendar();
+            console.log('日曆診斷結果:', diagnosticResult);
             CalendarManager.init();
         } catch (error) {
-            console.error('日曆初始化失敗:', error);
+            console.error('日曆功能初始化失敗:', error);
         }
+    } else {
+        console.log('CalendarManager未定義');
     }
     
     // 初始化分析功能
@@ -861,13 +900,10 @@
             console.error('分析功能初始化失敗:', error);
         }
     }
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    // 監視DOM變化
+    
+    // 2. 監視DOM變化
     const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
-            // 檢查是否有圖表或日曆元素被添加
             if (mutation.addedNodes.length) {
                 mutation.addedNodes.forEach(function(node) {
                     if (node.nodeType === 1) { // 元素節點
@@ -907,50 +943,7 @@ document.addEventListener('DOMContentLoaded', function() {
         subtree: true
     });
     
-    // 圖表元素定時檢查
-    const chartContainers = ['trendChart', 'categoryDistribution', 'comparisonChart', 'financeCalendar'];
-    
-    function checkChartRendered() {
-        chartContainers.forEach(id => {
-            const container = document.getElementById(id);
-            if (container) {
-                // 檢查是否有canvas元素（表示圖表已渲染）
-                const canvas = container.querySelector('canvas');
-                if (canvas) {
-                    // 隱藏載入提示
-                    const loadingElements = container.querySelectorAll('.chart-loading, .spinner');
-                    loadingElements.forEach(el => {
-                        el.style.display = 'none';
-                    });
-                }
-            }
-        });
-    }
-    
-    // 立即檢查一次
-    checkChartRendered();
-    
-    // 然後每隔0.5秒檢查一次，持續5秒
-    let checkCount = 0;
-    const interval = setInterval(() => {
-        checkChartRendered();
-        checkCount++;
-        if (checkCount >= 10) clearInterval(interval);
-    }, 500);
-    
-    // 頁面切換時也檢查
-    document.querySelectorAll('.nav-tabs li').forEach(tab => {
-        tab.addEventListener('click', function() {
-            // 延遲檢查以確保圖表有時間渲染
-            setTimeout(checkChartRendered, 500);
-            setTimeout(checkChartRendered, 1000);
-        });
-    });
-});
-
-
-document.addEventListener('DOMContentLoaded', function() {
-    // 尋找生成預測按鈕
+    // 3. 處理生成預測按鈕
     const generatePredictionBtn = document.getElementById('generatePredictionBtn');
     if (generatePredictionBtn) {
         // 移除原有事件監聽器
@@ -970,76 +963,53 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             `;
             
-            // 假設原來的處理函數是window.generatePrediction或類似名稱
+            // 嘗試調用原有函數
             if (typeof window.generatePrediction === 'function') {
                 window.generatePrediction();
             }
-            
-            // 如果找不到原來的處理函數，可以嘗試直接調用可能存在的其他函數
-            // 例如：App.generatePrediction()、AnalyticsManager.generatePrediction()等
             
             // 延遲清除載入提示
             setTimeout(() => {
                 const loadingElement = predictionResults.querySelector('.chart-loading');
                 if (loadingElement) loadingElement.remove();
-            }, 3000); // 給足夠時間處理
+            }, 3000);
         });
     }
-});
-
-
-document.addEventListener('DOMContentLoaded', function() {
-    // 監視圖表和日曆的初始化
-    console.log('開始監視圖表和日曆初始化...');
     
-    // 檢查是否存在圖表和日曆管理器
+    // 4. 監視圖表和日曆的初始化
+    console.log('監視圖表和日曆初始化...');
     console.log('AnalyticsManager存在:', typeof AnalyticsManager !== 'undefined');
     console.log('CalendarManager存在:', typeof CalendarManager !== 'undefined');
     console.log('Chart庫存在:', typeof Chart !== 'undefined');
     
-    // 監視圖表容器
-    const containers = ['trendChart', 'categoryDistribution', 'comparisonChart', 'financeCalendar'];
-    containers.forEach(id => {
-        const container = document.getElementById(id);
-        console.log(`${id}容器存在:`, !!container);
-        
-        if (container) {
-            // 在容器被修改時記錄
-            const observer = new MutationObserver((mutations) => {
-                console.log(`${id}容器內容被修改:`, mutations);
-            });
-            
-            observer.observe(container, {
-                childList: true,
-                subtree: true
-            });
-        }
+    // 5. 執行初始清理和檢查
+    removeAllLoaders();
+    checkChartRendered();
+    
+    // 6. 設置定時檢查
+    setTimeout(removeAllLoaders, 500);
+    setTimeout(removeAllLoaders, 1500);
+    setTimeout(removeAllLoaders, 3000);
+    setTimeout(addDefaultContentToEmptyCharts, 1500);
+    
+    // 檢查圖表渲染 - 每隔0.5秒檢查一次，持續5秒
+    let checkCount = 0;
+    const interval = setInterval(() => {
+        checkChartRendered();
+        checkCount++;
+        if (checkCount >= 10) clearInterval(interval);
+    }, 500);
+    
+    // 7. 頁籤切換監聽
+    document.querySelectorAll('.nav-tabs li').forEach(tab => {
+        tab.addEventListener('click', function() {
+            setTimeout(removeAllLoaders, 500);
+            setTimeout(removeAllLoaders, 1500);
+            setTimeout(checkChartRendered, 500);
+            setTimeout(checkChartRendered, 1000);
+            setTimeout(addDefaultContentToEmptyCharts, 1000);
+        });
     });
-});
-// Improved loader removal function
-function removeAllLoaders() {
-  document.querySelectorAll('.chart-loading, .spinner, .insight-loading').forEach(el => {
-    el.style.display = 'none';
-  });
-}
-
-// Run on page load
-document.addEventListener('DOMContentLoaded', function() {
-  // Initial check
-  removeAllLoaders();
-  
-  // Delayed checks to ensure charts have time to render
-  setTimeout(removeAllLoaders, 1000);
-  setTimeout(removeAllLoaders, 2000);
-  setTimeout(removeAllLoaders, 3000);
-  
-  // Also remove loaders when tab content becomes active
-  document.querySelectorAll('.nav-tabs li').forEach(tab => {
-    tab.addEventListener('click', function() {
-      setTimeout(removeAllLoaders, 500);
-      setTimeout(removeAllLoaders, 1500);
-    });
-  });
 });
 </script>
 
