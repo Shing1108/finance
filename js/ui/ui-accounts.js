@@ -77,23 +77,25 @@ const UiAccounts = {
 _bindAccountEvents: function() {
     // 使用事件委派，處理新增的戶口元素
     document.getElementById('accountsList').addEventListener('click', (event) => {
+        // 先檢查是否點擊了編輯或刪除按鈕
         const editButton = event.target.closest('.edit-account');
-        const deleteButton = event.target.closest('.delete-account');
-        
         if (editButton) {
+            event.stopPropagation(); // 阻止事件冒泡
             this.showEditAccountModal(editButton.dataset.id);
             return;
         }
         
+        const deleteButton = event.target.closest('.delete-account');
         if (deleteButton) {
+            event.stopPropagation(); // 阻止事件冒泡
             this.deleteAccount(deleteButton.dataset.id);
             return;
         }
         
-        // 如果沒有點擊按鈕，檢查是否點擊了戶口卡片
-        const accountCard = event.target.closest('.account-card, .account-row');
-        if (accountCard && accountCard.dataset.id) {
-            this.showAccountOverview(accountCard.dataset.id);
+        // 如果沒有點擊按鈕，檢查是否點擊了戶口卡片或行
+        const accountElement = event.target.closest('.account-card, .account-row');
+        if (accountElement && accountElement.dataset.id) {
+            this.showAccountOverview(accountElement.dataset.id);
         }
     });
 },
@@ -121,7 +123,7 @@ showAccountOverview: function(accountId) {
     const thisMonthTransactions = Store.getTransactions({
         accountId: account.id,
         startDate: `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`,
-        endDate: DateUtils.lastDayOfMonth()
+        endDate: new Date(currentYear, currentMonth, 0).toISOString().split('T')[0] // 當月最後一天
     });
     
     const monthlyIncome = thisMonthTransactions
@@ -136,7 +138,16 @@ showAccountOverview: function(accountId) {
     let transactionsHtml = '';
     if (recentTransactions.length > 0) {
         recentTransactions.forEach(tx => {
-            transactionsHtml += UiCore.createTransactionHTML(tx, false);
+            // 使用現有的UiCore.createTransactionHTML函數或自定義簡單版本
+            transactionsHtml += `
+                <div class="transaction-item ${tx.type}">
+                    <div class="transaction-date">${tx.date}</div>
+                    <div class="transaction-details">
+                        <div class="transaction-category">${Store.getCategory(tx.categoryId)?.name || '未分類'}</div>
+                        <div class="transaction-amount ${tx.type}">${Utils.formatCurrency(tx.amount, tx.currency)}</div>
+                    </div>
+                </div>
+            `;
         });
     } else {
         transactionsHtml = '<p class="empty-message">暫無交易記錄</p>';
@@ -189,6 +200,7 @@ showAccountOverview: function(accountId) {
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button onclick="UiCore.showTabContent('transactions'); document.getElementById('accountFilter').value='${account.id}'; UiTransactions.searchTransactions(); UiCore.closeModal('accountOverviewModal');" class="btn btn-primary">查看完整交易歷史</button>
                     <button class="btn btn-secondary modal-cancel">關閉</button>
                 </div>
             </div>
