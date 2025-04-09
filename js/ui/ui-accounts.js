@@ -71,24 +71,145 @@ const UiAccounts = {
         });
     },
     
-    /**
-     * 綁定戶口操作事件
-     */
-    _bindAccountEvents: function() {
-        // 使用事件委派，處理新增的戶口元素
-        document.getElementById('accountsList').addEventListener('click', (event) => {
-            const target = event.target.closest('.edit-account, .delete-account');
-            if (!target) return;
-            
-            const accountId = target.dataset.id;
-            
-            if (target.classList.contains('edit-account')) {
-                this.showEditAccountModal(accountId);
-            } else if (target.classList.contains('delete-account')) {
-                this.deleteAccount(accountId);
-            }
+/**
+ * 綁定戶口操作事件
+ */
+_bindAccountEvents: function() {
+    // 使用事件委派，處理新增的戶口元素
+    document.getElementById('accountsList').addEventListener('click', (event) => {
+        const editButton = event.target.closest('.edit-account');
+        const deleteButton = event.target.closest('.delete-account');
+        
+        if (editButton) {
+            this.showEditAccountModal(editButton.dataset.id);
+            return;
+        }
+        
+        if (deleteButton) {
+            this.deleteAccount(deleteButton.dataset.id);
+            return;
+        }
+        
+        // 如果沒有點擊按鈕，檢查是否點擊了戶口卡片
+        const accountCard = event.target.closest('.account-card, .account-row');
+        if (accountCard && accountCard.dataset.id) {
+            this.showAccountOverview(accountCard.dataset.id);
+        }
+    });
+},
+
+/**
+ * 顯示戶口總覽
+ */
+showAccountOverview: function(accountId) {
+    const account = Store.getAccount(accountId);
+    if (!account) {
+        Utils.showToast('找不到指定戶口', 'error');
+        return;
+    }
+    
+    // 獲取與此戶口相關的交易
+    const recentTransactions = Store.getTransactions({ accountId: account.id })
+        .sort((a, b) => new Date(b.date) - new Date(a.date)) // 按日期倒序
+        .slice(0, 5); // 只取最近5筆
+    
+    // 計算本月收入和支出
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    const thisMonthTransactions = Store.getTransactions({
+        accountId: account.id,
+        startDate: `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`,
+        endDate: DateUtils.lastDayOfMonth()
+    });
+    
+    const monthlyIncome = thisMonthTransactions
+        .filter(tx => tx.type === 'income')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+    
+    const monthlyExpense = thisMonthTransactions
+        .filter(tx => tx.type === 'expense')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+    
+    // 構建交易列表HTML
+    let transactionsHtml = '';
+    if (recentTransactions.length > 0) {
+        recentTransactions.forEach(tx => {
+            transactionsHtml += UiCore.createTransactionHTML(tx, false);
         });
-    },
+    } else {
+        transactionsHtml = '<p class="empty-message">暫無交易記錄</p>';
+    }
+    
+    // 構建總覽模態框HTML
+    const modalHtml = `
+        <div id="accountOverviewModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>${account.name} 總覽</h3>
+                    <span class="close-button">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="account-overview">
+                        <div class="account-details">
+                            <div class="account-balance">
+                                <h4>當前餘額</h4>
+                                <div class="balance-value">${Utils.formatCurrency(account.balance, account.currency)}</div>
+                            </div>
+                            
+                            <div class="account-info">
+                                <div><strong>戶口類型：</strong> ${UiCore.getAccountTypeName(account.type)}</div>
+                                <div><strong>貨幣：</strong> ${account.currency}</div>
+                                ${account.note ? `<div><strong>備註：</strong> ${account.note}</div>` : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="account-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">本月收入</div>
+                                <div class="stat-value income">${Utils.formatCurrency(monthlyIncome, account.currency)}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">本月支出</div>
+                                <div class="stat-value expense">${Utils.formatCurrency(monthlyExpense, account.currency)}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">本月結餘</div>
+                                <div class="stat-value ${monthlyIncome - monthlyExpense >= 0 ? 'positive' : 'negative'}">
+                                    ${Utils.formatCurrency(monthlyIncome - monthlyExpense, account.currency)}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h4>近期交易</h4>
+                        <div class="recent-transactions">
+                            ${transactionsHtml}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary modal-cancel">關閉</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 添加模態框到頁面
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // 綁定關閉按鈕事件
+    document.querySelector('#accountOverviewModal .close-button').addEventListener('click', () => {
+        UiCore.closeModal('accountOverviewModal');
+    });
+    
+    document.querySelector('#accountOverviewModal .modal-cancel').addEventListener('click', () => {
+        UiCore.closeModal('accountOverviewModal');
+    });
+    
+    // 顯示模態框
+    UiCore.showModal('accountOverviewModal');
+},
     
     /**
      * 顯示新增戶口模態框
