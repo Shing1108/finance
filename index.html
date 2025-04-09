@@ -833,6 +833,188 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script>
+    document.addEventListener('DOMContentLoaded', function() {
+    // 診斷日曆問題
+    console.log('開始診斷日曆...');
+    if (typeof CalendarManager !== 'undefined') {
+        const diagnosticResult = CalendarManager.diagnoseCalendar();
+        console.log('日曆診斷結果:', diagnosticResult);
+    } else {
+        console.error('CalendarManager未定義！');
+    }
+    
+    // 初始化日曆功能
+    if (typeof CalendarManager !== 'undefined') {
+        try {
+            CalendarManager.init();
+        } catch (error) {
+            console.error('日曆初始化失敗:', error);
+        }
+    }
+    
+    // 初始化分析功能
+    if (typeof AnalyticsManager !== 'undefined') {
+        try {
+            AnalyticsManager.init();
+        } catch (error) {
+            console.error('分析功能初始化失敗:', error);
+        }
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 監視DOM變化
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            // 檢查是否有圖表或日曆元素被添加
+            if (mutation.addedNodes.length) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) { // 元素節點
+                        // 檢查是否有canvas被添加（表示圖表已渲染）
+                        const canvases = node.querySelectorAll ? node.querySelectorAll('canvas') : [];
+                        if (canvases.length > 0) {
+                            // 找到該節點的父層中的載入提示並隱藏
+                            let parent = node.parentNode;
+                            while (parent) {
+                                const loadingElements = parent.querySelectorAll('.chart-loading, .spinner, .insight-loading');
+                                loadingElements.forEach(el => {
+                                    el.style.display = 'none';
+                                });
+                                // 向上尋找最多3層
+                                parent = parent.parentNode;
+                                if (!parent || parent === document.body || parent === document) break;
+                            }
+                        }
+                        
+                        // 檢查是否是日曆元素且已有內容
+                        if ((node.id === 'financeCalendar' || node.classList.contains('calendar-body')) && 
+                            node.children.length > 0) {
+                            const loadingElements = node.querySelectorAll('.chart-loading, .spinner');
+                            loadingElements.forEach(el => {
+                                el.style.display = 'none';
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    // 配置觀察者
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+    
+    // 圖表元素定時檢查
+    const chartContainers = ['trendChart', 'categoryDistribution', 'comparisonChart', 'financeCalendar'];
+    
+    function checkChartRendered() {
+        chartContainers.forEach(id => {
+            const container = document.getElementById(id);
+            if (container) {
+                // 檢查是否有canvas元素（表示圖表已渲染）
+                const canvas = container.querySelector('canvas');
+                if (canvas) {
+                    // 隱藏載入提示
+                    const loadingElements = container.querySelectorAll('.chart-loading, .spinner');
+                    loadingElements.forEach(el => {
+                        el.style.display = 'none';
+                    });
+                }
+            }
+        });
+    }
+    
+    // 立即檢查一次
+    checkChartRendered();
+    
+    // 然後每隔0.5秒檢查一次，持續5秒
+    let checkCount = 0;
+    const interval = setInterval(() => {
+        checkChartRendered();
+        checkCount++;
+        if (checkCount >= 10) clearInterval(interval);
+    }, 500);
+    
+    // 頁面切換時也檢查
+    document.querySelectorAll('.nav-tabs li').forEach(tab => {
+        tab.addEventListener('click', function() {
+            // 延遲檢查以確保圖表有時間渲染
+            setTimeout(checkChartRendered, 500);
+            setTimeout(checkChartRendered, 1000);
+        });
+    });
+});
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 尋找生成預測按鈕
+    const generatePredictionBtn = document.getElementById('generatePredictionBtn');
+    if (generatePredictionBtn) {
+        // 移除原有事件監聽器
+        const clonedBtn = generatePredictionBtn.cloneNode(true);
+        generatePredictionBtn.parentNode.replaceChild(clonedBtn, generatePredictionBtn);
+        
+        // 添加新的事件監聽器
+        document.getElementById('generatePredictionBtn').addEventListener('click', function() {
+            const predictionResults = document.getElementById('predictionResults');
+            if (!predictionResults) return;
+            
+            // 先顯示載入中
+            predictionResults.innerHTML = `
+                <div class="chart-loading">
+                    <div class="spinner"></div>
+                    <p>計算中...</p>
+                </div>
+            `;
+            
+            // 假設原來的處理函數是window.generatePrediction或類似名稱
+            if (typeof window.generatePrediction === 'function') {
+                window.generatePrediction();
+            }
+            
+            // 如果找不到原來的處理函數，可以嘗試直接調用可能存在的其他函數
+            // 例如：App.generatePrediction()、AnalyticsManager.generatePrediction()等
+            
+            // 延遲清除載入提示
+            setTimeout(() => {
+                const loadingElement = predictionResults.querySelector('.chart-loading');
+                if (loadingElement) loadingElement.remove();
+            }, 3000); // 給足夠時間處理
+        });
+    }
+});
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 監視圖表和日曆的初始化
+    console.log('開始監視圖表和日曆初始化...');
+    
+    // 檢查是否存在圖表和日曆管理器
+    console.log('AnalyticsManager存在:', typeof AnalyticsManager !== 'undefined');
+    console.log('CalendarManager存在:', typeof CalendarManager !== 'undefined');
+    console.log('Chart庫存在:', typeof Chart !== 'undefined');
+    
+    // 監視圖表容器
+    const containers = ['trendChart', 'categoryDistribution', 'comparisonChart', 'financeCalendar'];
+    containers.forEach(id => {
+        const container = document.getElementById(id);
+        console.log(`${id}容器存在:`, !!container);
+        
+        if (container) {
+            // 在容器被修改時記錄
+            const observer = new MutationObserver((mutations) => {
+                console.log(`${id}容器內容被修改:`, mutations);
+            });
+            
+            observer.observe(container, {
+                childList: true,
+                subtree: true
+            });
+        }
+    });
+});
 // Improved loader removal function
 function removeAllLoaders() {
   document.querySelectorAll('.chart-loading, .spinner, .insight-loading').forEach(el => {
