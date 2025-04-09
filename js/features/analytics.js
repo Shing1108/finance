@@ -19,6 +19,18 @@ const AnalyticsManager = {
         this.updateCharts('month');
     }, 500);
     
+    // Generate fallback charts for empty sections
+setTimeout(() => {
+    const dailyBudget = document.getElementById('dailyAvailableBudget');
+    if (dailyBudget && dailyBudget.querySelector('.chart-loading')) {
+        dailyBudget.innerHTML = '<div class="empty-message">No budget data available</div>';
+    }
+    
+    if (!document.getElementById('trendChartCanvas')) {
+        this.generateEmptyChartData('trendChart');
+    }
+}, 2000);
+    
     console.log('資料分析功能初始化完成');
     },
     
@@ -430,6 +442,44 @@ _bindEvents: function() {
             }
         });
     },
+    generateEmptyChartData: function(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    // Clear loading state
+    container.innerHTML = '';
+    
+    // Create canvas element
+    const canvas = document.createElement('canvas');
+    canvas.id = containerId + 'Canvas';
+    container.appendChild(canvas);
+    
+    // Generate placeholder chart
+    const ctx = canvas.getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['No Data'],
+            datasets: [{
+                label: 'No data available',
+                data: [0],
+                backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                borderColor: 'rgba(200, 200, 200, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'No data available for this period'
+                }
+            }
+        }
+    });
+},
     
     /**
      * 更新收支對比圖表
