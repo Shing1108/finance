@@ -752,17 +752,33 @@ searchTransactions: function() {
     // 取得交易
     let transactions = Store.getTransactions(filters);
     
-    // 按日期倒序排列（最新的交易在前）
+    // 按日期和創建時間倒序排列（最新的交易在前）
     transactions.sort((a, b) => {
-        // 先比較日期（倒序）
-        const dateComparison = new Date(b.date) - new Date(a.date);
+        // 首先比較日期（倒序）
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        const dateDiff = dateB - dateA;
         
-        // 如果日期相同，再比較ID（假設ID較大的為較新的交易）
-        if (dateComparison === 0) {
-            return b.id - a.id;
+        if (dateDiff !== 0) {
+            return dateDiff; // 不同日期，返回日期差值（倒序）
         }
         
-        return dateComparison;
+        // 日期相同，比較創建時間（如果有）
+        if (a.createdAt && b.createdAt) {
+            const timeA = new Date(a.createdAt);
+            const timeB = new Date(b.createdAt);
+            return timeB - timeA; // 倒序排列
+        }
+        
+        // 如果沒有創建時間，則比較更新時間
+        if (a.updatedAt && b.updatedAt) {
+            const timeA = new Date(a.updatedAt);
+            const timeB = new Date(b.updatedAt);
+            return timeB - timeA; // 倒序排列
+        }
+        
+        // 如果以上都沒有，保持原順序
+        return 0;
     });
     
     // 顯示交易
