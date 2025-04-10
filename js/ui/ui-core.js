@@ -444,9 +444,9 @@ createTransactionHTML: function(transaction, includeActions = true) {
     },
     
 /**
- * 獲取戶口類型名稱
+ * 獲取戶口類型名稱（修改為帶下劃線的版本）
  */
-getAccountTypeName: function(type) {
+_getAccountTypeName: function(type) {
     const typeMap = {
         'cash': '現金',
         'bank': '銀行戶口',
@@ -458,9 +458,9 @@ getAccountTypeName: function(type) {
 },
 
 /**
- * 獲取戶口類型圖標
+ * 獲取戶口類型圖標（修改為帶下劃線的版本）
  */
-getAccountTypeIcon: function(type) {
+_getAccountTypeIcon: function(type) {
     const iconMap = {
         'cash': 'money-bill-wave',
         'bank': 'university',
