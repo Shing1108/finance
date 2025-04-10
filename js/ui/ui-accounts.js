@@ -170,7 +170,7 @@ showAccountOverview: function(accountId) {
                             </div>
                             
                             <div class="account-info">
-                                <div><strong>戶口類型：</strong> ${UiCore.getAccountTypeName(account.type)}</div>
+                                <div><strong>戶口類型：</strong> ${UiCore._getAccountTypeName(account.type)}</div>
                                 <div><strong>貨幣：</strong> ${account.currency}</div>
                                 ${account.note ? `<div><strong>備註：</strong> ${account.note}</div>` : ''}
                             </div>
